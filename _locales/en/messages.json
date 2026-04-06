@@ -1,0 +1,22 @@
+{
+  "appDesc": {
+    "message": "Save images via click, drag or bulk download.",
+    "description": "Webstore description."
+  },
+  "buttonTip": {
+    "message": "Download images",
+    "description": "Extension button tooltip."
+  },
+  "disableDragLabel": {
+    "message": "Disable drag-to-save"
+  },
+  "optionsSave": {
+    "message": "Save"
+  },
+  "optionsStatus": {
+    "message": "Saved"
+  },
+  "buttonTitle": {
+    "message": "Stop"
+  }
+}

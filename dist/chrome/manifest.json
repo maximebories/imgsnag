@@ -1,0 +1,35 @@
+{
+  "name": "imgsnag",
+  "version": "0.1.0",
+  "manifest_version": 3,
+  "description": "__MSG_appDesc__",
+  "default_locale": "en",
+  "options_ui": {
+    "page": "options.html"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_icon": {
+      "16": "icons/16.png",
+      "24": "icons/24.png",
+      "32": "icons/32.png"
+    },
+    "default_title": "__MSG_buttonTip__"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["lib/browser-polyfill.min.js", "content.js"],
+      "run_at": "document_end"
+    }
+  ],
+  "icons": {
+    "16": "icons/16.png",
+    "48": "icons/48.png",
+    "128": "icons/128.png"
+  },
+  "permissions": ["storage", "downloads", "activeTab"],
+  "host_permissions": ["<all_urls>"]
+}

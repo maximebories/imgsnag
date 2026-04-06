@@ -1,0 +1,22 @@
+{
+  "appDesc": {
+    "message": "Enregistrez des images par clic, glisser ou téléchargement groupé.",
+    "description": "Webstore description."
+  },
+  "buttonTip": {
+    "message": "Télécharger les images",
+    "description": "Extension button tooltip."
+  },
+  "disableDragLabel": {
+    "message": "Désactiver le glisser pour enregistrer"
+  },
+  "optionsSave": {
+    "message": "Enregistrer"
+  },
+  "optionsStatus": {
+    "message": "Enregistré"
+  },
+  "buttonTitle": {
+    "message": "Arrêter"
+  }
+}

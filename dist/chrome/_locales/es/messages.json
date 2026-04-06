@@ -1,0 +1,22 @@
+{
+  "appDesc": {
+    "message": "Guarda imágenes con clic, arrastre o descarga masiva.",
+    "description": "Webstore description."
+  },
+  "buttonTip": {
+    "message": "Descargar imágenes",
+    "description": "Extension button tooltip."
+  },
+  "disableDragLabel": {
+    "message": "Desactivar arrastrar para guardar"
+  },
+  "optionsSave": {
+    "message": "Guardar"
+  },
+  "optionsStatus": {
+    "message": "Guardado"
+  },
+  "buttonTitle": {
+    "message": "Parar"
+  }
+}
