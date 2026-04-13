@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+
+      body {
+        width: 400px;
+        max-height: 500px;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        font-size: 13px;
+        color: #1a1a1a;
+        background: #f5f5f5;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      }
+
+      /* Loading / empty states */
+      #loading, #empty, #error {
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 48px 24px;
+        color: #888;
+        gap: 12px;
+      }
+      #loading.visible, #empty.visible, #error.visible {
+        display: flex;
+      }
+
+      .spinner {
+        width: 24px;
+        height: 24px;
+        border: 3px solid #ddd;
+        border-top-color: #666;
+        border-radius: 50%;
+        animation: spin 0.7s linear infinite;
+      }
+      @keyframes spin { to { transform: rotate(360deg); } }
+
+      /* Image grid */
+      #grid {
+        display: none;
+        grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+        gap: 4px;
+        padding: 4px;
+        overflow-y: auto;
+        max-height: 430px;
+      }
+      #grid.visible { display: grid; }
+
+      .cell {
+        position: relative;
+        aspect-ratio: 1;
+        overflow: hidden;
+        border-radius: 4px;
+        background: #e0e0e0;
+        cursor: pointer;
+      }
+      .cell img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+        transition: opacity 0.15s;
+      }
+      .cell:hover img { opacity: 0.85; }
+
+      .cell .check {
+        position: absolute;
+        top: 4px;
+        right: 4px;
+        width: 22px;
+        height: 22px;
+        border: 2px solid rgba(255,255,255,0.9);
+        border-radius: 4px;
+        background: rgba(0,0,0,0.3);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background 0.15s;
+      }
+      .cell .check:hover { background: rgba(0,0,0,0.5); }
+      .cell .check.selected {
+        background: #2563eb;
+        border-color: #2563eb;
+      }
+      .cell .check.selected::after {
+        content: '';
+        width: 10px;
+        height: 6px;
+        border-left: 2px solid #fff;
+        border-bottom: 2px solid #fff;
+        transform: rotate(-45deg) translateY(-1px);
+      }
+
+      .cell .flash {
+        position: absolute;
+        inset: 0;
+        background: rgba(34, 197, 94, 0.4);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        pointer-events: none;
+      }
+      .cell .flash.visible { display: flex; }
+      .cell .flash::after {
+        content: '';
+        width: 20px;
+        height: 12px;
+        border-left: 3px solid #fff;
+        border-bottom: 3px solid #fff;
+        transform: rotate(-45deg);
+      }
+
+      .cell .placeholder {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #999;
+        font-size: 11px;
+        text-align: center;
+        padding: 8px;
+        word-break: break-all;
+      }
+
+      /* Bottom bar */
+      #bar {
+        display: none;
+        align-items: center;
+        justify-content: space-between;
+        padding: 8px;
+        background: #fff;
+        border-top: 1px solid #e0e0e0;
+        gap: 8px;
+        flex-shrink: 0;
+      }
+      #bar.visible { display: flex; }
+
+      #counter {
+        font-size: 12px;
+        color: #666;
+        white-space: nowrap;
+      }
+
+      .actions {
+        display: flex;
+        gap: 6px;
+      }
+
+      .actions button {
+        padding: 6px 12px;
+        font-size: 12px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        white-space: nowrap;
+        transition: background 0.15s, opacity 0.15s;
+      }
+
+      #btn-selected {
+        background: #2563eb;
+        color: #fff;
+      }
+      #btn-selected:hover:not(:disabled) { background: #1d4ed8; }
+      #btn-selected:disabled {
+        opacity: 0.4;
+        cursor: default;
+      }
+
+      #btn-all {
+        background: #e5e7eb;
+        color: #1a1a1a;
+      }
+      #btn-all:hover { background: #d1d5db; }
+    </style>
+  </head>
+  <body>
+    <div id="loading" class="visible">
+      <div class="spinner"></div>
+      <span id="loading-text"></span>
+    </div>
+
+    <div id="empty">
+      <span id="empty-text"></span>
+    </div>
+
+    <div id="error">
+      <span id="error-text"></span>
+    </div>
+
+    <div id="grid"></div>
+
+    <div id="bar">
+      <span id="counter"></span>
+      <div class="actions">
+        <button id="btn-selected" disabled></button>
+        <button id="btn-all"></button>
+      </div>
+    </div>
+
+    <script src="lib/browser-polyfill.min.js"></script>
+    <script src="popup.js"></script>
+  </body>
+</html>

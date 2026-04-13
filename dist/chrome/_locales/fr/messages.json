@@ -16,7 +16,22 @@
   "optionsStatus": {
     "message": "Enregistré"
   },
-  "buttonTitle": {
-    "message": "Arrêter"
+  "popupLoading": {
+    "message": "Analyse de la page..."
+  },
+  "popupNoImages": {
+    "message": "Aucune image trouvée"
+  },
+  "popupDownloadSelected": {
+    "message": "Télécharger la sélection"
+  },
+  "popupDownloadAll": {
+    "message": "Tout télécharger"
+  },
+  "popupSelected": {
+    "message": "sélectionnée(s)"
+  },
+  "popupReload": {
+    "message": "Rechargez la page et réessayez"
   }
 }

@@ -16,7 +16,8 @@
       "32": "icons/32.png",
       "64": "icons/64.png"
     },
-    "default_title": "__MSG_buttonTip__"
+    "default_title": "__MSG_buttonTip__",
+    "default_popup": "popup.html"
   },
   "content_scripts": [
     {

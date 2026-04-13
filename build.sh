@@ -21,6 +21,8 @@ for target in chrome firefox; do
   cp "$ROOT/src/content.js" "$OUT/"
   cp "$ROOT/src/options.js" "$OUT/"
   cp "$ROOT/src/options.html" "$OUT/"
+  cp "$ROOT/src/popup.js" "$OUT/"
+  cp "$ROOT/src/popup.html" "$OUT/"
 
   # Browser-specific manifest
   cp "$ROOT/manifest.${target}.json" "$OUT/manifest.json"

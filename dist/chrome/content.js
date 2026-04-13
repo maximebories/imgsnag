@@ -16,15 +16,13 @@
 
   const MIN_IMAGE_SIZE = 200;
 
-  // State
-
+  // Persistent image store — survives DOM removal (infinite scroll recycling)
+  const discoveredImages = new Map();
+  let popupPort = null;
   let isDragDisabled = false;
-  let isDownloading = false;
-  let downloadController = null;
 
   // Helpers
 
-  // Service worker can terminate at any time in MV3
   function sendToBackground(message) {
     browser.runtime.sendMessage(message).catch(() => {});
   }
@@ -74,7 +72,7 @@
       .filter(Boolean);
   }
 
-  // Image discovery — scans the page for downloadable image URLs
+  // Image discovery — scans the DOM for downloadable image URLs
 
   function collectImageUrls() {
     const uniqueUrls = new Set();
@@ -86,19 +84,16 @@
       }
     }
 
-    // <img src>
     document.querySelectorAll('img[src]').forEach((img) => {
       trackUrl(img.src);
     });
 
-    // srcset attributes (img, source, etc.)
     document.querySelectorAll('[srcset]').forEach((el) => {
       for (const url of parseSrcset(el.getAttribute('srcset'))) {
         trackUrl(url);
       }
     });
 
-    // <picture> <source> elements
     document.querySelectorAll('picture source').forEach((source) => {
       const src = source.getAttribute('src');
       if (src) trackUrl(src);
@@ -107,12 +102,10 @@
       }
     });
 
-    // <video poster>
     document.querySelectorAll('video[poster]').forEach((video) => {
       trackUrl(video.getAttribute('poster'));
     });
 
-    // CSS background-image on likely container elements
     document.querySelectorAll(BG_IMAGE_SELECTORS).forEach((el) => {
       const bg = getComputedStyle(el).backgroundImage;
       if (bg && bg !== 'none') {
@@ -124,8 +117,7 @@
       }
     });
 
-    // Fallback: regex sweep of innerHTML for URLs the DOM queries missed
-    // Strip script/style content first to avoid tracking pixels, sprite URLs, etc.
+    // Regex fallback — strip script/style to reduce noise
     const html = document.body.innerHTML.replace(
       /<(script|style)\b[^>]*>[\s\S]*?<\/\1>/gi,
       ''
@@ -138,7 +130,7 @@
     return uniqueUrls;
   }
 
-  // Size filter — skips icons/thumbnails, SVGs always pass (resolution-independent)
+  // Size filter
 
   function getImageSize(url) {
     return new Promise((resolve) => {
@@ -170,44 +162,130 @@
     return results.filter(Boolean);
   }
 
-  // Download orchestration
+  // Persistent store management
 
-  async function downloadImages(urls) {
-    isDownloading = true;
-    downloadController = new AbortController();
-    const signal = downloadController.signal;
-    const total = urls.length;
+  function notifyPopup(images) {
+    if (popupPort && images.length > 0) {
+      popupPort.postMessage({ action: 'new_images', images });
+    }
+  }
 
-    for (let i = 0; i < urls.length; i++) {
-      if (signal.aborted) break;
-      sendToBackground({
-        action: 'update_badge',
-        text: `${i + 1}/${total}`,
-        inProgress: true,
-      });
-      try {
-        await browser.runtime.sendMessage({ action: 'download_image', url: urls[i] });
-      } catch {
-        // Non-fatal — skip and continue with next image
+  async function addNewUrls(urls) {
+    // Filter out already-known URLs
+    const unknown = [...urls].filter((url) => !discoveredImages.has(url));
+    if (unknown.length === 0) return;
+
+    const filtered = await filterImagesBySize(new Set(unknown));
+    const images = filtered.map((url) => {
+      const size = getDomImageSize(url);
+      return { url, width: size?.width || 0, height: size?.height || 0 };
+    });
+
+    const added = [];
+    for (const img of images) {
+      if (!discoveredImages.has(img.url)) {
+        discoveredImages.set(img.url, img);
+        added.push(img);
+      }
+    }
+    notifyPopup(added);
+  }
+
+  // Scan a single element for image URLs (used by MutationObserver)
+
+  function extractUrlsFromElement(el, urls) {
+    if (el.tagName === 'IMG' && el.src) {
+      const url = resolveUrl(el.src);
+      if (url && !url.startsWith('data:')) urls.add(url);
+    }
+
+    if (el.hasAttribute && el.hasAttribute('srcset')) {
+      for (const raw of parseSrcset(el.getAttribute('srcset'))) {
+        const url = resolveUrl(raw);
+        if (url && !url.startsWith('data:')) urls.add(url);
       }
     }
 
-    isDownloading = false;
-    downloadController = null;
-
-    sendToBackground({ action: 'update_badge', text: '' });
-  }
-
-  function abortDownloads() {
-    if (downloadController) {
-      downloadController.abort();
+    if (el.tagName === 'VIDEO' && el.hasAttribute('poster')) {
+      const url = resolveUrl(el.getAttribute('poster'));
+      if (url && !url.startsWith('data:')) urls.add(url);
     }
-    isDownloading = false;
-    downloadController = null;
 
-    sendToBackground({ action: 'cancel_downloads' });
-    sendToBackground({ action: 'update_badge', text: '' });
+    try {
+      const bg = getComputedStyle(el).backgroundImage;
+      if (bg && bg !== 'none') {
+        for (const raw of extractBgImageUrls(bg)) {
+          const url = resolveUrl(raw);
+          if (url && isImageUrl(url) && !url.startsWith('data:')) urls.add(url);
+        }
+      }
+    } catch {
+      // Element may not be connected to DOM yet
+    }
   }
+
+  // Observers — continuous image tracking
+
+  function setupMutationObserver() {
+    const observer = new MutationObserver((mutations) => {
+      const urls = new Set();
+      for (const mutation of mutations) {
+        for (const node of mutation.addedNodes) {
+          if (node.nodeType !== Node.ELEMENT_NODE) continue;
+          extractUrlsFromElement(node, urls);
+          if (node.querySelectorAll) {
+            const sel = 'img, [srcset], picture source, video[poster], ' + BG_IMAGE_SELECTORS;
+            node.querySelectorAll(sel).forEach((el) => extractUrlsFromElement(el, urls));
+          }
+        }
+      }
+      if (urls.size > 0) addNewUrls(urls);
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+  }
+
+  function setupPerformanceObserver() {
+    try {
+      const observer = new PerformanceObserver((list) => {
+        const urls = new Set();
+        for (const entry of list.getEntries()) {
+          if (entry.initiatorType === 'img' || IMAGE_EXT_RE.test(entry.name)) {
+            const url = resolveUrl(entry.name);
+            if (url && !url.startsWith('data:') && !discoveredImages.has(url)) {
+              urls.add(url);
+            }
+          }
+        }
+        if (urls.size > 0) addNewUrls(urls);
+      });
+      // buffered: true delivers historical entries from before the observer was created
+      observer.observe({ type: 'resource', buffered: true });
+    } catch {
+      // PerformanceObserver not supported — graceful fallback
+    }
+  }
+
+  // Popup port connection
+
+  browser.runtime.onConnect.addListener((port) => {
+    if (port.name !== 'imgsnag-popup') return;
+    popupPort = port;
+    port.postMessage({ action: 'init', images: [...discoveredImages.values()] });
+    port.onDisconnect.addListener(() => {
+      popupPort = null;
+    });
+  });
+
+  // Initial scan — populate the store with what's on the page now
+
+  async function initialScan() {
+    const urls = collectImageUrls();
+    await addNewUrls(urls);
+    setupMutationObserver();
+    setupPerformanceObserver();
+  }
+
+  initialScan();
 
   // Alt+Click — downloads the image(s) stacked under the cursor
 
@@ -246,28 +324,6 @@
     }
   }
 
-  // Event listeners
-
-  browser.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-    if (message.action === 'search_images') {
-      const imageUrls = collectImageUrls();
-      filterImagesBySize(imageUrls).then((filtered) => {
-        if (filtered.length > 0) {
-          downloadImages(filtered);
-        }
-        sendToBackground({
-          action: 'update_badge',
-          text: String(filtered.length),
-        });
-      });
-      sendResponse({ imageUrls: [...imageUrls] });
-    } else if (message.action === 'stop_downloads') {
-      abortDownloads();
-      sendResponse({});
-    }
-  });
-
-  // Alt+Click to save individual images
   document.addEventListener('click', (e) => {
     if (e.altKey) {
       downloadImagesAtPoint(e);
@@ -292,7 +348,4 @@
 
   syncDragPreference();
   browser.storage.onChanged.addListener(() => syncDragPreference());
-
-  // Clear stale badge from a previous session
-  sendToBackground({ action: 'update_badge', text: '' });
 })();

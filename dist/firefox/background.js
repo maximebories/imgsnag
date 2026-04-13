@@ -6,33 +6,8 @@ if (typeof importScripts === 'function') {
 
 const activeDownloadIds = new Set();
 
-// Toolbar button toggles between starting a bulk search and aborting it
-browser.action.onClicked.addListener(async (tab) => {
-  const { isSearchActive } = await browser.storage.session.get(['isSearchActive']);
-
-  if (isSearchActive) {
-    browser.tabs.sendMessage(tab.id, { action: 'stop_downloads' });
-  } else {
-    await browser.storage.session.set({ isSearchActive: true });
-
-    browser.action.setBadgeText({
-      text: browser.i18n.getMessage('buttonTitle'),
-    });
-
-    browser.tabs.sendMessage(tab.id, { action: 'search_images' });
-  }
-});
-
-// Messages from content script
+// Messages from popup and content script
 browser.runtime.onMessage.addListener((message, _sender) => {
-  if (message.action === 'update_badge') {
-    browser.action.setBadgeText({ text: message.text });
-    if (!message.inProgress) {
-      browser.storage.session.set({ isSearchActive: false });
-    }
-    return Promise.resolve({});
-  }
-
   if (message.action === 'download_image') {
     return browser.downloads
       .download({ url: message.url })
@@ -44,6 +19,26 @@ browser.runtime.onMessage.addListener((message, _sender) => {
         console.warn('[imgsnag] Download failed:', message.url, err.message);
         return { success: false, error: err.message };
       });
+  }
+
+  if (message.action === 'download_images_bulk') {
+    const urls = message.urls;
+    const total = urls.length;
+
+    (async () => {
+      for (let i = 0; i < urls.length; i++) {
+        browser.action.setBadgeText({ text: `${i + 1}/${total}` });
+        try {
+          const downloadId = await browser.downloads.download({ url: urls[i] });
+          activeDownloadIds.add(downloadId);
+        } catch (err) {
+          console.warn('[imgsnag] Download failed:', urls[i], err.message);
+        }
+      }
+      browser.action.setBadgeText({ text: '' });
+    })();
+
+    return Promise.resolve({ started: true });
   }
 
   if (message.action === 'cancel_downloads') {

@@ -16,7 +16,22 @@
   "optionsStatus": {
     "message": "Saved"
   },
-  "buttonTitle": {
-    "message": "Stop"
+  "popupLoading": {
+    "message": "Scanning page..."
+  },
+  "popupNoImages": {
+    "message": "No images found"
+  },
+  "popupDownloadSelected": {
+    "message": "Download selected"
+  },
+  "popupDownloadAll": {
+    "message": "Download all"
+  },
+  "popupSelected": {
+    "message": "selected"
+  },
+  "popupReload": {
+    "message": "Reload the page and try again"
   }
 }

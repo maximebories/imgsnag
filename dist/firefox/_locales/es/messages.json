@@ -16,7 +16,22 @@
   "optionsStatus": {
     "message": "Guardado"
   },
-  "buttonTitle": {
-    "message": "Parar"
+  "popupLoading": {
+    "message": "Escaneando página..."
+  },
+  "popupNoImages": {
+    "message": "No se encontraron imágenes"
+  },
+  "popupDownloadSelected": {
+    "message": "Descargar seleccionadas"
+  },
+  "popupDownloadAll": {
+    "message": "Descargar todo"
+  },
+  "popupSelected": {
+    "message": "seleccionada(s)"
+  },
+  "popupReload": {
+    "message": "Recarga la página e inténtalo de nuevo"
   }
 }
