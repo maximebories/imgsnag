@@ -6,6 +6,7 @@
   // Constants
 
   const IMAGE_EXT_RE = /\.(?:jpe?g|gif|png|webp|svg|avif)(?:[?#]|$)/i;
+  const VIDEO_EXT_RE = /\.(?:mp4|webm|ogv|mov|m4v|avi)(?:[?#]|$)/i;
 
   // Catches image URLs embedded in inline scripts or JSON-LD that DOM queries miss
   const IMAGE_URL_RE =
@@ -16,8 +17,8 @@
 
   const MIN_IMAGE_SIZE = 200;
 
-  // Persistent image store — survives DOM removal (infinite scroll recycling)
-  const discoveredImages = new Map();
+  // Persistent media store — survives DOM removal (infinite scroll recycling)
+  const discoveredMedia = new Map();
   let popupPort = null;
   let isDragDisabled = false;
 
@@ -41,6 +42,15 @@
     if (url.startsWith('data:image/')) return true;
     try {
       return IMAGE_EXT_RE.test(new URL(url).pathname);
+    } catch {
+      return false;
+    }
+  }
+
+  function isVideoUrl(url) {
+    if (!url) return false;
+    try {
+      return VIDEO_EXT_RE.test(new URL(url).pathname);
     } catch {
       return false;
     }
@@ -72,46 +82,67 @@
       .filter(Boolean);
   }
 
-  // Image discovery — scans the DOM for downloadable image URLs
+  // Media discovery — scans the DOM for downloadable image and video URLs
 
-  function collectImageUrls() {
-    const uniqueUrls = new Set();
+  function collectMediaUrls() {
+    const imageUrls = new Set();
+    const videoUrls = new Set();
 
-    function trackUrl(url) {
+    function trackImage(url) {
       const resolved = resolveUrl(url);
-      if (resolved && !resolved.startsWith('data:') && !uniqueUrls.has(resolved)) {
-        uniqueUrls.add(resolved);
+      if (resolved && !resolved.startsWith('data:') && !imageUrls.has(resolved)) {
+        imageUrls.add(resolved);
       }
     }
 
+    function trackVideo(url) {
+      const resolved = resolveUrl(url);
+      if (resolved && !resolved.startsWith('data:') && !videoUrls.has(resolved)) {
+        videoUrls.add(resolved);
+      }
+    }
+
+    // <img src>
     document.querySelectorAll('img[src]').forEach((img) => {
-      trackUrl(img.src);
+      trackImage(img.src);
     });
 
+    // srcset attributes (img, source, etc.)
     document.querySelectorAll('[srcset]').forEach((el) => {
       for (const url of parseSrcset(el.getAttribute('srcset'))) {
-        trackUrl(url);
+        trackImage(url);
       }
     });
 
+    // <picture> <source> elements
     document.querySelectorAll('picture source').forEach((source) => {
       const src = source.getAttribute('src');
-      if (src) trackUrl(src);
+      if (src) trackImage(src);
       for (const url of parseSrcset(source.getAttribute('srcset'))) {
-        trackUrl(url);
+        trackImage(url);
       }
     });
 
+    // <video poster> (still an image)
     document.querySelectorAll('video[poster]').forEach((video) => {
-      trackUrl(video.getAttribute('poster'));
+      trackImage(video.getAttribute('poster'));
     });
 
+    // <video src> and <video><source src>
+    document.querySelectorAll('video[src]').forEach((video) => {
+      trackVideo(video.src);
+    });
+    document.querySelectorAll('video source[src]').forEach((source) => {
+      trackVideo(source.src);
+    });
+
+    // CSS background-image on likely container elements
     document.querySelectorAll(BG_IMAGE_SELECTORS).forEach((el) => {
       const bg = getComputedStyle(el).backgroundImage;
       if (bg && bg !== 'none') {
         for (const url of extractBgImageUrls(bg)) {
           if (isImageUrl(resolveUrl(url))) {
-            trackUrl(url);
+            trackImage(url);
           }
         }
       }
@@ -124,13 +155,13 @@
     );
     let match;
     while ((match = IMAGE_URL_RE.exec(html)) !== null) {
-      trackUrl(match[0]);
+      trackImage(match[0]);
     }
 
-    return uniqueUrls;
+    return { imageUrls, videoUrls };
   }
 
-  // Size filter
+  // Size filter — only for images, videos skip this
 
   function getImageSize(url) {
     return new Promise((resolve) => {
@@ -164,51 +195,68 @@
 
   // Persistent store management
 
-  function notifyPopup(images) {
-    if (popupPort && images.length > 0) {
-      popupPort.postMessage({ action: 'new_images', images });
+  function notifyPopup(items) {
+    if (popupPort && items.length > 0) {
+      popupPort.postMessage({ action: 'new_images', images: items });
     }
   }
 
-  async function addNewUrls(urls) {
-    // Filter out already-known URLs
-    const unknown = [...urls].filter((url) => !discoveredImages.has(url));
+  async function addNewUrls(urls, type) {
+    const unknown = [...urls].filter((url) => !discoveredMedia.has(url));
     if (unknown.length === 0) return;
 
-    const filtered = await filterImagesBySize(new Set(unknown));
-    const images = filtered.map((url) => {
-      const size = getDomImageSize(url);
-      return { url, width: size?.width || 0, height: size?.height || 0 };
+    let accepted;
+    if (type === 'video') {
+      // Videos skip size filtering — can't measure with new Image()
+      accepted = unknown;
+    } else {
+      accepted = await filterImagesBySize(new Set(unknown));
+    }
+
+    const items = accepted.map((url) => {
+      const size = type === 'image' ? getDomImageSize(url) : null;
+      return { url, type, width: size?.width || 0, height: size?.height || 0 };
     });
 
     const added = [];
-    for (const img of images) {
-      if (!discoveredImages.has(img.url)) {
-        discoveredImages.set(img.url, img);
-        added.push(img);
+    for (const item of items) {
+      if (!discoveredMedia.has(item.url)) {
+        discoveredMedia.set(item.url, item);
+        added.push(item);
       }
     }
     notifyPopup(added);
   }
 
-  // Scan a single element for image URLs (used by MutationObserver)
+  // Scan a single element for media URLs (used by MutationObserver)
 
-  function extractUrlsFromElement(el, urls) {
+  function extractUrlsFromElement(el, imageSet, videoSet) {
     if (el.tagName === 'IMG' && el.src) {
       const url = resolveUrl(el.src);
-      if (url && !url.startsWith('data:')) urls.add(url);
+      if (url && !url.startsWith('data:')) imageSet.add(url);
     }
 
     if (el.hasAttribute && el.hasAttribute('srcset')) {
       for (const raw of parseSrcset(el.getAttribute('srcset'))) {
         const url = resolveUrl(raw);
-        if (url && !url.startsWith('data:')) urls.add(url);
+        if (url && !url.startsWith('data:')) imageSet.add(url);
       }
     }
 
-    if (el.tagName === 'VIDEO' && el.hasAttribute('poster')) {
-      const url = resolveUrl(el.getAttribute('poster'));
-      if (url && !url.startsWith('data:')) urls.add(url);
+    if (el.tagName === 'VIDEO') {
+      if (el.src) {
+        const url = resolveUrl(el.src);
+        if (url && !url.startsWith('data:')) videoSet.add(url);
+      }
+      if (el.hasAttribute('poster')) {
+        const url = resolveUrl(el.getAttribute('poster'));
+        if (url && !url.startsWith('data:')) imageSet.add(url);
+      }
+    }
+
+    if (el.tagName === 'SOURCE' && el.parentElement?.tagName === 'VIDEO') {
+      const url = resolveUrl(el.src);
+      if (url && !url.startsWith('data:')) videoSet.add(url);
     }
 
     try {
@@ -216,7 +264,7 @@
       if (bg && bg !== 'none') {
         for (const raw of extractBgImageUrls(bg)) {
           const url = resolveUrl(raw);
-          if (url && isImageUrl(url) && !url.startsWith('data:')) urls.add(url);
+          if (url && isImageUrl(url) && !url.startsWith('data:')) imageSet.add(url);
         }
       }
     } catch {
@@ -224,22 +272,24 @@
     }
   }
 
-  // Observers — continuous image tracking
+  // Observers — continuous media tracking
 
   function setupMutationObserver() {
     const observer = new MutationObserver((mutations) => {
-      const urls = new Set();
+      const imageUrls = new Set();
+      const videoUrls = new Set();
       for (const mutation of mutations) {
         for (const node of mutation.addedNodes) {
           if (node.nodeType !== Node.ELEMENT_NODE) continue;
-          extractUrlsFromElement(node, urls);
+          extractUrlsFromElement(node, imageUrls, videoUrls);
           if (node.querySelectorAll) {
-            const sel = 'img, [srcset], picture source, video[poster], ' + BG_IMAGE_SELECTORS;
-            node.querySelectorAll(sel).forEach((el) => extractUrlsFromElement(el, urls));
+            const sel = 'img, [srcset], picture source, video, video source, ' + BG_IMAGE_SELECTORS;
+            node.querySelectorAll(sel).forEach((el) => extractUrlsFromElement(el, imageUrls, videoUrls));
           }
         }
       }
-      if (urls.size > 0) addNewUrls(urls);
+      if (imageUrls.size > 0) addNewUrls(imageUrls, 'image');
+      if (videoUrls.size > 0) addNewUrls(videoUrls, 'video');
     });
     observer.observe(document.body, { childList: true, subtree: true });
   }
@@ -247,21 +297,24 @@
   function setupPerformanceObserver() {
     try {
       const observer = new PerformanceObserver((list) => {
-        const urls = new Set();
+        const imageUrls = new Set();
+        const videoUrls = new Set();
         for (const entry of list.getEntries()) {
-          if (entry.initiatorType === 'img' || IMAGE_EXT_RE.test(entry.name)) {
-            const url = resolveUrl(entry.name);
-            if (url && !url.startsWith('data:') && !discoveredImages.has(url)) {
-              urls.add(url);
-            }
+          const url = resolveUrl(entry.name);
+          if (!url || url.startsWith('data:') || discoveredMedia.has(url)) continue;
+
+          if (isVideoUrl(url) || entry.initiatorType === 'video') {
+            videoUrls.add(url);
+          } else if (IMAGE_EXT_RE.test(entry.name) || entry.initiatorType === 'img') {
+            imageUrls.add(url);
           }
         }
-        if (urls.size > 0) addNewUrls(urls);
+        if (imageUrls.size > 0) addNewUrls(imageUrls, 'image');
+        if (videoUrls.size > 0) addNewUrls(videoUrls, 'video');
       });
-      // buffered: true delivers historical entries from before the observer was created
       observer.observe({ type: 'resource', buffered: true });
     } catch {
-      // PerformanceObserver not supported — graceful fallback
+      // PerformanceObserver not supported
     }
   }
 
@@ -270,17 +323,18 @@
   browser.runtime.onConnect.addListener((port) => {
     if (port.name !== 'imgsnag-popup') return;
     popupPort = port;
-    port.postMessage({ action: 'init', images: [...discoveredImages.values()] });
+    port.postMessage({ action: 'init', images: [...discoveredMedia.values()] });
     port.onDisconnect.addListener(() => {
       popupPort = null;
     });
   });
 
-  // Initial scan — populate the store with what's on the page now
+  // Initial scan
 
   async function initialScan() {
-    const urls = collectImageUrls();
-    await addNewUrls(urls);
+    const { imageUrls, videoUrls } = collectMediaUrls();
+    await addNewUrls(imageUrls, 'image');
+    await addNewUrls(videoUrls, 'video');
     setupMutationObserver();
     setupPerformanceObserver();
   }
@@ -297,6 +351,16 @@
     for (const el of elements) {
       if (el.tagName === 'IMG' && el.src) {
         const url = resolveUrl(el.src);
+        if (url && !url.startsWith('data:') && !downloadedUrls.has(url)) {
+          downloadedUrls.add(url);
+          sendToBackground({ action: 'download_image', url });
+          didDownload = true;
+        }
+        continue;
+      }
+
+      if (el.tagName === 'VIDEO') {
+        const url = resolveUrl(el.src || el.querySelector('source')?.src);
         if (url && !url.startsWith('data:') && !downloadedUrls.has(url)) {
           downloadedUrls.add(url);
           sendToBackground({ action: 'download_image', url });

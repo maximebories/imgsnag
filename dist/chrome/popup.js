@@ -11,6 +11,8 @@
   const emptyEl = document.getElementById('empty');
   const errorEl = document.getElementById('error');
   const gridEl = document.getElementById('grid');
+  const videoHeaderEl = document.getElementById('video-header');
+  const videoGridEl = document.getElementById('video-grid');
   const barEl = document.getElementById('bar');
   const counterEl = document.getElementById('counter');
   const btnSelected = document.getElementById('btn-selected');
@@ -20,9 +22,11 @@
   document.getElementById('loading-text').textContent =
     browser.i18n.getMessage('popupLoading');
   document.getElementById('empty-text').textContent =
-    browser.i18n.getMessage('popupNoImages');
+    browser.i18n.getMessage('popupNoMedia');
   document.getElementById('error-text').textContent =
     browser.i18n.getMessage('popupReload');
+  document.getElementById('video-header-text').textContent =
+    browser.i18n.getMessage('popupVideos');
   btnSelected.textContent =
     browser.i18n.getMessage('popupDownloadSelected');
   btnAll.textContent =
@@ -55,21 +59,60 @@
     }
   }
 
-  function createCell(img) {
+  function createPlayIcon() {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('fill', 'white');
+    const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+    poly.setAttribute('points', '6,3 20,12 6,21');
+    svg.appendChild(poly);
+    return svg;
+  }
+
+  function createImageCell(item) {
     const cell = document.createElement('div');
     cell.className = 'cell';
 
     const thumb = document.createElement('img');
-    thumb.src = img.url;
+    thumb.src = item.url;
     thumb.loading = 'lazy';
     thumb.onerror = () => {
       thumb.remove();
       const ph = document.createElement('div');
       ph.className = 'placeholder';
-      ph.textContent = filenameFromUrl(img.url);
+      ph.textContent = filenameFromUrl(item.url);
       cell.prepend(ph);
     };
 
+    cell.appendChild(thumb);
+    return cell;
+  }
+
+  function createVideoCell(item) {
+    const cell = document.createElement('div');
+    cell.className = 'cell';
+
+    const video = document.createElement('video');
+    video.src = item.url;
+    video.preload = 'metadata';
+    video.muted = true;
+    video.onerror = () => {
+      video.remove();
+      const ph = document.createElement('div');
+      ph.className = 'placeholder';
+      ph.textContent = filenameFromUrl(item.url);
+      cell.prepend(ph);
+    };
+
+    const playOverlay = document.createElement('div');
+    playOverlay.className = 'play-overlay';
+    playOverlay.appendChild(createPlayIcon());
+
+    cell.append(video, playOverlay);
+    return cell;
+  }
+
+  function wrapCell(cell, item) {
     const check = document.createElement('div');
     check.className = 'check';
 
@@ -78,37 +121,48 @@
 
     check.addEventListener('click', (e) => {
       e.stopPropagation();
-      if (selectedUrls.has(img.url)) {
-        selectedUrls.delete(img.url);
+      if (selectedUrls.has(item.url)) {
+        selectedUrls.delete(item.url);
         check.classList.remove('selected');
       } else {
-        selectedUrls.add(img.url);
+        selectedUrls.add(item.url);
         check.classList.add('selected');
       }
       updateCounter();
     });
 
     cell.addEventListener('click', () => {
-      browser.runtime.sendMessage({ action: 'download_image', url: img.url });
+      browser.runtime.sendMessage({ action: 'download_image', url: item.url });
       flashCell(cell);
     });
 
-    cell.append(thumb, check, flash);
+    cell.append(check, flash);
     return cell;
   }
 
-  function addImages(images) {
-    for (const img of images) {
-      if (allUrls.has(img.url)) continue;
-      allUrls.add(img.url);
-      gridEl.appendChild(createCell(img));
+  function addMedia(items) {
+    for (const item of items) {
+      if (allUrls.has(item.url)) continue;
+      allUrls.add(item.url);
+
+      const cell = item.type === 'video'
+        ? createVideoCell(item)
+        : createImageCell(item);
+      wrapCell(cell, item);
+
+      if (item.type === 'video') {
+        videoGridEl.appendChild(cell);
+        show(videoHeaderEl);
+        show(videoGridEl);
+      } else {
+        gridEl.appendChild(cell);
+        show(gridEl);
+      }
     }
 
-    // Update visibility based on whether we have images
     if (allUrls.size > 0) {
       hide(loadingEl);
       hide(emptyEl);
-      show(gridEl);
       show(barEl);
     }
   }
@@ -138,16 +192,15 @@
           if (message.images.length === 0) {
             show(emptyEl);
           } else {
-            addImages(message.images);
+            addMedia(message.images);
           }
         } else if (message.action === 'new_images') {
           hide(emptyEl);
-          addImages(message.images);
+          addMedia(message.images);
         }
       });
 
       port.onDisconnect.addListener(() => {
-        // Content script gone — if still loading, show error
         if (allUrls.size === 0 && loadingEl.classList.contains('visible')) {
           hide(loadingEl);
           show(errorEl);

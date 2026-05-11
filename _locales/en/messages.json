@@ -19,8 +19,11 @@
   "popupLoading": {
     "message": "Scanning page..."
   },
-  "popupNoImages": {
-    "message": "No images found"
+  "popupNoMedia": {
+    "message": "No images or videos found"
+  },
+  "popupVideos": {
+    "message": "Videos"
   },
   "popupDownloadSelected": {
     "message": "Download selected"

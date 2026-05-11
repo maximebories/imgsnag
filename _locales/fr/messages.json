@@ -19,8 +19,11 @@
   "popupLoading": {
     "message": "Analyse de la page..."
   },
-  "popupNoImages": {
-    "message": "Aucune image trouvée"
+  "popupNoMedia": {
+    "message": "Aucune image ou vidéo trouvée"
+  },
+  "popupVideos": {
+    "message": "Vidéos"
   },
   "popupDownloadSelected": {
     "message": "Télécharger la sélection"
