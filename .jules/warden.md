@@ -1,0 +1,3 @@
+## 2024-05-24 - Unrestricted Protocol Scheme Parsing & Synthetic Events
+**Vulnerability:** The extension runs with `<all_urls>` permission on pages and implicitly trusts the `src` / `srcset` / URLs it encounters or dynamically parses, feeding them into the extension's download functions via `downloads.download()`. In `resolveUrl()`, there was no protocol allowlisting. An attacker could embed `javascript:`, `file:`, or `chrome:` URLs on a page or synthesize click / drag events to force the extension to download or execute unintended actions.
+**Fix:** Added strict protocol whitelisting (`http:`, `https:`, `blob:`, `data:`) in `resolveUrl` trust boundary. Checked for `e.isTrusted` in event listeners to block synthetic events.
