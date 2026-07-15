@@ -69,17 +69,22 @@ browser.runtime.onMessage.addListener((message, _sender) => {
 
     const total = validUrls.length;
 
-    // Return the promise so the service worker stays alive during the loop
+    // Return the promise so the service worker stays alive; parallelize all downloads
     return (async () => {
-      for (let i = 0; i < validUrls.length; i++) {
-        browser.action.setBadgeText({ text: `${i + 1}/${total}` });
-        try {
-          const downloadId = await browser.downloads.download({ url: validUrls[i] });
-          await addActiveDownloadId(downloadId);
-        } catch (err) {
-          console.warn('[imgsnag] Download failed:', validUrls[i], err.message);
-        }
-      }
+      let completed = 0;
+      await Promise.all(
+        validUrls.map(async (url) => {
+          try {
+            const downloadId = await browser.downloads.download({ url });
+            await addActiveDownloadId(downloadId);
+          } catch (err) {
+            console.warn('[imgsnag] Download failed:', url, err.message);
+          } finally {
+            completed++;
+            browser.action.setBadgeText({ text: `${completed}/${total}` });
+          }
+        })
+      );
       browser.action.setBadgeText({ text: '' });
       return { started: true, completed: true };
     })();
