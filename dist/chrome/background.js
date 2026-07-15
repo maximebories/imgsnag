@@ -9,6 +9,15 @@ const activeDownloadIds = new Set();
 // Messages from popup and content script
 browser.runtime.onMessage.addListener((message, _sender) => {
   if (message.action === 'download_image') {
+    try {
+      const urlObj = new URL(message.url);
+      if (urlObj.protocol !== 'http:' && urlObj.protocol !== 'https:') {
+        return Promise.resolve({ success: false, error: 'Invalid URL protocol' });
+      }
+    } catch (e) {
+      return Promise.resolve({ success: false, error: 'Invalid URL' });
+    }
+
     return browser.downloads
       .download({ url: message.url })
       .then((downloadId) => {
@@ -23,16 +32,28 @@ browser.runtime.onMessage.addListener((message, _sender) => {
 
   if (message.action === 'download_images_bulk') {
     const urls = message.urls;
-    const total = urls.length;
+    const validUrls = [];
+    for (const u of urls) {
+      try {
+        const urlObj = new URL(u);
+        if (urlObj.protocol === 'http:' || urlObj.protocol === 'https:') {
+          validUrls.push(u);
+        }
+      } catch (e) {
+        // ignore invalid urls
+      }
+    }
+
+    const total = validUrls.length;
 
     (async () => {
-      for (let i = 0; i < urls.length; i++) {
+      for (let i = 0; i < validUrls.length; i++) {
         browser.action.setBadgeText({ text: `${i + 1}/${total}` });
         try {
-          const downloadId = await browser.downloads.download({ url: urls[i] });
+          const downloadId = await browser.downloads.download({ url: validUrls[i] });
           activeDownloadIds.add(downloadId);
         } catch (err) {
-          console.warn('[imgsnag] Download failed:', urls[i], err.message);
+          console.warn('[imgsnag] Download failed:', validUrls[i], err.message);
         }
       }
       browser.action.setBadgeText({ text: '' });
