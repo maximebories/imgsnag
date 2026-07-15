@@ -102,15 +102,30 @@
       }
     }
 
-    // <img src>
-    document.querySelectorAll('img[src]').forEach((img) => {
-      trackImage(img.src);
+    // <img src> and common lazy-loading attributes
+    document.querySelectorAll('img[src], img[data-src], img[data-lazy-src], img[data-original]').forEach((img) => {
+      if (img.src) trackImage(img.src);
+      const dataSrc = img.getAttribute('data-src');
+      if (dataSrc) trackImage(dataSrc);
+      const dataLazySrc = img.getAttribute('data-lazy-src');
+      if (dataLazySrc) trackImage(dataLazySrc);
+      const dataOriginal = img.getAttribute('data-original');
+      if (dataOriginal) trackImage(dataOriginal);
     });
 
     // srcset attributes (img, source, etc.)
-    document.querySelectorAll('[srcset]').forEach((el) => {
-      for (const url of parseSrcset(el.getAttribute('srcset'))) {
-        trackImage(url);
+    document.querySelectorAll('[srcset], [data-srcset], [data-lazy-srcset]').forEach((el) => {
+      const srcsets = [
+        el.getAttribute('srcset'),
+        el.getAttribute('data-srcset'),
+        el.getAttribute('data-lazy-srcset')
+      ];
+      for (const srcset of srcsets) {
+        if (srcset) {
+          for (const url of parseSrcset(srcset)) {
+            trackImage(url);
+          }
+        }
       }
     });
 
@@ -231,15 +246,25 @@
   // Scan a single element for media URLs (used by MutationObserver)
 
   function extractUrlsFromElement(el, imageSet, videoSet) {
-    if (el.tagName === 'IMG' && el.src) {
-      const url = resolveUrl(el.src);
-      if (url && !url.startsWith('data:')) imageSet.add(url);
+    if (el.tagName === 'IMG') {
+      const srcAttrs = [el.src, el.getAttribute('data-src'), el.getAttribute('data-lazy-src'), el.getAttribute('data-original')];
+      for (const attr of srcAttrs) {
+        if (attr) {
+          const url = resolveUrl(attr);
+          if (url && !url.startsWith('data:')) imageSet.add(url);
+        }
+      }
     }
 
-    if (el.hasAttribute && el.hasAttribute('srcset')) {
-      for (const raw of parseSrcset(el.getAttribute('srcset'))) {
-        const url = resolveUrl(raw);
-        if (url && !url.startsWith('data:')) imageSet.add(url);
+    if (el.hasAttribute) {
+      const srcsets = [el.getAttribute('srcset'), el.getAttribute('data-srcset'), el.getAttribute('data-lazy-srcset')];
+      for (const srcset of srcsets) {
+        if (srcset) {
+          for (const raw of parseSrcset(srcset)) {
+            const url = resolveUrl(raw);
+            if (url && !url.startsWith('data:')) imageSet.add(url);
+          }
+        }
       }
     }
 
@@ -283,7 +308,7 @@
           if (node.nodeType !== Node.ELEMENT_NODE) continue;
           extractUrlsFromElement(node, imageUrls, videoUrls);
           if (node.querySelectorAll) {
-            const sel = 'img, [srcset], picture source, video, video source, ' + BG_IMAGE_SELECTORS;
+            const sel = 'img, [srcset], [data-srcset], [data-lazy-srcset], picture source, video, video source, ' + BG_IMAGE_SELECTORS;
             node.querySelectorAll(sel).forEach((el) => extractUrlsFromElement(el, imageUrls, videoUrls));
           }
         }

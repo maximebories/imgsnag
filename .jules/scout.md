@@ -1,0 +1,3 @@
+## 2024-07-15 - Lazy Loading Attributes Bypassing Initial Scan
+**Learning:** Many sites use lazy-loading strategies where images do not initially have a `src` or `srcset` attribute. Instead, they use attributes like `data-src`, `data-lazy-src`, `data-original`, `data-srcset`, or `data-lazy-srcset`. These attributes are ignored by standard `img[src]` queries and bypass `PerformanceObserver` because no network request happens until the user scrolls them into view.
+**Action:** Always check common lazy-loading attribute variants alongside standard `src` and `srcset` attributes in both initial DOM scans (`collectMediaUrls`) and injected node evaluations (`MutationObserver` path).
