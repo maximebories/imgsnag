@@ -412,4 +412,7 @@
 
   syncDragPreference();
   browser.storage.onChanged.addListener(() => syncDragPreference());
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { extractBgImageUrls };
+  }
 })();
