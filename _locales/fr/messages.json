@@ -36,5 +36,11 @@
   },
   "popupReload": {
     "message": "Rechargez la page et réessayez"
+  },
+  "popupSelectMedia": {
+    "message": "Sélectionner"
+  },
+  "popupDownloadMedia": {
+    "message": "Télécharger"
   }
 }

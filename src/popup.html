@@ -68,6 +68,10 @@
         transition: opacity 0.15s;
       }
       .cell:hover img { opacity: 0.85; }
+      .cell:focus-visible {
+        outline: 2px solid #2563eb;
+        outline-offset: -2px;
+      }
 
       .cell .check {
         position: absolute;
@@ -85,6 +89,10 @@
         transition: background 0.15s;
       }
       .cell .check:hover { background: rgba(0,0,0,0.5); }
+      .cell .check:focus-visible {
+        outline: 2px solid #fff;
+        outline-offset: 1px;
+      }
       .cell .check.selected {
         background: #2563eb;
         border-color: #2563eb;

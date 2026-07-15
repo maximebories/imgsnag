@@ -63,6 +63,7 @@
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svg.setAttribute('viewBox', '0 0 24 24');
     svg.setAttribute('fill', 'white');
+    svg.setAttribute('aria-hidden', 'true');
     const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
     poly.setAttribute('points', '6,3 20,12 6,21');
     svg.appendChild(poly);
@@ -76,6 +77,7 @@
     const thumb = document.createElement('img');
     thumb.src = item.url;
     thumb.loading = 'lazy';
+    thumb.alt = filenameFromUrl(item.url);
     thumb.onerror = () => {
       thumb.remove();
       const ph = document.createElement('div');
@@ -113,8 +115,18 @@
   }
 
   function wrapCell(cell, item) {
+    const fileName = filenameFromUrl(item.url);
+
+    cell.setAttribute('tabindex', '0');
+    cell.setAttribute('role', 'button');
+    cell.setAttribute('aria-label', `${browser.i18n.getMessage('popupDownloadMedia')} ${fileName}`);
+
     const check = document.createElement('div');
     check.className = 'check';
+    check.setAttribute('tabindex', '0');
+    check.setAttribute('role', 'checkbox');
+    check.setAttribute('aria-checked', 'false');
+    check.setAttribute('aria-label', `${browser.i18n.getMessage('popupSelectMedia')} ${fileName}`);
 
     const flash = document.createElement('div');
     flash.className = 'flash';
@@ -124,16 +136,33 @@
       if (selectedUrls.has(item.url)) {
         selectedUrls.delete(item.url);
         check.classList.remove('selected');
+        check.setAttribute('aria-checked', 'false');
       } else {
         selectedUrls.add(item.url);
         check.classList.add('selected');
+        check.setAttribute('aria-checked', 'true');
       }
       updateCounter();
+    });
+
+    check.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        e.stopPropagation();
+        check.click();
+      }
     });
 
     cell.addEventListener('click', () => {
       browser.runtime.sendMessage({ action: 'download_image', url: item.url });
       flashCell(cell);
+    });
+
+    cell.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        cell.click();
+      }
     });
 
     cell.append(check, flash);
