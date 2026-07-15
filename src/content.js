@@ -448,15 +448,16 @@
   }
 
   // Popup port connection
-
-  browser.runtime.onConnect.addListener((port) => {
-    if (port.name !== 'imgsnag-popup') return;
-    popupPort = port;
-    port.postMessage({ action: 'init', images: [...discoveredMedia.values()] });
-    port.onDisconnect.addListener(() => {
-      popupPort = null;
+  if (typeof browser !== 'undefined' && browser.runtime) {
+    browser.runtime.onConnect.addListener((port) => {
+      if (port.name !== 'imgsnag-popup') return;
+      popupPort = port;
+      port.postMessage({ action: 'init', images: [...discoveredMedia.values()] });
+      port.onDisconnect.addListener(() => {
+        popupPort = null;
+      });
     });
-  });
+  }
 
   // Initial scan
 
@@ -468,7 +469,9 @@
     setupPerformanceObserver();
   }
 
-  initialScan();
+  if (typeof browser !== 'undefined' && browser.runtime) {
+    initialScan();
+  }
 
   // Alt+Click — downloads the image(s) stacked under the cursor
 
@@ -584,13 +587,25 @@
           }
         }
       }
-    }
-  });
+    });
+
+    // Drag-to-save (can be disabled in options)
+    document.addEventListener('dragend', (e) => {
+      if (e.target.tagName === 'IMG' && !isDragDisabled) {
+        const url = resolveUrl(e.target.src);
+        if (url) {
+          sendToBackground({ action: 'download_image', url });
+        }
+      }
+    });
+  }
 
   function syncDragPreference() {
-    browser.storage.sync.get({ disableDrag: false }).then((items) => {
-      isDragDisabled = items.disableDrag;
-    });
+    if (typeof browser !== 'undefined' && browser.storage) {
+      browser.storage.sync.get({ disableDrag: false }).then((items) => {
+        isDragDisabled = items.disableDrag;
+      });
+    }
   }
 
   syncDragPreference();
