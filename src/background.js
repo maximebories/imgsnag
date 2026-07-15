@@ -6,9 +6,23 @@ if (typeof importScripts === 'function') {
 
 const activeDownloadIds = new Set();
 
+function isSafeUrl(url) {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  } catch (err) {
+    return false;
+  }
+}
+
 // Messages from popup and content script
 browser.runtime.onMessage.addListener((message, _sender) => {
   if (message.action === 'download_image') {
+    if (!isSafeUrl(message.url)) {
+      console.warn('[imgsnag] Blocked unsafe URL:', message.url);
+      return Promise.resolve({ success: false, error: 'Unsafe URL protocol' });
+    }
+
     return browser.downloads
       .download({ url: message.url })
       .then((downloadId) => {
@@ -22,8 +36,13 @@ browser.runtime.onMessage.addListener((message, _sender) => {
   }
 
   if (message.action === 'download_images_bulk') {
-    const urls = message.urls;
+    const urls = message.urls.filter(isSafeUrl);
     const total = urls.length;
+
+    if (total === 0) {
+      console.warn('[imgsnag] No safe URLs to download.');
+      return Promise.resolve({ started: false, error: 'No safe URLs to download' });
+    }
 
     (async () => {
       for (let i = 0; i < urls.length; i++) {
