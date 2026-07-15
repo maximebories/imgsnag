@@ -30,7 +30,7 @@ async function clearActiveDownloadIds() {
 }
 
 // Messages from popup and content script
-browser.runtime.onMessage.addListener((message, _sender) => {
+browser.runtime.onMessage.addListener((message) => {
   if (message.action === 'download_image') {
     try {
       const urlObj = new URL(message.url);
