@@ -16,6 +16,12 @@
   "optionsStatus": {
     "message": "Saved"
   },
+  "popupSelect": {
+    "message": "Select"
+  },
+  "popupDownload": {
+    "message": "Download"
+  },
   "popupLoading": {
     "message": "Scanning page..."
   },
