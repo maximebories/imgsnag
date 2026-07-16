@@ -4,8 +4,6 @@ if (typeof importScripts === 'function') {
   importScripts('lib/browser-polyfill.min.js');
 }
 
-const activeDownloadIds = new Set();
-
 // Messages from popup and content script
 browser.runtime.onMessage.addListener((message, _sender) => {
   if (message.action === 'download_image') {
@@ -21,7 +19,7 @@ browser.runtime.onMessage.addListener((message, _sender) => {
     return browser.downloads
       .download({ url: message.url })
       .then((downloadId) => {
-        activeDownloadIds.add(downloadId);
+        browser.storage.local.set({ [`dl_${downloadId}`]: true });
         return { success: true };
       })
       .catch((err) => {
@@ -51,7 +49,7 @@ browser.runtime.onMessage.addListener((message, _sender) => {
         browser.action.setBadgeText({ text: `${i + 1}/${total}` });
         try {
           const downloadId = await browser.downloads.download({ url: validUrls[i] });
-          activeDownloadIds.add(downloadId);
+          browser.storage.local.set({ [`dl_${downloadId}`]: true });
         } catch (err) {
           console.warn('[imgsnag] Download failed:', validUrls[i], err.message);
         }
@@ -63,10 +61,21 @@ browser.runtime.onMessage.addListener((message, _sender) => {
   }
 
   if (message.action === 'cancel_downloads') {
-    for (const id of activeDownloadIds) {
-      browser.downloads.cancel(id).catch(() => {});
-    }
-    activeDownloadIds.clear();
+    browser.storage.local.get(null).then((items) => {
+      const keysToRemove = [];
+      for (const key in items) {
+        if (key.startsWith('dl_')) {
+          const id = parseInt(key.slice(3), 10);
+          if (!isNaN(id)) {
+            browser.downloads.cancel(id).catch(() => {});
+            keysToRemove.push(key);
+          }
+        }
+      }
+      if (keysToRemove.length > 0) {
+        browser.storage.local.remove(keysToRemove);
+      }
+    });
     return Promise.resolve({});
   }
 
@@ -76,6 +85,6 @@ browser.runtime.onMessage.addListener((message, _sender) => {
 // Clean up completed/cancelled downloads from tracking
 browser.downloads.onChanged.addListener((delta) => {
   if (delta.state && delta.state.current !== 'in_progress') {
-    activeDownloadIds.delete(delta.id);
+    browser.storage.local.remove(`dl_${delta.id}`);
   }
 });

@@ -1,0 +1,3 @@
+## 2024-07-16 - Service Worker State Loss
+**Learning:** Chrome MV3 suspends Service Workers when idle, which clears in-memory variables like `activeDownloadIds`. In Firefox event pages or background scripts, this behavior might differ, leading to cross-browser inconsistencies.
+**Action:** Use `browser.storage.local` to persist state across Service Worker suspensions. Use independent keys (e.g., `dl_123`) instead of an array or a single object to avoid concurrency race conditions.
