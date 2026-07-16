@@ -16,6 +16,12 @@
   "optionsStatus": {
     "message": "Enregistré"
   },
+  "popupSelect": {
+    "message": "Sélectionner"
+  },
+  "popupDownload": {
+    "message": "Télécharger"
+  },
   "popupLoading": {
     "message": "Analyse de la page..."
   },

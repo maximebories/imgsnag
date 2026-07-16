@@ -113,27 +113,53 @@
   }
 
   function wrapCell(cell, item) {
+    cell.tabIndex = 0;
+    cell.setAttribute('role', 'button');
+    cell.setAttribute('aria-label', browser.i18n.getMessage('popupDownload'));
+
     const check = document.createElement('div');
     check.className = 'check';
+    check.tabIndex = 0;
+    check.setAttribute('role', 'checkbox');
+    check.setAttribute('aria-checked', 'false');
+    check.setAttribute('aria-label', browser.i18n.getMessage('popupSelect'));
 
     const flash = document.createElement('div');
     flash.className = 'flash';
 
-    check.addEventListener('click', (e) => {
+    function toggleCheck(e) {
       e.stopPropagation();
       if (selectedUrls.has(item.url)) {
         selectedUrls.delete(item.url);
         check.classList.remove('selected');
+        check.setAttribute('aria-checked', 'false');
       } else {
         selectedUrls.add(item.url);
         check.classList.add('selected');
+        check.setAttribute('aria-checked', 'true');
       }
       updateCounter();
+    }
+
+    check.addEventListener('click', toggleCheck);
+    check.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        toggleCheck(e);
+      }
     });
 
-    cell.addEventListener('click', () => {
+    function downloadCell() {
       browser.runtime.sendMessage({ action: 'download_image', url: item.url });
       flashCell(cell);
+    }
+
+    cell.addEventListener('click', downloadCell);
+    cell.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        downloadCell();
+      }
     });
 
     cell.append(check, flash);

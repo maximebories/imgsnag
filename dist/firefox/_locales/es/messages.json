@@ -16,6 +16,12 @@
   "optionsStatus": {
     "message": "Guardado"
   },
+  "popupSelect": {
+    "message": "Seleccionar"
+  },
+  "popupDownload": {
+    "message": "Descargar"
+  },
   "popupLoading": {
     "message": "Escaneando página..."
   },

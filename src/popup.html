@@ -69,6 +69,11 @@
       }
       .cell:hover img { opacity: 0.85; }
 
+      .cell:focus-visible {
+        outline: 3px solid #2563eb;
+        outline-offset: -3px;
+      }
+
       .cell .check {
         position: absolute;
         top: 4px;
@@ -88,6 +93,14 @@
       .cell .check.selected {
         background: #2563eb;
         border-color: #2563eb;
+      }
+      .cell .check:focus-visible {
+        outline: 3px solid #2563eb;
+        outline-offset: 1px;
+        background: rgba(0,0,0,0.5);
+      }
+      .cell:focus-within .check {
+        opacity: 1; /* ensure it stays visible when focused inside */
       }
       .cell .check.selected::after {
         content: '';
