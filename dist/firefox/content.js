@@ -350,41 +350,44 @@
 
   // Alt+Click — downloads the image(s) stacked under the cursor
 
+  function getTargetUrlsForElement(el) {
+    const urls = [];
+
+    if (el.tagName === 'IMG' && el.src) {
+      const url = resolveUrl(el.src);
+      if (url && !url.startsWith('data:')) urls.push(url);
+      return urls;
+    }
+
+    if (el.tagName === 'VIDEO') {
+      const url = resolveUrl(el.src || el.querySelector('source')?.src);
+      if (url && !url.startsWith('data:')) urls.push(url);
+      return urls;
+    }
+
+    const bg = getComputedStyle(el).backgroundImage;
+    if (bg && bg !== 'none') {
+      for (const raw of extractBgImageUrls(bg)) {
+        const url = resolveUrl(raw);
+        if (url && isImageUrl(url) && !url.startsWith('data:')) urls.push(url);
+      }
+    }
+
+    return urls;
+  }
+
   function downloadImagesAtPoint(e) {
     const elements = document.elementsFromPoint(e.clientX, e.clientY);
     const downloadedUrls = new Set();
     let didDownload = false;
 
     for (const el of elements) {
-      if (el.tagName === 'IMG' && el.src) {
-        const url = resolveUrl(el.src);
-        if (url && !url.startsWith('data:') && !downloadedUrls.has(url)) {
+      const urls = getTargetUrlsForElement(el);
+      for (const url of urls) {
+        if (!downloadedUrls.has(url)) {
           downloadedUrls.add(url);
           sendToBackground({ action: 'download_image', url });
           didDownload = true;
-        }
-        continue;
-      }
-
-      if (el.tagName === 'VIDEO') {
-        const url = resolveUrl(el.src || el.querySelector('source')?.src);
-        if (url && !url.startsWith('data:') && !downloadedUrls.has(url)) {
-          downloadedUrls.add(url);
-          sendToBackground({ action: 'download_image', url });
-          didDownload = true;
-        }
-        continue;
-      }
-
-      const bg = getComputedStyle(el).backgroundImage;
-      if (bg && bg !== 'none') {
-        for (const raw of extractBgImageUrls(bg)) {
-          const url = resolveUrl(raw);
-          if (url && isImageUrl(url) && !url.startsWith('data:') && !downloadedUrls.has(url)) {
-            downloadedUrls.add(url);
-            sendToBackground({ action: 'download_image', url });
-            didDownload = true;
-          }
         }
       }
     }

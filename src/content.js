@@ -472,6 +472,32 @@
 
   // Alt+Click — downloads the image(s) stacked under the cursor
 
+  function getTargetUrlsForElement(el) {
+    const urls = [];
+
+    if (el.tagName === 'IMG' && el.src) {
+      const url = resolveUrl(el.src);
+      if (url && !url.startsWith('data:')) urls.push(url);
+      return urls;
+    }
+
+    if (el.tagName === 'VIDEO') {
+      const url = resolveUrl(el.src || el.querySelector('source')?.src);
+      if (url && !url.startsWith('data:')) urls.push(url);
+      return urls;
+    }
+
+    const bg = getComputedStyle(el).backgroundImage;
+    if (bg && bg !== 'none') {
+      for (const raw of extractBgImageUrls(bg)) {
+        const url = resolveUrl(raw);
+        if (url && isImageUrl(url) && !url.startsWith('data:')) urls.push(url);
+      }
+    }
+
+    return urls;
+  }
+
   function downloadImagesAtPoint(e) {
     const elements = document.elementsFromPoint(e.clientX, e.clientY);
     const downloadedUrls = new Set();
