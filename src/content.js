@@ -164,6 +164,9 @@
 
     // CSS background-image on likely container elements
     document.querySelectorAll(BG_IMAGE_SELECTORS).forEach((el) => {
+      // Fast path: skip elements with no styling hints to avoid expensive getComputedStyle calls
+      if (!el.className && !el.id && !el.getAttribute('style')) return;
+
       const bg = getComputedStyle(el).backgroundImage;
       if (bg && bg !== 'none') {
         for (const url of extractBgImageUrls(bg)) {
@@ -331,11 +334,14 @@
     }
 
     try {
-      const bg = getComputedStyle(el).backgroundImage;
-      if (bg && bg !== 'none') {
-        for (const raw of extractBgImageUrls(bg)) {
-          const url = resolveUrl(raw);
-          if (url && isImageUrl(url) && !url.startsWith('data:')) imageSet.add(url);
+      // Fast path: skip elements with no styling hints to avoid expensive getComputedStyle calls
+      if (el.className || el.id || el.getAttribute('style')) {
+        const bg = getComputedStyle(el).backgroundImage;
+        if (bg && bg !== 'none') {
+          for (const raw of extractBgImageUrls(bg)) {
+            const url = resolveUrl(raw);
+            if (url && isImageUrl(url) && !url.startsWith('data:')) imageSet.add(url);
+          }
         }
       }
     } catch {
