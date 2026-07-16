@@ -36,5 +36,11 @@
   },
   "popupReload": {
     "message": "Reload the page and try again"
+  },
+  "popupSelect": {
+    "message": "Select"
+  },
+  "popupDownload": {
+    "message": "Download"
   }
 }

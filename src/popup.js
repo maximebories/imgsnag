@@ -115,25 +115,53 @@
   function wrapCell(cell, item) {
     const check = document.createElement('div');
     check.className = 'check';
+    check.title = browser.i18n.getMessage('popupSelect');
+    check.setAttribute('aria-label', browser.i18n.getMessage('popupSelect'));
+    check.setAttribute('role', 'checkbox');
+    check.setAttribute('aria-checked', 'false');
+    check.tabIndex = 0;
+
+    const toggleCheck = (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      if (selectedUrls.has(item.url)) {
+        selectedUrls.delete(item.url);
+        check.classList.remove('selected');
+        check.setAttribute('aria-checked', 'false');
+      } else {
+        selectedUrls.add(item.url);
+        check.classList.add('selected');
+        check.setAttribute('aria-checked', 'true');
+      }
+      updateCounter();
+    };
+
+    check.addEventListener('click', toggleCheck);
+    check.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        toggleCheck(e);
+      }
+    });
 
     const flash = document.createElement('div');
     flash.className = 'flash';
 
-    check.addEventListener('click', (e) => {
-      e.stopPropagation();
-      if (selectedUrls.has(item.url)) {
-        selectedUrls.delete(item.url);
-        check.classList.remove('selected');
-      } else {
-        selectedUrls.add(item.url);
-        check.classList.add('selected');
-      }
-      updateCounter();
-    });
+    cell.title = browser.i18n.getMessage('popupDownload');
+    cell.setAttribute('aria-label', browser.i18n.getMessage('popupDownload'));
+    cell.setAttribute('role', 'button');
+    cell.tabIndex = 0;
 
-    cell.addEventListener('click', () => {
+    const triggerDownload = (e) => {
+      e.preventDefault();
       browser.runtime.sendMessage({ action: 'download_image', url: item.url });
       flashCell(cell);
+    };
+
+    cell.addEventListener('click', triggerDownload);
+    cell.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        triggerDownload(e);
+      }
     });
 
     cell.append(check, flash);
