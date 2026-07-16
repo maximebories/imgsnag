@@ -84,24 +84,7 @@
 
   // Media discovery — scans the DOM for downloadable image and video URLs
 
-  function collectMediaUrls() {
-    const imageUrls = new Set();
-    const videoUrls = new Set();
-
-    function trackImage(url) {
-      const resolved = resolveUrl(url);
-      if (resolved && !resolved.startsWith('data:') && !imageUrls.has(resolved)) {
-        imageUrls.add(resolved);
-      }
-    }
-
-    function trackVideo(url) {
-      const resolved = resolveUrl(url);
-      if (resolved && !resolved.startsWith('data:') && !videoUrls.has(resolved)) {
-        videoUrls.add(resolved);
-      }
-    }
-
+  function collectImages(trackImage) {
     // <img src>
     document.querySelectorAll('img[src]').forEach((img) => {
       trackImage(img.src);
@@ -128,14 +111,6 @@
       trackImage(video.getAttribute('poster'));
     });
 
-    // <video src> and <video><source src>
-    document.querySelectorAll('video[src]').forEach((video) => {
-      trackVideo(video.src);
-    });
-    document.querySelectorAll('video source[src]').forEach((source) => {
-      trackVideo(source.src);
-    });
-
     // CSS background-image on likely container elements
     document.querySelectorAll(BG_IMAGE_SELECTORS).forEach((el) => {
       const bg = getComputedStyle(el).backgroundImage;
@@ -157,6 +132,38 @@
     while ((match = IMAGE_URL_RE.exec(html)) !== null) {
       trackImage(match[0]);
     }
+  }
+
+  function collectVideos(trackVideo) {
+    // <video src> and <video><source src>
+    document.querySelectorAll('video[src]').forEach((video) => {
+      trackVideo(video.src);
+    });
+    document.querySelectorAll('video source[src]').forEach((source) => {
+      trackVideo(source.src);
+    });
+  }
+
+  function collectMediaUrls() {
+    const imageUrls = new Set();
+    const videoUrls = new Set();
+
+    function trackImage(url) {
+      const resolved = resolveUrl(url);
+      if (resolved && !resolved.startsWith('data:') && !imageUrls.has(resolved)) {
+        imageUrls.add(resolved);
+      }
+    }
+
+    function trackVideo(url) {
+      const resolved = resolveUrl(url);
+      if (resolved && !resolved.startsWith('data:') && !videoUrls.has(resolved)) {
+        videoUrls.add(resolved);
+      }
+    }
+
+    collectImages(trackImage);
+    collectVideos(trackVideo);
 
     return { imageUrls, videoUrls };
   }
