@@ -7,6 +7,7 @@
 
   const IMAGE_EXT_RE = /\.(?:jpe?g|gif|png|webp|svg|avif)(?:[?#]|$)/i;
   const VIDEO_EXT_RE = /\.(?:mp4|webm|ogv|mov|m4v|avi)(?:[?#]|$)/i;
+  const BG_URL_RE = /url\(["']?(.*?)["']?\)/gi;
 
   // Catches image URLs embedded in inline scripts or JSON-LD that DOM queries miss
   const IMAGE_URL_RE =
@@ -66,9 +67,9 @@
 
   function extractBgImageUrls(bgValue) {
     const urls = [];
-    const re = /url\(["']?(.*?)["']?\)/gi;
+    BG_URL_RE.lastIndex = 0;
     let match;
-    while ((match = re.exec(bgValue)) !== null) {
+    while ((match = BG_URL_RE.exec(bgValue)) !== null) {
       urls.push(match[1]);
     }
     return urls;
