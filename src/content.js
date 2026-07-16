@@ -301,6 +301,7 @@
         }
       }
     }
+  }
 
     if (el.hasAttribute) {
       if (el.hasAttribute('srcset')) {
@@ -316,7 +317,9 @@
         }
       }
     }
+  }
 
+  function handleVideo(el, imageSet, videoSet) {
     if (el.tagName === 'VIDEO') {
       if (el.src) {
         const url = resolveUrl(el.src);
@@ -327,12 +330,16 @@
         if (url && !url.startsWith('data:')) imageSet.add(url);
       }
     }
+  }
 
+  function handleSource(el, videoSet) {
     if (el.tagName === 'SOURCE' && el.parentElement?.tagName === 'VIDEO') {
       const url = resolveUrl(el.src);
       if (url && !url.startsWith('data:')) videoSet.add(url);
     }
+  }
 
+  function handleBackgroundImage(el, imageSet) {
     try {
       // Fast path: skip elements with no styling hints to avoid expensive getComputedStyle calls
       if (el.className || el.id || el.getAttribute('style')) {
@@ -347,6 +354,14 @@
     } catch {
       // Element may not be connected to DOM yet
     }
+  }
+
+  function extractUrlsFromElement(el, imageSet, videoSet) {
+    handleImg(el, imageSet);
+    handleSrcset(el, imageSet);
+    handleVideo(el, imageSet, videoSet);
+    handleSource(el, videoSet);
+    handleBackgroundImage(el, imageSet);
   }
 
   // Observers — continuous media tracking
