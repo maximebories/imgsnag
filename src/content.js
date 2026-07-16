@@ -32,7 +32,13 @@
   function resolveUrl(url) {
     if (!url) return null;
     try {
-      return new URL(url, location.href).href;
+      const parsed = new URL(url, location.href);
+      // Warden: Restrict to safe protocols to prevent exfiltration / local file access
+      const p = parsed.protocol;
+      if (p !== 'http:' && p !== 'https:' && p !== 'blob:' && p !== 'data:') {
+        return null;
+      }
+      return parsed.href;
     } catch {
       return null;
     }
@@ -390,6 +396,8 @@
   }
 
   document.addEventListener('click', (e) => {
+    // Warden: Prevent hostile pages from synthesizing events to force downloads
+    if (!e.isTrusted) return;
     if (e.altKey) {
       downloadImagesAtPoint(e);
     }
@@ -397,6 +405,8 @@
 
   // Drag-to-save (can be disabled in options)
   document.addEventListener('dragend', (e) => {
+    // Warden: Prevent hostile pages from synthesizing events to force downloads
+    if (!e.isTrusted) return;
     if (e.target.tagName === 'IMG' && !isDragDisabled) {
       const url = resolveUrl(e.target.src);
       if (url) {
