@@ -69,46 +69,38 @@
     return svg;
   }
 
-  function createImageCell(item) {
+  function createMediaCell(item) {
     const cell = document.createElement('div');
     cell.className = 'cell';
 
-    const thumb = document.createElement('img');
-    thumb.src = item.url;
-    thumb.loading = 'lazy';
-    thumb.onerror = () => {
-      thumb.remove();
+    const isVideo = item.type === 'video';
+    const media = document.createElement(isVideo ? 'video' : 'img');
+    media.src = item.url;
+
+    if (isVideo) {
+      media.preload = 'metadata';
+      media.muted = true;
+    } else {
+      media.loading = 'lazy';
+    }
+
+    media.onerror = () => {
+      media.remove();
       const ph = document.createElement('div');
       ph.className = 'placeholder';
       ph.textContent = filenameFromUrl(item.url);
       cell.prepend(ph);
     };
 
-    cell.appendChild(thumb);
-    return cell;
-  }
+    if (isVideo) {
+      const playOverlay = document.createElement('div');
+      playOverlay.className = 'play-overlay';
+      playOverlay.appendChild(createPlayIcon());
+      cell.append(media, playOverlay);
+    } else {
+      cell.appendChild(media);
+    }
 
-  function createVideoCell(item) {
-    const cell = document.createElement('div');
-    cell.className = 'cell';
-
-    const video = document.createElement('video');
-    video.src = item.url;
-    video.preload = 'metadata';
-    video.muted = true;
-    video.onerror = () => {
-      video.remove();
-      const ph = document.createElement('div');
-      ph.className = 'placeholder';
-      ph.textContent = filenameFromUrl(item.url);
-      cell.prepend(ph);
-    };
-
-    const playOverlay = document.createElement('div');
-    playOverlay.className = 'play-overlay';
-    playOverlay.appendChild(createPlayIcon());
-
-    cell.append(video, playOverlay);
     return cell;
   }
 
@@ -176,9 +168,7 @@
       if (allUrls.has(item.url)) continue;
       allUrls.add(item.url);
 
-      const cell = item.type === 'video'
-        ? createVideoCell(item)
-        : createImageCell(item);
+      const cell = createMediaCell(item);
       wrapCell(cell, item);
 
       if (item.type === 'video') {
