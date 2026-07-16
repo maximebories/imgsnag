@@ -102,24 +102,43 @@
       }
     }
 
-    // <img src>
-    document.querySelectorAll('img[src]').forEach((img) => {
-      trackImage(img.src);
+    // <img src> and lazy loaded variants
+    document.querySelectorAll('img[src], img[data-src], img[data-lazy-src], img[data-original]').forEach((img) => {
+      if (img.src) trackImage(img.src);
+      if (img.hasAttribute('data-src')) trackImage(img.getAttribute('data-src'));
+      if (img.hasAttribute('data-lazy-src')) trackImage(img.getAttribute('data-lazy-src'));
+      if (img.hasAttribute('data-original')) trackImage(img.getAttribute('data-original'));
     });
 
-    // srcset attributes (img, source, etc.)
-    document.querySelectorAll('[srcset]').forEach((el) => {
-      for (const url of parseSrcset(el.getAttribute('srcset'))) {
-        trackImage(url);
+    // srcset attributes (img, source, etc.) and lazy loaded variants
+    document.querySelectorAll('[srcset], [data-srcset]').forEach((el) => {
+      if (el.hasAttribute('srcset')) {
+        for (const url of parseSrcset(el.getAttribute('srcset'))) {
+          trackImage(url);
+        }
+      }
+      if (el.hasAttribute('data-srcset')) {
+        for (const url of parseSrcset(el.getAttribute('data-srcset'))) {
+          trackImage(url);
+        }
       }
     });
 
     // <picture> <source> elements
     document.querySelectorAll('picture source').forEach((source) => {
-      const src = source.getAttribute('src');
-      if (src) trackImage(src);
-      for (const url of parseSrcset(source.getAttribute('srcset'))) {
-        trackImage(url);
+      if (source.hasAttribute('src')) trackImage(source.getAttribute('src'));
+      if (source.hasAttribute('data-src')) trackImage(source.getAttribute('data-src'));
+      if (source.hasAttribute('data-lazy-src')) trackImage(source.getAttribute('data-lazy-src'));
+      if (source.hasAttribute('data-original')) trackImage(source.getAttribute('data-original'));
+      if (source.hasAttribute('srcset')) {
+        for (const url of parseSrcset(source.getAttribute('srcset'))) {
+          trackImage(url);
+        }
+      }
+      if (source.hasAttribute('data-srcset')) {
+        for (const url of parseSrcset(source.getAttribute('data-srcset'))) {
+          trackImage(url);
+        }
       }
     });
 
@@ -231,15 +250,31 @@
   // Scan a single element for media URLs (used by MutationObserver)
 
   function extractUrlsFromElement(el, imageSet, videoSet) {
-    if (el.tagName === 'IMG' && el.src) {
-      const url = resolveUrl(el.src);
-      if (url && !url.startsWith('data:')) imageSet.add(url);
+    if (el.tagName === 'IMG') {
+      const attrs = ['src', 'data-src', 'data-lazy-src', 'data-original'];
+      for (const attr of attrs) {
+        let val;
+        if (attr === 'src') val = el.src;
+        else val = el.hasAttribute(attr) ? el.getAttribute(attr) : null;
+        if (val) {
+          const url = resolveUrl(val);
+          if (url && !url.startsWith('data:')) imageSet.add(url);
+        }
+      }
     }
 
-    if (el.hasAttribute && el.hasAttribute('srcset')) {
-      for (const raw of parseSrcset(el.getAttribute('srcset'))) {
-        const url = resolveUrl(raw);
-        if (url && !url.startsWith('data:')) imageSet.add(url);
+    if (el.hasAttribute) {
+      if (el.hasAttribute('srcset')) {
+        for (const raw of parseSrcset(el.getAttribute('srcset'))) {
+          const url = resolveUrl(raw);
+          if (url && !url.startsWith('data:')) imageSet.add(url);
+        }
+      }
+      if (el.hasAttribute('data-srcset')) {
+        for (const raw of parseSrcset(el.getAttribute('data-srcset'))) {
+          const url = resolveUrl(raw);
+          if (url && !url.startsWith('data:')) imageSet.add(url);
+        }
       }
     }
 
@@ -283,7 +318,7 @@
           if (node.nodeType !== Node.ELEMENT_NODE) continue;
           extractUrlsFromElement(node, imageUrls, videoUrls);
           if (node.querySelectorAll) {
-            const sel = 'img, [srcset], picture source, video, video source, ' + BG_IMAGE_SELECTORS;
+            const sel = 'img, [srcset], [data-srcset], picture source, video, video source, ' + BG_IMAGE_SELECTORS;
             node.querySelectorAll(sel).forEach((el) => extractUrlsFromElement(el, imageUrls, videoUrls));
           }
         }
@@ -349,14 +384,29 @@
     let didDownload = false;
 
     for (const el of elements) {
-      if (el.tagName === 'IMG' && el.src) {
-        const url = resolveUrl(el.src);
-        if (url && !url.startsWith('data:') && !downloadedUrls.has(url)) {
-          downloadedUrls.add(url);
-          sendToBackground({ action: 'download_image', url });
-          didDownload = true;
+      if (el.tagName === 'IMG') {
+        let hasValidImage = false;
+        const attrs = ['data-src', 'data-lazy-src', 'data-original', 'src'];
+        for (const attr of attrs) {
+          let val;
+          if (attr === 'src') val = el.src;
+          else val = el.hasAttribute(attr) ? el.getAttribute(attr) : null;
+          if (val) {
+            const url = resolveUrl(val);
+            if (url && !url.startsWith('data:')) {
+              hasValidImage = true;
+              if (!downloadedUrls.has(url)) {
+                downloadedUrls.add(url);
+                sendToBackground({ action: 'download_image', url });
+                didDownload = true;
+              }
+              break; // Stop after first valid attribute (whether downloaded or already cached)
+            }
+          }
         }
-        continue;
+        if (hasValidImage) {
+          continue;
+        }
       }
 
       if (el.tagName === 'VIDEO') {
@@ -397,9 +447,18 @@
   // Drag-to-save (can be disabled in options)
   document.addEventListener('dragend', (e) => {
     if (e.target.tagName === 'IMG' && !isDragDisabled) {
-      const url = resolveUrl(e.target.src);
-      if (url) {
-        sendToBackground({ action: 'download_image', url });
+      const attrs = ['data-src', 'data-lazy-src', 'data-original', 'src'];
+      for (const attr of attrs) {
+        let val;
+        if (attr === 'src') val = e.target.src;
+        else val = e.target.hasAttribute(attr) ? e.target.getAttribute(attr) : null;
+        if (val) {
+          const url = resolveUrl(val);
+          if (url && !url.startsWith('data:')) {
+            sendToBackground({ action: 'download_image', url });
+            break; // Only trigger one download
+          }
+        }
       }
     }
   });
