@@ -155,14 +155,43 @@
       }
     });
 
-    // Regex fallback — strip script/style to reduce noise
-    const html = document.body.innerHTML.replace(
-      /<(script|style)\b[^>]*>[\s\S]*?<\/\1>/gi,
-      ''
+    // Fallback — scan text and attributes to catch JSON-LD or data attributes that DOM queries miss
+    const walker = document.createTreeWalker(
+      document.body,
+      NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT,
+      {
+        acceptNode(node) {
+          if (node.nodeType === Node.ELEMENT_NODE) {
+            if (node.tagName === 'STYLE') return NodeFilter.FILTER_REJECT;
+            if (node.tagName === 'SCRIPT') {
+              if (node.getAttribute('type') === 'application/ld+json') {
+                return NodeFilter.FILTER_ACCEPT;
+              }
+              return NodeFilter.FILTER_REJECT;
+            }
+          }
+          return NodeFilter.FILTER_ACCEPT;
+        }
+      }
     );
-    let match;
-    while ((match = IMAGE_URL_RE.exec(html)) !== null) {
-      trackImage(match[0]);
+
+    let node;
+    while ((node = walker.nextNode())) {
+      let textToScan = '';
+      if (node.nodeType === Node.TEXT_NODE) {
+        textToScan = node.nodeValue;
+      } else if (node.nodeType === Node.ELEMENT_NODE) {
+        for (const attr of node.attributes) {
+          textToScan += ' ' + attr.value;
+        }
+      }
+
+      if (textToScan) {
+        let match;
+        while ((match = IMAGE_URL_RE.exec(textToScan)) !== null) {
+          trackImage(match[0]);
+        }
+      }
     }
 
     return { imageUrls, videoUrls };
