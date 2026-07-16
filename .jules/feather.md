@@ -9,3 +9,7 @@
 ## 2024-05-24 - Optimizing getComputedStyle
 **Learning:** Checking `getComputedStyle(el).backgroundImage` across all generic selectors (`div`, `span`, etc.) takes a significant chunk of time (e.g., ~28ms out of ~35ms on Wikipedia) because `getComputedStyle` causes style recalculations/lookups. Most of these elements do not have background images.
 **Action:** By skipping `getComputedStyle` on elements that lack a `class`, `id`, or inline `style` attribute (which are extremely unlikely to have a specific background image), we can reduce the time spent in the background sweep by ~75% (from 27.5ms to 6ms on a test page) without missing actual valid background images.
+
+## 2024-05-24 - MutationObserver DOM Query Optimization
+**Learning:** Using querySelectorAll in the MutationObserver callback is expensive because it triggers layout recalculations and evaluates a complex CSS selector string on each DOM mutation.
+**Action:** Replace querySelectorAll with document.createTreeWalker(node, NodeFilter.SHOW_ELEMENT) traversal. Filter elements inline using tag name and attribute checks. This reduces per-mutation overhead significantly.

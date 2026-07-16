@@ -359,9 +359,22 @@
         for (const node of mutation.addedNodes) {
           if (node.nodeType !== Node.ELEMENT_NODE) continue;
           extractUrlsFromElement(node, imageUrls, videoUrls);
-          if (node.querySelectorAll) {
-            const sel = 'img, [srcset], [data-srcset], picture source, video, video source, ' + BG_IMAGE_SELECTORS;
-            node.querySelectorAll(sel).forEach((el) => extractUrlsFromElement(el, imageUrls, videoUrls));
+          if (node.getElementsByTagName) {
+            const walker = document.createTreeWalker(node, NodeFilter.SHOW_ELEMENT, null, false);
+            let el;
+            while ((el = walker.nextNode())) {
+              const tag = el.tagName;
+              if (
+                tag === 'IMG' || tag === 'VIDEO' || tag === 'SOURCE' || tag === 'PICTURE' ||
+                tag === 'DIV' || tag === 'SPAN' || tag === 'SECTION' || tag === 'ARTICLE' ||
+                tag === 'HEADER' || tag === 'FOOTER' || tag === 'A' || tag === 'LI' ||
+                tag === 'FIGURE' || tag === 'I' ||
+                (el.hasAttribute && (el.hasAttribute('srcset') || el.hasAttribute('data-srcset') || el.hasAttribute('data-src') || el.hasAttribute('data-lazy-src') || el.hasAttribute('data-original'))) ||
+                (el.hasAttribute && el.hasAttribute('style') && el.style && el.style.backgroundImage)
+              ) {
+                extractUrlsFromElement(el, imageUrls, videoUrls);
+              }
+            }
           }
         }
       }
