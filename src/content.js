@@ -262,12 +262,25 @@
     return null;
   }
 
+  const pendingNetworkFilter = new Set();
+
   async function filterImagesBySize(urls) {
     const results = await Promise.all(
       [...urls].map(async (url) => {
         if (isSvgUrl(url)) return url;
         const domSize = getDomImageSize(url);
-        const size = domSize || (await getImageSize(url));
+        if (domSize) {
+          if (domSize.width >= MIN_IMAGE_SIZE && domSize.height >= MIN_IMAGE_SIZE) return url;
+          return null;
+        }
+
+        // Lazy network fetch: if popup is closed, delay the expensive new Image() call
+        if (!popupPort) {
+          pendingNetworkFilter.add(url);
+          return null;
+        }
+
+        const size = await getImageSize(url);
         if (size && size.width >= MIN_IMAGE_SIZE && size.height >= MIN_IMAGE_SIZE) return url;
         return null;
       })
@@ -453,6 +466,14 @@
       if (port.name !== 'imgsnag-popup') return;
       popupPort = port;
       port.postMessage({ action: 'init', images: [...discoveredMedia.values()] });
+
+      // Process any images that were lazily delayed until the popup connected
+      if (pendingNetworkFilter.size > 0) {
+        const urls = new Set(pendingNetworkFilter);
+        pendingNetworkFilter.clear();
+        addNewUrls(urls, 'image');
+      }
+
       port.onDisconnect.addListener(() => {
         popupPort = null;
       });
