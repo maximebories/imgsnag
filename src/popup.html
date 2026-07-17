@@ -208,6 +208,10 @@
         white-space: nowrap;
         transition: background 0.15s, opacity 0.15s;
       }
+      .actions button:focus-visible {
+        outline: 3px solid #2563eb;
+        outline-offset: -1px;
+      }
 
       #btn-selected {
         background: #2563eb;
@@ -216,7 +220,7 @@
       #btn-selected:hover:not(:disabled) { background: #1d4ed8; }
       #btn-selected:disabled {
         opacity: 0.4;
-        cursor: default;
+        cursor: not-allowed;
       }
 
       #btn-all {

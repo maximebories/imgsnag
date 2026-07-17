@@ -82,6 +82,7 @@
       media.muted = true;
     } else {
       media.loading = 'lazy';
+      media.alt = '';
     }
 
     media.onerror = () => {
@@ -107,14 +108,15 @@
   function wrapCell(cell, item) {
     cell.tabIndex = 0;
     cell.setAttribute('role', 'button');
-    cell.setAttribute('aria-label', browser.i18n.getMessage('popupDownload'));
+    const filename = filenameFromUrl(item.url) || 'media';
+    cell.setAttribute('aria-label', `${browser.i18n.getMessage('popupDownload')} ${filename}`);
 
     const check = document.createElement('div');
     check.className = 'check';
     check.tabIndex = 0;
     check.setAttribute('role', 'checkbox');
     check.setAttribute('aria-checked', 'false');
-    check.setAttribute('aria-label', browser.i18n.getMessage('popupSelect'));
+    check.setAttribute('aria-label', `${browser.i18n.getMessage('popupSelect')} ${filename}`);
 
     const flash = document.createElement('div');
     flash.className = 'flash';
