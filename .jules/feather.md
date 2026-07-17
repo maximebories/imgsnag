@@ -13,3 +13,7 @@
 ## 2024-05-24 - MutationObserver DOM Query Optimization
 **Learning:** Using querySelectorAll in the MutationObserver callback is expensive because it triggers layout recalculations and evaluates a complex CSS selector string on each DOM mutation.
 **Action:** Replace querySelectorAll with document.createTreeWalker(node, NodeFilter.SHOW_ELEMENT) traversal. Filter elements inline using tag name and attribute checks. This reduces per-mutation overhead significantly.
+
+## 2024-05-24 - Lazy Size Filtering
+**Learning:** Checking the network size of an image via `new Image()` is a hidden network tax for every URL without an `<img>` tag match in the DOM. Eagerly resolving this on page load or `MutationObserver` triggers wastes resources for users who never open the extension's popup on that tab.
+**Action:** Implemented a lazy queue (`pendingNetworkFilter`). If `popupPort` is not connected, the URL is added to the queue instead of fetching. When the popup connects, we immediately re-evaluate the queued URLs. This saves network bandwidth and CPU while preserving 100% detection parity when the popup is used.
