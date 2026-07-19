@@ -108,7 +108,7 @@
   function wrapCell(cell, item) {
     cell.tabIndex = 0;
     cell.setAttribute('role', 'button');
-    const filename = filenameFromUrl(item.url) || 'media';
+    const filename = filenameFromUrl(item.url) || browser.i18n.getMessage('popupMediaFallback');
     cell.setAttribute('aria-label', `${browser.i18n.getMessage('popupDownload')} ${filename}`);
 
     const check = document.createElement('div');
