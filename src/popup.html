@@ -3,6 +3,10 @@
   <head>
     <meta charset="utf-8" />
     <style>
+      :root {
+        color-scheme: light dark;
+      }
+
       * { margin: 0; padding: 0; box-sizing: border-box; }
 
       body {
@@ -228,6 +232,48 @@
         color: #1a1a1a;
       }
       #btn-all:hover { background: #d1d5db; }
+
+      @media (prefers-color-scheme: dark) {
+        body {
+          background: #1a1a1a;
+          color: #e5e5e5;
+        }
+
+        #loading, #empty, #error {
+          color: #a3a3a3;
+        }
+
+        .spinner {
+          border-color: #404040;
+          border-top-color: #a3a3a3;
+        }
+
+        .cell {
+          background: #404040;
+        }
+
+        .group-header {
+          color: #a3a3a3;
+        }
+
+        #bar {
+          background: #262626;
+          border-top-color: #404040;
+        }
+
+        #counter {
+          color: #a3a3a3;
+        }
+
+        #btn-all {
+          background: #404040;
+          color: #e5e5e5;
+        }
+
+        #btn-all:hover {
+          background: #525252;
+        }
+      }
     </style>
   </head>
   <body>
