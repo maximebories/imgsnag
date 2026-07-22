@@ -24,7 +24,7 @@
         align-items: center;
         justify-content: center;
         padding: 48px 24px;
-        color: #888;
+        color: #666;
         gap: 12px;
       }
       #loading.visible, #empty.visible, #error.visible {
@@ -136,7 +136,7 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        color: #999;
+        color: #555;
         font-size: 11px;
         text-align: center;
         padding: 8px;
@@ -171,7 +171,7 @@
         font-weight: 600;
         text-transform: uppercase;
         letter-spacing: 0.5px;
-        color: #888;
+        color: #666;
       }
       .group-header.visible { display: block; }
 
@@ -190,7 +190,7 @@
 
       #counter {
         font-size: 12px;
-        color: #666;
+        color: #555;
         white-space: nowrap;
       }
 
@@ -208,6 +208,10 @@
         white-space: nowrap;
         transition: background 0.15s, opacity 0.15s;
       }
+      .actions button:focus-visible {
+        outline: 3px solid #2563eb;
+        outline-offset: -1px;
+      }
 
       #btn-selected {
         background: #2563eb;
@@ -216,7 +220,7 @@
       #btn-selected:hover:not(:disabled) { background: #1d4ed8; }
       #btn-selected:disabled {
         opacity: 0.4;
-        cursor: default;
+        cursor: not-allowed;
       }
 
       #btn-all {
@@ -248,7 +252,7 @@
     <div id="video-grid"></div>
 
     <div id="bar">
-      <span id="counter"></span>
+      <span id="counter" aria-live="polite" aria-atomic="true"></span>
       <div class="actions">
         <button id="btn-selected" disabled></button>
         <button id="btn-all"></button>

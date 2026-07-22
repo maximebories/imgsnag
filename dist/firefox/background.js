@@ -4,10 +4,33 @@ if (typeof importScripts === 'function') {
   importScripts('lib/browser-polyfill.min.js');
 }
 
-const activeDownloadIds = new Set();
+const PREFIX = 'dl_';
+
+async function getActiveDownloadIds() {
+  const data = await browser.storage.local.get();
+  return Object.keys(data)
+    .filter((k) => k.startsWith(PREFIX))
+    .map((k) => parseInt(k.substring(PREFIX.length), 10));
+}
+
+async function addActiveDownloadId(id) {
+  await browser.storage.local.set({ [`${PREFIX}${id}`]: true });
+}
+
+async function removeActiveDownloadId(id) {
+  await browser.storage.local.remove(`${PREFIX}${id}`);
+}
+
+async function clearActiveDownloadIds() {
+  const ids = await getActiveDownloadIds();
+  const keys = ids.map((id) => `${PREFIX}${id}`);
+  if (keys.length > 0) {
+    await browser.storage.local.remove(keys);
+  }
+}
 
 // Messages from popup and content script
-browser.runtime.onMessage.addListener((message, _sender) => {
+browser.runtime.onMessage.addListener((message) => {
   if (message.action === 'download_image') {
     try {
       const urlObj = new URL(message.url);
@@ -20,8 +43,8 @@ browser.runtime.onMessage.addListener((message, _sender) => {
 
     return browser.downloads
       .download({ url: message.url })
-      .then((downloadId) => {
-        activeDownloadIds.add(downloadId);
+      .then(async (downloadId) => {
+        await addActiveDownloadId(downloadId);
         return { success: true };
       })
       .catch((err) => {
@@ -46,28 +69,36 @@ browser.runtime.onMessage.addListener((message, _sender) => {
 
     const total = validUrls.length;
 
-    (async () => {
-      for (let i = 0; i < validUrls.length; i++) {
-        browser.action.setBadgeText({ text: `${i + 1}/${total}` });
-        try {
-          const downloadId = await browser.downloads.download({ url: validUrls[i] });
-          activeDownloadIds.add(downloadId);
-        } catch (err) {
-          console.warn('[imgsnag] Download failed:', validUrls[i], err.message);
-        }
-      }
+    // Return the promise so the service worker stays alive; parallelize all downloads
+    return (async () => {
+      let completed = 0;
+      await Promise.all(
+        validUrls.map(async (url) => {
+          try {
+            const downloadId = await browser.downloads.download({ url });
+            await addActiveDownloadId(downloadId);
+          } catch (err) {
+            console.warn('[imgsnag] Download failed:', url, err.message);
+          } finally {
+            completed++;
+            browser.action.setBadgeText({ text: `${completed}/${total}` });
+          }
+        })
+      );
       browser.action.setBadgeText({ text: '' });
+      return { started: true, completed: true };
     })();
-
-    return Promise.resolve({ started: true });
   }
 
   if (message.action === 'cancel_downloads') {
-    for (const id of activeDownloadIds) {
-      browser.downloads.cancel(id).catch(() => {});
-    }
-    activeDownloadIds.clear();
-    return Promise.resolve({});
+    return (async () => {
+      const ids = await getActiveDownloadIds();
+      for (const id of ids) {
+        browser.downloads.cancel(id).catch(() => {});
+      }
+      await clearActiveDownloadIds();
+      return {};
+    })();
   }
 
   return false;
@@ -76,6 +107,6 @@ browser.runtime.onMessage.addListener((message, _sender) => {
 // Clean up completed/cancelled downloads from tracking
 browser.downloads.onChanged.addListener((delta) => {
   if (delta.state && delta.state.current !== 'in_progress') {
-    activeDownloadIds.delete(delta.id);
+    removeActiveDownloadId(delta.id);
   }
 });
