@@ -24,7 +24,18 @@ describe('Background Script', () => {
       delete require.cache[require.resolve('../src/background.js')];
     }
 
+    global.mockStorage = {};
     global.browser = {
+      storage: {
+        local: {
+          get: async () => { return global.mockStorage; },
+          set: async (obj) => { global.mockStorage = { ...global.mockStorage, ...obj }; },
+          remove: async (keys) => {
+            const ks = Array.isArray(keys) ? keys : [keys];
+            ks.forEach(k => delete global.mockStorage[k]);
+          }
+        }
+      },
       runtime: {
         onMessage: {
           addListener: (cb) => {
@@ -113,7 +124,28 @@ describe('Background Script', () => {
       ]
     }, {});
 
-    assert.deepStrictEqual(response, { started: true });
+    assert.deepStrictEqual(response, { started: true, completed: true });
+
+    // Give async operations a moment to settle
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    assert.strictEqual(downloads.length, 2);
+    assert.strictEqual(downloads[0].url, 'https://example.com/1.jpg');
+    assert.strictEqual(downloads[1].url, 'http://example.com/3.jpg');
+    assert.strictEqual(badgeText, ''); // Should be reset at the end
+  });
+
+  test('download_images_bulk: with a download failure', async () => {
+    const response = await messageListener({
+      action: 'download_images_bulk',
+      urls: [
+        'https://example.com/1.jpg',
+        'http://fail.com/image.jpg',
+        'http://example.com/3.jpg'
+      ]
+    }, {});
+
+    assert.deepStrictEqual(response, { started: true, completed: true });
 
     // Give async operations a moment to settle
     await new Promise(resolve => setTimeout(resolve, 0));
