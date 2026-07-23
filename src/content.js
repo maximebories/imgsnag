@@ -265,10 +265,18 @@
   const pendingNetworkFilter = new Set();
 
   async function filterImagesBySize(urls) {
+    const sizeMap = new Map();
+    for (let i = 0; i < document.images.length; i++) {
+      const img = document.images[i];
+      if (img.naturalWidth > 0 && img.naturalHeight > 0) {
+        sizeMap.set(img.src, { width: img.naturalWidth, height: img.naturalHeight });
+      }
+    }
+
     const results = await Promise.all(
       [...urls].map(async (url) => {
         if (isSvgUrl(url)) return url;
-        const domSize = getDomImageSize(url);
+        const domSize = sizeMap.get(url) || getDomImageSize(url);
         if (domSize) {
           if (domSize.width >= MIN_IMAGE_SIZE && domSize.height >= MIN_IMAGE_SIZE) return url;
           return null;
@@ -308,8 +316,18 @@
       accepted = await filterImagesBySize(new Set(unknown));
     }
 
+    const sizeMap = type === 'image' ? new Map() : null;
+    if (sizeMap) {
+      for (let i = 0; i < document.images.length; i++) {
+        const img = document.images[i];
+        if (img.naturalWidth > 0 && img.naturalHeight > 0) {
+          sizeMap.set(img.src, { width: img.naturalWidth, height: img.naturalHeight });
+        }
+      }
+    }
+
     const items = accepted.map((url) => {
-      const size = type === 'image' ? getDomImageSize(url) : null;
+      const size = type === 'image' ? (sizeMap.get(url) || getDomImageSize(url)) : null;
       return { url, type, width: size?.width || 0, height: size?.height || 0 };
     });
 
