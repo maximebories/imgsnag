@@ -1,0 +1,3 @@
+## 2025-02-28 - Pre-computing document.images iteration
+**Learning:** Checking generic CSS selectors (`document.querySelector(\`img[src="..."]\`)`) inside high-frequency loops (like processing discovered media URLs) scales poorly, causing O(N^2) complexity and severe layout thrashing (M times query matching the whole DOM). Furthermore, querying by the escaped relative string (`[src="..."]`) can fail to resolve images if the relative string in the selector doesn't match the absolute URL.
+**Action:** Replaced `document.querySelector` inside the loop with an initialization step that iterates over `document.images` to populate a Map. This achieves O(M+N) complexity, totally avoids style recalculation and layout thrashing, and flawlessly handles absolute URLs.

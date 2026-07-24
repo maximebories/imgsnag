@@ -91,24 +91,7 @@
 
   // Media discovery — scans the DOM for downloadable image and video URLs
 
-  function collectMediaUrls() {
-    const imageUrls = new Set();
-    const videoUrls = new Set();
-
-    function trackImage(url) {
-      const resolved = resolveUrl(url);
-      if (resolved && !resolved.startsWith('data:') && !imageUrls.has(resolved)) {
-        imageUrls.add(resolved);
-      }
-    }
-
-    function trackVideo(url) {
-      const resolved = resolveUrl(url);
-      if (resolved && !resolved.startsWith('data:') && !videoUrls.has(resolved)) {
-        videoUrls.add(resolved);
-      }
-    }
-
+  function collectImages(trackImage) {
     // <img src> and lazy loaded variants
     document.querySelectorAll('img[src], img[data-src], img[data-lazy-src], img[data-original]').forEach((img) => {
       if (img.src) trackImage(img.src);
@@ -254,21 +237,13 @@
     });
   }
 
-  function getDomImageSize(url) {
-    const el = document.querySelector(`img[src="${CSS.escape(url)}"]`);
-    if (el && el.naturalWidth > 0 && el.naturalHeight > 0) {
-      return { width: el.naturalWidth, height: el.naturalHeight };
-    }
-    return null;
-  }
-
   const pendingNetworkFilter = new Set();
 
-  async function filterImagesBySize(urls) {
+  async function filterImagesBySize(urls, sizeMap) {
     const results = await Promise.all(
       [...urls].map(async (url) => {
         if (isSvgUrl(url)) return url;
-        const domSize = getDomImageSize(url);
+        const domSize = sizeMap.get(url);
         if (domSize) {
           if (domSize.width >= MIN_IMAGE_SIZE && domSize.height >= MIN_IMAGE_SIZE) return url;
           return null;
@@ -300,16 +275,26 @@
     const unknown = [...urls].filter((url) => !discoveredMedia.has(url));
     if (unknown.length === 0) return;
 
+    // ⚡ Bolt: Pre-compute DOM image sizes using document.images to avoid layout thrashing and O(N^2) querySelector calls
+    const sizeMap = new Map();
+    if (type === 'image') {
+      for (const img of document.images) {
+        if (img.src && img.naturalWidth > 0 && img.naturalHeight > 0) {
+          sizeMap.set(img.src, { width: img.naturalWidth, height: img.naturalHeight });
+        }
+      }
+    }
+
     let accepted;
     if (type === 'video') {
       // Videos skip size filtering — can't measure with new Image()
       accepted = unknown;
     } else {
-      accepted = await filterImagesBySize(new Set(unknown));
+      accepted = await filterImagesBySize(new Set(unknown), sizeMap);
     }
 
     const items = accepted.map((url) => {
-      const size = type === 'image' ? getDomImageSize(url) : null;
+      const size = type === 'image' ? sizeMap.get(url) : null;
       return { url, type, width: size?.width || 0, height: size?.height || 0 };
     });
 
@@ -340,6 +325,7 @@
     }
   }
 
+  function handleSrcset(el, imageSet) {
     if (el.hasAttribute) {
       if (el.hasAttribute('srcset')) {
         for (const raw of parseSrcset(el.getAttribute('srcset'))) {
@@ -608,18 +594,8 @@
           }
         }
       }
-    });
-
-    // Drag-to-save (can be disabled in options)
-    document.addEventListener('dragend', (e) => {
-      if (e.target.tagName === 'IMG' && !isDragDisabled) {
-        const url = resolveUrl(e.target.src);
-        if (url) {
-          sendToBackground({ action: 'download_image', url });
-        }
-      }
-    });
-  }
+    }
+  });
 
   function syncDragPreference() {
     if (typeof browser !== 'undefined' && browser.storage) {
