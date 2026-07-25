@@ -1,0 +1,10 @@
+--- src/content.js
++++ src/content.js
+@@ -344,7 +344,7 @@
+         }
+       }
+     }
+-  }
+
+     if (el.hasAttribute) {
+       if (el.hasAttribute('srcset')) {

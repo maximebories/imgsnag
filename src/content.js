@@ -254,21 +254,24 @@
     });
   }
 
-  function getDomImageSize(url) {
-    const el = document.querySelector(`img[src="${CSS.escape(url)}"]`);
-    if (el && el.naturalWidth > 0 && el.naturalHeight > 0) {
-      return { width: el.naturalWidth, height: el.naturalHeight };
+  function getDomImageSizes() {
+    const sizes = new Map();
+    for (let i = 0; i < document.images.length; i++) {
+      const img = document.images[i];
+      if (img.src && img.naturalWidth > 0 && img.naturalHeight > 0) {
+        sizes.set(img.src, { width: img.naturalWidth, height: img.naturalHeight });
+      }
     }
-    return null;
+    return sizes;
   }
 
   const pendingNetworkFilter = new Set();
 
-  async function filterImagesBySize(urls) {
+  async function filterImagesBySize(urls, domSizes) {
     const results = await Promise.all(
       [...urls].map(async (url) => {
         if (isSvgUrl(url)) return url;
-        const domSize = getDomImageSize(url);
+        const domSize = domSizes.get(url);
         if (domSize) {
           if (domSize.width >= MIN_IMAGE_SIZE && domSize.height >= MIN_IMAGE_SIZE) return url;
           return null;
@@ -300,16 +303,18 @@
     const unknown = [...urls].filter((url) => !discoveredMedia.has(url));
     if (unknown.length === 0) return;
 
+    const domSizes = type === 'image' ? getDomImageSizes() : new Map();
+
     let accepted;
     if (type === 'video') {
       // Videos skip size filtering — can't measure with new Image()
       accepted = unknown;
     } else {
-      accepted = await filterImagesBySize(new Set(unknown));
+      accepted = await filterImagesBySize(new Set(unknown), domSizes);
     }
 
     const items = accepted.map((url) => {
-      const size = type === 'image' ? getDomImageSize(url) : null;
+      const size = type === 'image' ? domSizes.get(url) : null;
       return { url, type, width: size?.width || 0, height: size?.height || 0 };
     });
 
@@ -338,7 +343,6 @@
         }
       }
     }
-  }
 
     if (el.hasAttribute) {
       if (el.hasAttribute('srcset')) {
