@@ -242,16 +242,16 @@
     </style>
   </head>
   <body>
-    <div id="loading" class="visible">
+    <div id="loading" class="visible" role="status" aria-live="polite">
       <div class="spinner"></div>
       <span id="loading-text"></span>
     </div>
 
-    <div id="empty">
+    <div id="empty" role="status" aria-live="polite">
       <span id="empty-text"></span>
     </div>
 
-    <div id="error">
+    <div id="error" role="alert" aria-live="assertive">
       <span id="error-text"></span>
     </div>
 
