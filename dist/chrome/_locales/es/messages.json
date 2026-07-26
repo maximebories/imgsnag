@@ -42,5 +42,8 @@
   },
   "popupReload": {
     "message": "Recarga la página e inténtalo de nuevo"
+  },
+  "popupMediaFallback": {
+    "message": "multimedia"
   }
 }
