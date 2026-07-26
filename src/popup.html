@@ -24,7 +24,7 @@
         align-items: center;
         justify-content: center;
         padding: 48px 24px;
-        color: #888;
+        color: #555;
         gap: 12px;
       }
       #loading.visible, #empty.visible, #error.visible {
@@ -171,7 +171,7 @@
         font-weight: 600;
         text-transform: uppercase;
         letter-spacing: 0.5px;
-        color: #888;
+        color: #555;
       }
       .group-header.visible { display: block; }
 
@@ -210,7 +210,7 @@
       }
       .actions button:focus-visible {
         outline: 3px solid #2563eb;
-        outline-offset: -1px;
+        outline-offset: 2px;
       }
 
       #btn-selected {
@@ -252,7 +252,7 @@
     <div id="video-grid"></div>
 
     <div id="bar">
-      <span id="counter"></span>
+      <span id="counter" aria-live="polite" aria-atomic="true"></span>
       <div class="actions">
         <button id="btn-selected" disabled></button>
         <button id="btn-all"></button>
