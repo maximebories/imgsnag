@@ -109,14 +109,18 @@
     cell.tabIndex = 0;
     cell.setAttribute('role', 'button');
     const filename = filenameFromUrl(item.url) || browser.i18n.getMessage('popupMediaFallback');
-    cell.setAttribute('aria-label', `${browser.i18n.getMessage('popupDownload')} ${filename}`);
+    const downloadLabel = `${browser.i18n.getMessage('popupDownload')} ${filename}`;
+    cell.setAttribute('aria-label', downloadLabel);
+    cell.title = downloadLabel;
 
     const check = document.createElement('div');
     check.className = 'check';
     check.tabIndex = 0;
     check.setAttribute('role', 'checkbox');
     check.setAttribute('aria-checked', 'false');
-    check.setAttribute('aria-label', `${browser.i18n.getMessage('popupSelect')} ${filename}`);
+    const selectLabel = `${browser.i18n.getMessage('popupSelect')} ${filename}`;
+    check.setAttribute('aria-label', selectLabel);
+    check.title = selectLabel;
 
     const flash = document.createElement('div');
     flash.className = 'flash';
