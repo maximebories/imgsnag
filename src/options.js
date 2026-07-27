@@ -1,5 +1,7 @@
 // imgsnag — Options Page
 
+document.documentElement.lang = browser.i18n.getUILanguage();
+
 function saveOptions() {
   const isDragDisabled = document.getElementById('disable_drag').checked;
 

@@ -2,6 +2,7 @@
 
 (function () {
   'use strict';
+  document.documentElement.lang = browser.i18n.getUILanguage();
 
   const selectedUrls = new Set();
   const allUrls = new Set();
