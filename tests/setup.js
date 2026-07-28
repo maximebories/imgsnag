@@ -1,4 +1,7 @@
 global.browser = {
+  i18n: {
+    getUILanguage: jest.fn().mockReturnValue('en')
+  },
   runtime: {
     sendMessage: jest.fn().mockResolvedValue(),
     onConnect: {
