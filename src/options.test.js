@@ -27,6 +27,7 @@ describe('Options Page', () => {
           };
           return messages[key];
         }),
+        getUILanguage: jest.fn(() => 'en'),
       },
       storage: {
         sync: {
