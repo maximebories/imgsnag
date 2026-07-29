@@ -4,3 +4,7 @@
 ## 2024-07-15 - [Concurrency and Arrays in browser.storage.local]
 **Learning:** `browser.storage.local.get` and `set` are asynchronous. Reading an array, appending an item, and writing it back creates a race condition when multiple asynchronous tasks (like overlapping downloads finishing in `browser.downloads.onChanged`) do this simultaneously. They will overwrite each other's changes.
 **Action:** Do not use arrays in `browser.storage.local` to track lists of independent items being concurrently updated. Instead, store each item under its own independent storage key (e.g., `set({ [\`dl_${id}\`]: true })`).
+
+## 2024-05-24 - browser.action vs browser.browserAction
+**Learning:** Firefox MV3 with `strict_min_version: 109` supports `browser.action`, however the vendored polyfill `src/lib/browser-polyfill.min.js` does not expose it! It only exposes `browserAction`. Therefore `browser.action.setBadgeText` throws in Firefox, but works in Chrome because Chrome exposes `chrome.action` globally which gets aliased.
+**Action:** Use `const action = browser.action || browser.browserAction; action.setBadgeText(...)` for cross-browser parity if using the polyfill.
