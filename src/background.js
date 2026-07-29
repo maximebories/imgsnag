@@ -81,11 +81,13 @@ browser.runtime.onMessage.addListener((message) => {
             console.warn('[imgsnag] Download failed:', url, err.message);
           } finally {
             completed++;
-            browser.action.setBadgeText({ text: `${completed}/${total}` });
+            const action = browser.action || browser.browserAction;
+            action.setBadgeText({ text: `${completed}/${total}` });
           }
         })
       );
-      browser.action.setBadgeText({ text: '' });
+      const action = browser.action || browser.browserAction;
+      action.setBadgeText({ text: '' });
       return { started: true, completed: true };
     })();
   }
