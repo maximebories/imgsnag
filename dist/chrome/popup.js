@@ -63,6 +63,7 @@
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svg.setAttribute('viewBox', '0 0 24 24');
     svg.setAttribute('fill', 'white');
+    svg.setAttribute('aria-hidden', 'true');
     const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
     poly.setAttribute('points', '6,3 20,12 6,21');
     svg.appendChild(poly);
@@ -82,6 +83,7 @@
       media.muted = true;
     } else {
       media.loading = 'lazy';
+      media.alt = '';
     }
 
     media.onerror = () => {
@@ -107,14 +109,19 @@
   function wrapCell(cell, item) {
     cell.tabIndex = 0;
     cell.setAttribute('role', 'button');
-    cell.setAttribute('aria-label', browser.i18n.getMessage('popupDownload'));
+    const filename = filenameFromUrl(item.url) || browser.i18n.getMessage('popupMediaFallback');
+    const downloadLabel = `${browser.i18n.getMessage('popupDownload')} ${filename}`;
+    cell.setAttribute('aria-label', downloadLabel);
+    cell.title = downloadLabel;
 
     const check = document.createElement('div');
     check.className = 'check';
     check.tabIndex = 0;
     check.setAttribute('role', 'checkbox');
     check.setAttribute('aria-checked', 'false');
-    check.setAttribute('aria-label', browser.i18n.getMessage('popupSelect'));
+    const selectLabel = `${browser.i18n.getMessage('popupSelect')} ${filename}`;
+    check.setAttribute('aria-label', selectLabel);
+    check.title = selectLabel;
 
     const flash = document.createElement('div');
     flash.className = 'flash';
@@ -159,6 +166,11 @@
   }
 
   function addMedia(items) {
+    const videoFragment = document.createDocumentFragment();
+    const imageFragment = document.createDocumentFragment();
+    let hasVideo = false;
+    let hasImage = false;
+
     for (const item of items) {
       if (allUrls.has(item.url)) continue;
       allUrls.add(item.url);
@@ -167,13 +179,23 @@
       wrapCell(cell, item);
 
       if (item.type === 'video') {
-        videoGridEl.appendChild(cell);
-        show(videoHeaderEl);
-        show(videoGridEl);
+        videoFragment.appendChild(cell);
+        hasVideo = true;
       } else {
-        gridEl.appendChild(cell);
-        show(gridEl);
+        imageFragment.appendChild(cell);
+        hasImage = true;
       }
+    }
+
+    if (hasVideo) {
+      videoGridEl.appendChild(videoFragment);
+      show(videoHeaderEl);
+      show(videoGridEl);
+    }
+
+    if (hasImage) {
+      gridEl.appendChild(imageFragment);
+      show(gridEl);
     }
 
     if (allUrls.size > 0) {
@@ -198,6 +220,7 @@
 
   // Connect to content script via port for live updates
   async function init() {
+    document.documentElement.lang = browser.i18n.getUILanguage();
     try {
       const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
       const port = browser.tabs.connect(tab.id, { name: 'imgsnag-popup' });
