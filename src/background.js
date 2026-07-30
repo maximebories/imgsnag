@@ -32,17 +32,20 @@ async function clearActiveDownloadIds() {
 // Messages from popup and content script
 browser.runtime.onMessage.addListener((message) => {
   if (message.action === 'download_image') {
+    let normalizedUrl;
     try {
       const urlObj = new URL(message.url);
       if (urlObj.protocol !== 'http:' && urlObj.protocol !== 'https:') {
         return Promise.resolve({ success: false, error: 'Invalid URL protocol' });
       }
+      normalizedUrl = urlObj.href;
     } catch (e) {
       return Promise.resolve({ success: false, error: 'Invalid URL' });
     }
 
     return browser.downloads
-      .download({ url: message.url })
+      // Threat: Parser differential vulnerability; use normalized URL
+      .download({ url: normalizedUrl })
       .then(async (downloadId) => {
         await addActiveDownloadId(downloadId);
         return { success: true };
@@ -60,7 +63,8 @@ browser.runtime.onMessage.addListener((message) => {
       try {
         const urlObj = new URL(u);
         if (urlObj.protocol === 'http:' || urlObj.protocol === 'https:') {
-          validUrls.push(u);
+          // Threat: Parser differential vulnerability; use normalized URL
+          validUrls.push(urlObj.href);
         }
       } catch (e) {
         // ignore invalid urls
