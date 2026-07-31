@@ -1,4 +1,10 @@
 {
+  "popupTitle": {
+    "message": "imgsnag"
+  },
+  "optionsTitle": {
+    "message": "imgsnag Options"
+  },
   "appDesc": {
     "message": "Save images via click, drag or bulk download.",
     "description": "Webstore description."
