@@ -4,3 +4,6 @@
 ## 2026-07-25 - Dark Mode via CSS Color-Scheme
 **Learning:** In browser extensions, native UI elements like scrollbars do not automatically inherit a dark theme simply by changing the background color in a media query. You must explicitly set `color-scheme: light dark;` on the `:root` element for full system integration.
 **Action:** Always include `:root { color-scheme: light dark; }` when implementing `prefers-color-scheme: dark` in popups to ensure consistent OS-level styling.
+## 2024-08-01 - Hiding Decorative SVGs and Dynamic Lang
+**Learning:** Screen readers announce redundant information if decorative nested elements like SVG icons within semantically labeled containers aren't explicitly hidden using `aria-hidden="true"`. Furthermore, setting `document.documentElement.lang = browser.i18n.getUILanguage();` ensures screen readers use the correct pronunciation in a localized context.
+**Action:** Always set `aria-hidden="true"` on decorative SVGs and use dynamic `document.documentElement.lang` injection on load in extension popups/options pages.
