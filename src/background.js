@@ -32,23 +32,26 @@ async function clearActiveDownloadIds() {
 // Messages from popup and content script
 browser.runtime.onMessage.addListener((message) => {
   if (message.action === 'download_image') {
+    let validUrl;
     try {
       const urlObj = new URL(message.url);
       if (urlObj.protocol !== 'http:' && urlObj.protocol !== 'https:') {
         return Promise.resolve({ success: false, error: 'Invalid URL protocol' });
       }
+      // Threat: Parser differential (raw string vs new URL)
+      validUrl = urlObj.href;
     } catch (e) {
       return Promise.resolve({ success: false, error: 'Invalid URL' });
     }
 
     return browser.downloads
-      .download({ url: message.url })
+      .download({ url: validUrl })
       .then(async (downloadId) => {
         await addActiveDownloadId(downloadId);
         return { success: true };
       })
       .catch((err) => {
-        console.warn('[imgsnag] Download failed:', message.url, err.message);
+        console.warn('[imgsnag] Download failed:', validUrl, err.message);
         return { success: false, error: err.message };
       });
   }
@@ -60,7 +63,8 @@ browser.runtime.onMessage.addListener((message) => {
       try {
         const urlObj = new URL(u);
         if (urlObj.protocol === 'http:' || urlObj.protocol === 'https:') {
-          validUrls.push(u);
+          // Threat: Parser differential (raw string vs new URL)
+          validUrls.push(urlObj.href);
         }
       } catch (e) {
         // ignore invalid urls
