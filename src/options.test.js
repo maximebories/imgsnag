@@ -21,6 +21,7 @@ describe('Options Page', () => {
       i18n: {
         getMessage: jest.fn((key) => {
           const messages = {
+            optionsTitle: 'Options',
             disableDragLabel: 'Disable Drag to Save',
             optionsSave: 'Save',
             optionsStatus: 'Options saved.',
@@ -52,8 +53,10 @@ describe('Options Page', () => {
   test('restores options and localization on DOMContentLoaded', async () => {
     document.dispatchEvent(new Event('DOMContentLoaded'));
 
+    expect(global.browser.i18n.getMessage).toHaveBeenCalledWith('optionsTitle');
     expect(global.browser.i18n.getMessage).toHaveBeenCalledWith('disableDragLabel');
     expect(global.browser.i18n.getMessage).toHaveBeenCalledWith('optionsSave');
+    expect(document.title).toBe('Options');
     expect(document.getElementById('disable_drag_label').textContent).toBe('Disable Drag to Save');
     expect(document.getElementById('save').textContent).toBe('Save');
 
