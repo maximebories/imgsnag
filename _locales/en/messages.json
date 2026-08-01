@@ -3,6 +3,9 @@
     "message": "Save images via click, drag or bulk download.",
     "description": "Webstore description."
   },
+  "optionsTitle": {
+    "message": "Options"
+  },
   "buttonTip": {
     "message": "Download images",
     "description": "Extension button tooltip."

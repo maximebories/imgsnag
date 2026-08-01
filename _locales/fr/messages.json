@@ -3,6 +3,9 @@
     "message": "Enregistrez des images par clic, glisser ou téléchargement groupé.",
     "description": "Webstore description."
   },
+  "optionsTitle": {
+    "message": "Options"
+  },
   "buttonTip": {
     "message": "Télécharger les images",
     "description": "Extension button tooltip."
