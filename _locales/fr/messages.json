@@ -1,4 +1,10 @@
 {
+  "appName": {
+    "message": "imgsnag"
+  },
+  "optionsTitle": {
+    "message": "Options"
+  },
   "appDesc": {
     "message": "Enregistrez des images par clic, glisser ou téléchargement groupé.",
     "description": "Webstore description."
