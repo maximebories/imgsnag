@@ -41,14 +41,15 @@ browser.runtime.onMessage.addListener((message) => {
       return Promise.resolve({ success: false, error: 'Invalid URL' });
     }
 
+    const safeUrl = new URL(message.url).href; // Threat: Parser differentials can bypass protocol checks if raw string is passed to API
     return browser.downloads
-      .download({ url: message.url })
+      .download({ url: safeUrl })
       .then(async (downloadId) => {
         await addActiveDownloadId(downloadId);
         return { success: true };
       })
       .catch((err) => {
-        console.warn('[imgsnag] Download failed:', message.url, err.message);
+        console.warn('[imgsnag] Download failed:', safeUrl, err.message);
         return { success: false, error: err.message };
       });
   }
@@ -60,7 +61,7 @@ browser.runtime.onMessage.addListener((message) => {
       try {
         const urlObj = new URL(u);
         if (urlObj.protocol === 'http:' || urlObj.protocol === 'https:') {
-          validUrls.push(u);
+          validUrls.push(urlObj.href); // Threat: Parser differentials can bypass protocol checks if raw string is passed to API
         }
       } catch (e) {
         // ignore invalid urls
