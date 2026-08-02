@@ -16,6 +16,9 @@
   "optionsStatus": {
     "message": "Enregistré"
   },
+  "optionsTitle": {
+    "message": "Options"
+  },
   "popupSelect": {
     "message": "Sélectionner"
   },

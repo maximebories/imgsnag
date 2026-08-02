@@ -250,4 +250,6 @@
   }
 
   document.addEventListener('DOMContentLoaded', init);
+
+  document.documentElement.lang = browser.i18n.getUILanguage();
 })();

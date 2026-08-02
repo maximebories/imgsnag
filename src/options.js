@@ -25,3 +25,5 @@ function restoreOptions() {
 
 document.addEventListener('DOMContentLoaded', restoreOptions);
 document.getElementById('save').addEventListener('click', saveOptions);
+document.documentElement.lang = browser.i18n.getUILanguage();
+document.title = browser.i18n.getMessage('optionsTitle');
