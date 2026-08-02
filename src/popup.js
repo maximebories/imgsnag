@@ -18,6 +18,10 @@
   const btnSelected = document.getElementById('btn-selected');
   const btnAll = document.getElementById('btn-all');
 
+  // Document Context
+  document.documentElement.lang = browser.i18n.getUILanguage();
+  document.title = browser.i18n.getMessage('appName');
+
   // i18n
   document.getElementById('loading-text').textContent =
     browser.i18n.getMessage('popupLoading');
@@ -63,6 +67,7 @@
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svg.setAttribute('viewBox', '0 0 24 24');
     svg.setAttribute('fill', 'white');
+    svg.setAttribute('aria-hidden', 'true');
     const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
     poly.setAttribute('points', '6,3 20,12 6,21');
     svg.appendChild(poly);

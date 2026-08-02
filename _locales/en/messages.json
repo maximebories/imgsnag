@@ -1,4 +1,10 @@
 {
+  "appName": {
+    "message": "imgsnag"
+  },
+  "optionsTitle": {
+    "message": "Options"
+  },
   "appDesc": {
     "message": "Save images via click, drag or bulk download.",
     "description": "Webstore description."
