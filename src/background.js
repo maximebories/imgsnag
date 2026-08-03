@@ -37,6 +37,7 @@ browser.runtime.onMessage.addListener((message) => {
       if (urlObj.protocol !== 'http:' && urlObj.protocol !== 'https:') {
         return Promise.resolve({ success: false, error: 'Invalid URL protocol' });
       }
+      message.url = urlObj.href; // Prevent parser differential vulnerability
     } catch (e) {
       return Promise.resolve({ success: false, error: 'Invalid URL' });
     }
@@ -60,7 +61,7 @@ browser.runtime.onMessage.addListener((message) => {
       try {
         const urlObj = new URL(u);
         if (urlObj.protocol === 'http:' || urlObj.protocol === 'https:') {
-          validUrls.push(u);
+          validUrls.push(urlObj.href); // Prevent parser differential vulnerability
         }
       } catch (e) {
         // ignore invalid urls
