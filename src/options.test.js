@@ -27,6 +27,7 @@ describe('Options Page', () => {
           };
           return messages[key];
         }),
+        getUILanguage: jest.fn().mockReturnValue('en-US'),
       },
       storage: {
         sync: {
