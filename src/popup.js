@@ -19,6 +19,8 @@
   const btnAll = document.getElementById('btn-all');
 
   // i18n
+  document.documentElement.lang = browser.i18n.getUILanguage();
+
   document.getElementById('loading-text').textContent =
     browser.i18n.getMessage('popupLoading');
   document.getElementById('empty-text').textContent =
