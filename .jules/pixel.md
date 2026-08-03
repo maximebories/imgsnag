@@ -4,3 +4,5 @@
 ## 2026-07-25 - Dark Mode via CSS Color-Scheme
 **Learning:** In browser extensions, native UI elements like scrollbars do not automatically inherit a dark theme simply by changing the background color in a media query. You must explicitly set `color-scheme: light dark;` on the `:root` element for full system integration.
 **Action:** Always include `:root { color-scheme: light dark; }` when implementing `prefers-color-scheme: dark` in popups to ensure consistent OS-level styling.
+## 2024-08-03 - Dynamically set lang for AT in popup/options
+**Learning:** Hardcoded lang attributes fail in i18n popups. Dynamically injecting `document.documentElement.lang = browser.i18n.getUILanguage();` ensures screen readers use the correct pronunciation.
