@@ -16,6 +16,7 @@ function restoreOptions() {
   document.documentElement.lang = browser.i18n.getUILanguage();
   document.title = browser.i18n.getMessage('optionsTitle');
 
+
   document.getElementById('disable_drag_label').textContent =
     browser.i18n.getMessage('disableDragLabel');
   document.getElementById('save').textContent =
