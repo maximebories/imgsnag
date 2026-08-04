@@ -4,3 +4,5 @@
 
 ## 2025-02-28 - ReDoS Vulnerability in Content Script
 **Vulnerability:** A ReDoS vulnerability was present in `src/content.js` due to a regular expression `/<(script|style)\b[^>]*>[\s\S]*?<\/\1>/gi` being executed via `.replace()` against the entire `document.body.innerHTML`. This caused severe performance degradation (taking over 2 seconds) on pages with exceptionally large `<script>` tags, making it exploitable. Fixed by replacing the regex strip operation with a native DOM `TreeWalker` to securely extract relevant text nodes and element attributes instead.
+## 2025-05-18 - URL Parser Differential in IPC Message Handlers
+**Vulnerability:** The background service worker validated URLs via `new URL()` but then passed the raw string from the IPC message to `browser.downloads.download()`. This could allow parser differential attacks where the browser extension API interprets the unnormalized URL differently from `new URL()`, potentially leading to out-of-bounds access or unexpected scheme execution.
