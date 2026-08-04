@@ -45,5 +45,8 @@
   },
   "popupMediaFallback": {
     "message": "multimedia"
+  },
+  "optionsTitle": {
+    "message": "Opciones"
   }
 }
