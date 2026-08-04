@@ -4,3 +4,6 @@
 ## 2024-07-15 - [Concurrency and Arrays in browser.storage.local]
 **Learning:** `browser.storage.local.get` and `set` are asynchronous. Reading an array, appending an item, and writing it back creates a race condition when multiple asynchronous tasks (like overlapping downloads finishing in `browser.downloads.onChanged`) do this simultaneously. They will overwrite each other's changes.
 **Action:** Do not use arrays in `browser.storage.local` to track lists of independent items being concurrently updated. Instead, store each item under its own independent storage key (e.g., `set({ [\`dl_${id}\`]: true })`).
+## 2024-05-01 - browser.action.setBadgeText clearing parity
+**Learning:** To clear the extension badge text, Firefox requires passing `text: null` (passing `''` renders an empty colored square), whereas Chrome MV3 requires `text: ''` and throws a TypeError if passed `null`.
+**Action:** Use a try/catch block attempting `text: null` first, falling back to `text: ''` to safely clear the badge across both browsers without leaving visual artifacts.
