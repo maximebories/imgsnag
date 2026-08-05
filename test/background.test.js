@@ -64,7 +64,12 @@ describe('Background Script', () => {
       },
       action: {
         setBadgeText: (details) => {
-          badgeText = details.text;
+          if (details.text === null) {
+            return Promise.reject(new Error("Simulate Chrome null TypeError"));
+          } else {
+            badgeText = details.text;
+            return Promise.resolve();
+          }
         }
       }
     };
