@@ -10,6 +10,10 @@
   "disableDragLabel": {
     "message": "Disable drag-to-save"
   },
+  "optionsTitle": {
+    "message": "Options",
+    "description": "Title for the options page."
+  },
   "optionsSave": {
     "message": "Save"
   },
