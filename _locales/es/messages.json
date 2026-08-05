@@ -10,6 +10,10 @@
   "disableDragLabel": {
     "message": "Desactivar arrastrar para guardar"
   },
+  "optionsTitle": {
+    "message": "Opciones",
+    "description": "Title for the options page."
+  },
   "optionsSave": {
     "message": "Guardar"
   },

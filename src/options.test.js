@@ -24,9 +24,11 @@ describe('Options Page', () => {
             disableDragLabel: 'Disable Drag to Save',
             optionsSave: 'Save',
             optionsStatus: 'Options saved.',
+            optionsTitle: 'Options',
           };
           return messages[key];
         }),
+        getUILanguage: jest.fn(() => 'en'),
       },
       storage: {
         sync: {
