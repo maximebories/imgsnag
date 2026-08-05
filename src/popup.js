@@ -63,6 +63,7 @@
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svg.setAttribute('viewBox', '0 0 24 24');
     svg.setAttribute('fill', 'white');
+    svg.setAttribute('aria-hidden', 'true');
     const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
     poly.setAttribute('points', '6,3 20,12 6,21');
     svg.appendChild(poly);
@@ -219,6 +220,8 @@
 
   // Connect to content script via port for live updates
   async function init() {
+    document.documentElement.lang = browser.i18n.getUILanguage();
+    document.title = browser.i18n.getMessage('appDesc');
     try {
       const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
       const port = browser.tabs.connect(tab.id, { name: 'imgsnag-popup' });

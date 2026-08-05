@@ -19,6 +19,7 @@ describe('Options Page', () => {
 
     global.browser = {
       i18n: {
+        getUILanguage: jest.fn(() => 'en-US'),
         getMessage: jest.fn((key) => {
           const messages = {
             disableDragLabel: 'Disable Drag to Save',
