@@ -19,6 +19,7 @@
   const btnAll = document.getElementById('btn-all');
 
   // i18n
+  document.documentElement.lang = browser.i18n.getUILanguage();
   document.getElementById('loading-text').textContent =
     browser.i18n.getMessage('popupLoading');
   document.getElementById('empty-text').textContent =
@@ -63,6 +64,7 @@
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svg.setAttribute('viewBox', '0 0 24 24');
     svg.setAttribute('fill', 'white');
+    svg.setAttribute('aria-hidden', 'true');
     const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
     poly.setAttribute('points', '6,3 20,12 6,21');
     svg.appendChild(poly);

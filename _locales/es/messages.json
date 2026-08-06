@@ -7,6 +7,9 @@
     "message": "Descargar imágenes",
     "description": "Extension button tooltip."
   },
+  "optionsTitle": {
+    "message": "Opciones"
+  },
   "disableDragLabel": {
     "message": "Desactivar arrastrar para guardar"
   },
