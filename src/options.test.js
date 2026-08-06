@@ -24,9 +24,11 @@ describe('Options Page', () => {
             disableDragLabel: 'Disable Drag to Save',
             optionsSave: 'Save',
             optionsStatus: 'Options saved.',
+            optionsTitle: 'Options',
           };
           return messages[key];
         }),
+        getUILanguage: jest.fn(() => 'en-US'),
       },
       storage: {
         sync: {
@@ -53,6 +55,10 @@ describe('Options Page', () => {
     document.dispatchEvent(new Event('DOMContentLoaded'));
 
     expect(global.browser.i18n.getMessage).toHaveBeenCalledWith('disableDragLabel');
+    expect(global.browser.i18n.getUILanguage).toHaveBeenCalled();
+    expect(global.browser.i18n.getMessage).toHaveBeenCalledWith('optionsTitle');
+    expect(document.documentElement.lang).toBe('en-US');
+    expect(document.title).toBe('Options');
     expect(global.browser.i18n.getMessage).toHaveBeenCalledWith('optionsSave');
     expect(document.getElementById('disable_drag_label').textContent).toBe('Disable Drag to Save');
     expect(document.getElementById('save').textContent).toBe('Save');

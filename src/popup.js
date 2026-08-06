@@ -18,6 +18,10 @@
   const btnSelected = document.getElementById('btn-selected');
   const btnAll = document.getElementById('btn-all');
 
+  // Screen reader / a11y init
+  document.documentElement.lang = browser.i18n.getUILanguage();
+  document.title = browser.i18n.getMessage('buttonTip');
+
   // i18n
   document.getElementById('loading-text').textContent =
     browser.i18n.getMessage('popupLoading');
