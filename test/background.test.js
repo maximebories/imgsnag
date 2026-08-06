@@ -65,6 +65,12 @@ describe('Background Script', () => {
       action: {
         setBadgeText: (details) => {
           badgeText = details.text;
+          // Return a dummy promise to simulate polyfill behavior,
+          // rejecting if text is null, to test the catch block
+          if (details.text === null) {
+            return Promise.reject(new TypeError('Invalid badge text'));
+          }
+          return Promise.resolve();
         }
       }
     };
