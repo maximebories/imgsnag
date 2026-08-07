@@ -64,7 +64,11 @@ describe('Background Script', () => {
       },
       action: {
         setBadgeText: (details) => {
+          if (details.text === null) {
+            return Promise.reject(new TypeError("null is not allowed"));
+          }
           badgeText = details.text;
+          return Promise.resolve();
         }
       }
     };
