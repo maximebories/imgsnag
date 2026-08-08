@@ -16,6 +16,9 @@
   "optionsStatus": {
     "message": "Guardado"
   },
+  "optionsTitle": {
+    "message": "Opciones"
+  },
   "popupSelect": {
     "message": "Seleccionar"
   },
