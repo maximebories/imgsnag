@@ -4,3 +4,6 @@
 
 ## 2025-02-28 - ReDoS Vulnerability in Content Script
 **Vulnerability:** A ReDoS vulnerability was present in `src/content.js` due to a regular expression `/<(script|style)\b[^>]*>[\s\S]*?<\/\1>/gi` being executed via `.replace()` against the entire `document.body.innerHTML`. This caused severe performance degradation (taking over 2 seconds) on pages with exceptionally large `<script>` tags, making it exploitable. Fixed by replacing the regex strip operation with a native DOM `TreeWalker` to securely extract relevant text nodes and element attributes instead.
+
+## 2026-08-08 - URL Parser Differential in Background Script
+**Vulnerability:** Untrusted URLs passed to `browser.downloads.download` were validated using `new URL()` but the raw string was passed instead of the normalized URL, opening a parser differential bypass.
