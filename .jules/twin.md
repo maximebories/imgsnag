@@ -4,3 +4,6 @@
 ## 2024-07-15 - [Concurrency and Arrays in browser.storage.local]
 **Learning:** `browser.storage.local.get` and `set` are asynchronous. Reading an array, appending an item, and writing it back creates a race condition when multiple asynchronous tasks (like overlapping downloads finishing in `browser.downloads.onChanged`) do this simultaneously. They will overwrite each other's changes.
 **Action:** Do not use arrays in `browser.storage.local` to track lists of independent items being concurrently updated. Instead, store each item under its own independent storage key (e.g., `set({ [\`dl_${id}\`]: true })`).
+## 2024-08-08 - [Clearing Badge Text in Chrome vs Firefox]
+**Learning:** To clear the extension badge text across both Chrome and Firefox MV3 when using webextension-polyfill, Firefox requires `null` to avoid leaving a colored square, while Chrome throws a TypeError for `null` and requires `''`. A standard try/catch block fails because the polyfill converts Chrome's synchronous TypeError into a rejected Promise.
+**Action:** Always attempt `browser.action.setBadgeText({ text: null })` and chain `.catch(() => browser.action.setBadgeText({ text: '' }))` as a fallback.
