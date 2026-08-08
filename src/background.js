@@ -41,8 +41,9 @@ browser.runtime.onMessage.addListener((message) => {
       return Promise.resolve({ success: false, error: 'Invalid URL' });
     }
 
+    const safeUrl = new URL(message.url).href;
     return browser.downloads
-      .download({ url: message.url })
+      .download({ url: safeUrl })
       .then(async (downloadId) => {
         await addActiveDownloadId(downloadId);
         return { success: true };
@@ -60,7 +61,7 @@ browser.runtime.onMessage.addListener((message) => {
       try {
         const urlObj = new URL(u);
         if (urlObj.protocol === 'http:' || urlObj.protocol === 'https:') {
-          validUrls.push(u);
+          validUrls.push(urlObj.href);
         }
       } catch (e) {
         // ignore invalid urls
