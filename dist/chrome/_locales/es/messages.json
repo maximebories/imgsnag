@@ -10,10 +10,6 @@
   "disableDragLabel": {
     "message": "Desactivar arrastrar para guardar"
   },
-  "optionsTitle": {
-    "message": "Opciones",
-    "description": "Options page title"
-  },
   "optionsSave": {
     "message": "Guardar"
   },
@@ -46,8 +42,5 @@
   },
   "popupReload": {
     "message": "Recarga la página e inténtalo de nuevo"
-  },
-  "popupMediaFallback": {
-    "message": "multimedia"
   }
 }

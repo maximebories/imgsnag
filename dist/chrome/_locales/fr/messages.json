@@ -10,10 +10,6 @@
   "disableDragLabel": {
     "message": "Désactiver le glisser pour enregistrer"
   },
-  "optionsTitle": {
-    "message": "Options",
-    "description": "Options page title"
-  },
   "optionsSave": {
     "message": "Enregistrer"
   },
@@ -46,8 +42,5 @@
   },
   "popupReload": {
     "message": "Rechargez la page et réessayez"
-  },
-  "popupMediaFallback": {
-    "message": "média"
   }
 }
