@@ -86,7 +86,7 @@ browser.runtime.onMessage.addListener((message) => {
           }
         })
       );
-      browser.action.setBadgeText({ text: '' });
+      browser.action.setBadgeText({ text: null }).catch(() => browser.action.setBadgeText({ text: '' }));
       return { started: true, completed: true };
     })();
   }
