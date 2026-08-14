@@ -1,0 +1,4 @@
+## 2024-08-08 - URL Parser Differential Vulnerability
+**Vulnerability:** The IPC message handlers for `download_image` and `download_images_bulk` in `src/background.js` validated the URL using `new URL()` but then passed the raw, un-normalized string to `browser.downloads.download()`. This could lead to a parser differential vulnerability where the URL constructor parses the URL differently than the underlying browser API, potentially bypassing security checks (e.g., protocol validation).
+**Learning:** Always pass the normalized output of the URL parser (`urlObj.href`) to sensitive APIs rather than the raw input string to ensure consistency between validation and execution.
+**Prevention:** Enforce a pattern of using `const urlObj = new URL(input)` and subsequently using `urlObj.href` for all further processing and API calls.
