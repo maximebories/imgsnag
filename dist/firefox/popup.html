@@ -24,7 +24,7 @@
         align-items: center;
         justify-content: center;
         padding: 48px 24px;
-        color: #555;
+        color: #888;
         gap: 12px;
       }
       #loading.visible, #empty.visible, #error.visible {
@@ -171,7 +171,7 @@
         font-weight: 600;
         text-transform: uppercase;
         letter-spacing: 0.5px;
-        color: #555;
+        color: #888;
       }
       .group-header.visible { display: block; }
 
@@ -208,10 +208,6 @@
         white-space: nowrap;
         transition: background 0.15s, opacity 0.15s;
       }
-      .actions button:focus-visible {
-        outline: 3px solid #2563eb;
-        outline-offset: 2px;
-      }
 
       #btn-selected {
         background: #2563eb;
@@ -220,7 +216,7 @@
       #btn-selected:hover:not(:disabled) { background: #1d4ed8; }
       #btn-selected:disabled {
         opacity: 0.4;
-        cursor: not-allowed;
+        cursor: default;
       }
 
       #btn-all {
@@ -228,30 +224,19 @@
         color: #1a1a1a;
       }
       #btn-all:hover { background: #d1d5db; }
-
-      @media (prefers-color-scheme: dark) {
-        :root { color-scheme: light dark; }
-        body { background: #1a1a1a; color: #f5f5f5; }
-        #bar { background: #1a1a1a; border-top-color: #333; }
-        #counter { color: #a3a3a3; }
-        .cell { background: #333; }
-        .group-header { color: #a3a3a3; }
-        #btn-all { background: #374151; color: #f9fafb; }
-        #btn-all:hover { background: #4b5563; }
-      }
     </style>
   </head>
   <body>
-    <div id="loading" class="visible" role="status" aria-live="polite">
+    <div id="loading" class="visible">
       <div class="spinner"></div>
       <span id="loading-text"></span>
     </div>
 
-    <div id="empty" role="status" aria-live="polite">
+    <div id="empty">
       <span id="empty-text"></span>
     </div>
 
-    <div id="error" role="alert" aria-live="assertive">
+    <div id="error">
       <span id="error-text"></span>
     </div>
 
@@ -263,7 +248,7 @@
     <div id="video-grid"></div>
 
     <div id="bar">
-      <span id="counter" aria-live="polite" aria-atomic="true"></span>
+      <span id="counter"></span>
       <div class="actions">
         <button id="btn-selected" disabled></button>
         <button id="btn-all"></button>
