@@ -17,7 +17,7 @@ global.browser = {
 };
 
 // Require the content script which executes the IIFE
-const { isVideoUrl } = require('./content');
+const { isVideoUrl, isImageUrl } = require('./content');
 
 describe('isVideoUrl', () => {
   describe('valid video URLs', () => {
@@ -88,6 +88,68 @@ describe('isVideoUrl', () => {
 
     it('should return false for empty string', () => {
       expect(isVideoUrl('')).toBe(false);
+    });
+  });
+});
+
+describe('isImageUrl', () => {
+  describe('valid image URLs', () => {
+    const imageExtensions = ['jpg', 'jpeg', 'gif', 'png', 'webp', 'svg', 'avif'];
+
+    imageExtensions.forEach((ext) => {
+      it(`should return true for a valid .${ext} URL`, () => {
+        expect(isImageUrl(`https://example.com/image.${ext}`)).toBe(true);
+      });
+
+      it(`should return true for a valid .${ext} URL with query parameters`, () => {
+        expect(isImageUrl(`https://example.com/image.${ext}?v=123`)).toBe(true);
+      });
+
+      it(`should return true for a valid .${ext} URL with hash fragments`, () => {
+        expect(isImageUrl(`https://example.com/image.${ext}#hash`)).toBe(true);
+      });
+
+      it(`should return true for a valid uppercase .${ext.toUpperCase()} URL`, () => {
+        expect(isImageUrl(`https://example.com/image.${ext.toUpperCase()}`)).toBe(true);
+      });
+    });
+
+    it('should return true for data:image/ URLs', () => {
+      expect(isImageUrl('data:image/png;base64,iVBORw0KGgo')).toBe(true);
+    });
+  });
+
+  describe('invalid or non-image URLs', () => {
+    it('should return false for video URLs', () => {
+      expect(isImageUrl('https://example.com/video.mp4')).toBe(false);
+      expect(isImageUrl('https://example.com/video.webm')).toBe(false);
+    });
+
+    it('should return false for web page URLs', () => {
+      expect(isImageUrl('https://example.com/page.html')).toBe(false);
+      expect(isImageUrl('https://example.com/')).toBe(false);
+    });
+
+    it('should return false for URLs with image extensions elsewhere in the path', () => {
+      expect(isImageUrl('https://example.com/image.jpg/page.html')).toBe(false);
+    });
+
+    it('should return false for malformed URLs that cannot be parsed', () => {
+      expect(isImageUrl('not_a_valid_url')).toBe(false);
+    });
+  });
+
+  describe('edge cases', () => {
+    it('should return false for null', () => {
+      expect(isImageUrl(null)).toBe(false);
+    });
+
+    it('should return false for undefined', () => {
+      expect(isImageUrl(undefined)).toBe(false);
+    });
+
+    it('should return false for empty string', () => {
+      expect(isImageUrl('')).toBe(false);
     });
   });
 });
