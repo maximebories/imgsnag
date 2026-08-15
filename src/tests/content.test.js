@@ -37,6 +37,13 @@ describe('resolveUrl', () => {
     expect(resolveUrl(false)).toBeNull();
   });
 
+  it('should reject non-allowlisted protocols like javascript:, file:, chrome:, and ftp:', () => {
+    expect(resolveUrl('javascript:alert(1)')).toBeNull();
+    expect(resolveUrl('file:///etc/passwd')).toBeNull();
+    expect(resolveUrl('chrome://settings')).toBeNull();
+    expect(resolveUrl('ftp://example.com/file')).toBeNull();
+  });
+
   it('should return null for invalid URLs that cause new URL() to throw', () => {
     // new URL() throws a TypeError for URLs that it cannot parse
     // A string starting with 'http://%' is an invalid URL in the Node environment
