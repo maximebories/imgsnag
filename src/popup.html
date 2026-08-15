@@ -239,6 +239,22 @@
         #btn-all { background: #374151; color: #f9fafb; }
         #btn-all:hover { background: #4b5563; }
       }
+
+      @media (prefers-reduced-motion: reduce) {
+        *, ::before, ::after {
+          animation-duration: 0.01ms !important;
+          animation-iteration-count: 1 !important;
+          transition-duration: 0.01ms !important;
+          scroll-behavior: auto !important;
+        }
+        .cell .flash {
+          background: transparent;
+        }
+        .cell .flash::after {
+          border-color: #22c55e;
+          filter: drop-shadow(0 1px 2px rgba(0,0,0,0.5));
+        }
+      }
     </style>
   </head>
   <body>
