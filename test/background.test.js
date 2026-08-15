@@ -1,6 +1,3 @@
-const { test, describe, beforeEach } = require('node:test');
-const assert = require('node:assert');
-
 // Global mock setup
 global.importScripts = () => {};
 
@@ -17,12 +14,9 @@ describe('Background Script', () => {
     downloads = [];
     badgeText = '';
 
-    // Clear the activeDownloadIds Set in the background script
-    if (global.browser && global.browser.runtime) {
-      // We will re-require the file to reset its state,
-      // but to do that we need to clear the require cache
-      delete require.cache[require.resolve('../src/background.js')];
-    }
+    // Reset the module registry so re-requiring background.js re-runs its
+    // top-level listener registration against the fresh mocks below
+    jest.resetModules();
 
     global.mockStorage = {};
     global.browser = {
@@ -63,8 +57,10 @@ describe('Background Script', () => {
         }
       },
       action: {
-        setBadgeText: (details) => {
-          badgeText = details.text;
+        // Async like the real API (background.js chains .catch on it).
+        // Chrome clears the badge on `text: null`; mirror that as ''.
+        setBadgeText: async (details) => {
+          badgeText = details.text ?? '';
         }
       }
     };
@@ -79,9 +75,9 @@ describe('Background Script', () => {
       url: 'https://example.com/image.jpg'
     }, {});
 
-    assert.deepStrictEqual(response, { success: true });
-    assert.strictEqual(downloads.length, 1);
-    assert.strictEqual(downloads[0].url, 'https://example.com/image.jpg');
+    expect(response).toEqual({ success: true });
+    expect(downloads).toHaveLength(1);
+    expect(downloads[0].url).toBe('https://example.com/image.jpg');
   });
 
   test('download_image: invalid URL', async () => {
@@ -90,8 +86,8 @@ describe('Background Script', () => {
       url: 'not-a-url'
     }, {});
 
-    assert.deepStrictEqual(response, { success: false, error: 'Invalid URL' });
-    assert.strictEqual(downloads.length, 0);
+    expect(response).toEqual({ success: false, error: 'Invalid URL' });
+    expect(downloads).toHaveLength(0);
   });
 
   test('download_image: invalid protocol', async () => {
@@ -100,8 +96,8 @@ describe('Background Script', () => {
       url: 'ftp://example.com/image.jpg'
     }, {});
 
-    assert.deepStrictEqual(response, { success: false, error: 'Invalid URL protocol' });
-    assert.strictEqual(downloads.length, 0);
+    expect(response).toEqual({ success: false, error: 'Invalid URL protocol' });
+    expect(downloads).toHaveLength(0);
   });
 
   test('download_image: download failure', async () => {
@@ -110,7 +106,7 @@ describe('Background Script', () => {
       url: 'http://fail.com/image.jpg'
     }, {});
 
-    assert.deepStrictEqual(response, { success: false, error: 'Simulated download failure' });
+    expect(response).toEqual({ success: false, error: 'Simulated download failure' });
   });
 
   test('download_images_bulk: valid and invalid URLs', async () => {
@@ -124,15 +120,15 @@ describe('Background Script', () => {
       ]
     }, {});
 
-    assert.deepStrictEqual(response, { started: true, completed: true });
+    expect(response).toEqual({ started: true, completed: true });
 
     // Give async operations a moment to settle
     await new Promise(resolve => setTimeout(resolve, 0));
 
-    assert.strictEqual(downloads.length, 2);
-    assert.strictEqual(downloads[0].url, 'https://example.com/1.jpg');
-    assert.strictEqual(downloads[1].url, 'http://example.com/3.jpg');
-    assert.strictEqual(badgeText, ''); // Should be reset at the end
+    expect(downloads).toHaveLength(2);
+    expect(downloads[0].url).toBe('https://example.com/1.jpg');
+    expect(downloads[1].url).toBe('http://example.com/3.jpg');
+    expect(badgeText).toBe(''); // Should be reset at the end
   });
 
   test('download_images_bulk: with a download failure', async () => {
@@ -145,15 +141,15 @@ describe('Background Script', () => {
       ]
     }, {});
 
-    assert.deepStrictEqual(response, { started: true, completed: true });
+    expect(response).toEqual({ started: true, completed: true });
 
     // Give async operations a moment to settle
     await new Promise(resolve => setTimeout(resolve, 0));
 
-    assert.strictEqual(downloads.length, 2);
-    assert.strictEqual(downloads[0].url, 'https://example.com/1.jpg');
-    assert.strictEqual(downloads[1].url, 'http://example.com/3.jpg');
-    assert.strictEqual(badgeText, ''); // Should be reset at the end
+    expect(downloads).toHaveLength(2);
+    expect(downloads[0].url).toBe('https://example.com/1.jpg');
+    expect(downloads[1].url).toBe('http://example.com/3.jpg');
+    expect(badgeText).toBe(''); // Should be reset at the end
   });
 
   test('cancel_downloads: cancels all active downloads', async () => {
@@ -165,15 +161,15 @@ describe('Background Script', () => {
 
     await new Promise(resolve => setTimeout(resolve, 0));
 
-    assert.strictEqual(downloads.length, 2);
+    expect(downloads).toHaveLength(2);
 
     // Cancel them
     const response = await messageListener({ action: 'cancel_downloads' }, {});
-    assert.deepStrictEqual(response, {});
+    expect(response).toEqual({});
 
     // Verify cancellation
-    assert.strictEqual(downloads[0].cancelled, true);
-    assert.strictEqual(downloads[1].cancelled, true);
+    expect(downloads[0].cancelled).toBe(true);
+    expect(downloads[1].cancelled).toBe(true);
   });
 
   test('onChanged listener removes finished downloads', async () => {
@@ -183,18 +179,18 @@ describe('Background Script', () => {
       url: 'https://example.com/1.jpg'
     }, {});
 
-    // Cancel it using the cancel_downloads action to test the state
-    await messageListener({ action: 'cancel_downloads' }, {});
+    expect(global.mockStorage).toHaveProperty('dl_1');
 
-    // Check if the set is clear, but since activeDownloadIds is internal,
-    // we simulate the onChanged event which is how the script cleans it up natively
+    // Simulate the onChanged event which is how the script cleans up
+    // its persisted tracking entries natively
     onChangedListener({
       id: downloads[0].id,
       state: { current: 'complete' }
     });
 
-    // We can't directly inspect activeDownloadIds, but we ensure it doesn't crash
-    // and correctly processes the event.
-    assert.ok(true);
+    // removeActiveDownloadId is async; let it settle
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    expect(global.mockStorage).not.toHaveProperty('dl_1');
   });
 });
