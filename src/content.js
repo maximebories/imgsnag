@@ -96,6 +96,12 @@
   // Media discovery — scans the DOM for downloadable image and video URLs
 
   function collectImages(trackImage) {
+    // <meta> Open Graph / Twitter and <link rel="preload"> hints
+    document.querySelectorAll('meta[property="og:image"], meta[name="twitter:image"], link[rel="preload"][as="image"]').forEach((el) => {
+      const url = el.getAttribute('content') || el.getAttribute('href');
+      if (url) trackImage(url);
+    });
+
     // <img src> and lazy loaded variants
     document.querySelectorAll('img[src], img[data-src], img[data-lazy-src], img[data-original]').forEach((img) => {
       if (img.src) trackImage(img.src);
@@ -412,6 +418,20 @@
     }
   }
 
+  function handleMeta(el, imageSet) {
+    if (el.tagName === 'META') {
+      const prop = el.getAttribute('property');
+      const name = el.getAttribute('name');
+      if (prop === 'og:image' || name === 'twitter:image') {
+        const url = resolveUrl(el.getAttribute('content'));
+        if (url && !url.startsWith('data:')) imageSet.add(url);
+      }
+    } else if (el.tagName === 'LINK' && el.getAttribute('rel') === 'preload' && el.getAttribute('as') === 'image') {
+      const url = resolveUrl(el.getAttribute('href'));
+      if (url && !url.startsWith('data:')) imageSet.add(url);
+    }
+  }
+
   function handleBackgroundImage(el, imageSet) {
     // Fast path: skip elements with no styling hints to avoid expensive getComputedStyle calls
     if (el.className || el.id || el.getAttribute('style')) {
@@ -433,6 +453,7 @@
     handleVideo(el, imageSet, videoSet);
     handleSource(el, videoSet);
     handleBackgroundImage(el, imageSet);
+    handleMeta(el, imageSet);
   }
 
   // Observers — continuous media tracking
@@ -454,7 +475,7 @@
                 tag === 'IMG' || tag === 'VIDEO' || tag === 'SOURCE' || tag === 'PICTURE' ||
                 tag === 'DIV' || tag === 'SPAN' || tag === 'SECTION' || tag === 'ARTICLE' ||
                 tag === 'HEADER' || tag === 'FOOTER' || tag === 'A' || tag === 'LI' ||
-                tag === 'FIGURE' || tag === 'I' ||
+                tag === 'FIGURE' || tag === 'I' || tag === 'META' || tag === 'LINK' ||
                 (el.hasAttribute && (el.hasAttribute('srcset') || el.hasAttribute('data-srcset') || el.hasAttribute('data-src') || el.hasAttribute('data-lazy-src') || el.hasAttribute('data-original'))) ||
                 (el.hasAttribute && el.hasAttribute('style') && el.style && el.style.backgroundImage)
               ) {
@@ -467,7 +488,7 @@
       if (imageUrls.size > 0) addNewUrls(imageUrls, 'image');
       if (videoUrls.size > 0) addNewUrls(videoUrls, 'video');
     });
-    observer.observe(document.body, { childList: true, subtree: true });
+    observer.observe(document.documentElement, { childList: true, subtree: true });
   }
 
   function setupPerformanceObserver() {
