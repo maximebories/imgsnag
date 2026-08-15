@@ -4,3 +4,6 @@
 ## 2026-08-15 - Lazy evaluate getComputedStyle for background images
 **Learning:** Calling `getComputedStyle(el).backgroundImage` synchronously for thousands of elements during the MutationObserver loop causes severe main thread blocking (~3.7s on heavy pages with 10k elements).
 **Action:** Introduced a `requestIdleCallback` queue to batch background image style resolutions during browser idle periods, falling back to `setTimeout`. Queue is immediately flushed if the popup connects to prevent discovery regressions.
+## 2026-08-15 - Inline-style fast path before getComputedStyle (discovery only)
+**Learning:** Elements with an inline `background-image` (common in lazy-load galleries) can be read via `el.style.backgroundImage` without forcing a computed-style resolution. Orchestrator review restricted this to the discovery paths: on the Alt+Click download path, inline style can diverge from the rendered image (stylesheet `!important` overrides), so display-accurate paths keep `getComputedStyle`.
+**Action:** Prefer `el.style.backgroundImage` with a `getComputedStyle` fallback in discovery loops; never substitute it where the user downloads what they see.
