@@ -146,7 +146,8 @@
       // Fast path: skip elements with no styling hints to avoid expensive getComputedStyle calls
       if (!el.className && !el.id && !el.getAttribute('style')) return;
 
-      const bg = getComputedStyle(el).backgroundImage;
+      const inlineBg = el.style?.backgroundImage;
+      const bg = inlineBg && inlineBg !== 'none' ? inlineBg : getComputedStyle(el).backgroundImage;
       if (bg && bg !== 'none') {
         for (const url of extractBgImageUrls(bg)) {
           if (isImageUrl(resolveUrl(url))) {
@@ -387,7 +388,8 @@
     while (pendingBackgroundCheckQueue.length > 0 && timeRemaining() > 0) {
       const el = pendingBackgroundCheckQueue.shift();
       try {
-        const bg = getComputedStyle(el).backgroundImage;
+        const inlineBg = el.style?.backgroundImage;
+        const bg = inlineBg && inlineBg !== 'none' ? inlineBg : getComputedStyle(el).backgroundImage;
         if (bg && bg !== 'none') {
           for (const raw of extractBgImageUrls(bg)) {
             const url = resolveUrl(raw);
@@ -507,7 +509,8 @@
         while (pendingBackgroundCheckQueue.length > 0) {
           const el = pendingBackgroundCheckQueue.shift();
           try {
-            const bg = getComputedStyle(el).backgroundImage;
+            const inlineBg = el.style?.backgroundImage;
+            const bg = inlineBg && inlineBg !== 'none' ? inlineBg : getComputedStyle(el).backgroundImage;
             if (bg && bg !== 'none') {
               for (const raw of extractBgImageUrls(bg)) {
                 const url = resolveUrl(raw);
@@ -565,7 +568,8 @@
       return urls;
     }
 
-    const bg = getComputedStyle(el).backgroundImage;
+    const inlineBg = el.style?.backgroundImage;
+    const bg = inlineBg && inlineBg !== 'none' ? inlineBg : getComputedStyle(el).backgroundImage;
     if (bg && bg !== 'none') {
       for (const raw of extractBgImageUrls(bg)) {
         const url = resolveUrl(raw);
@@ -617,7 +621,8 @@
         continue;
       }
 
-      const bg = getComputedStyle(el).backgroundImage;
+      const inlineBg = el.style?.backgroundImage;
+      const bg = inlineBg && inlineBg !== 'none' ? inlineBg : getComputedStyle(el).backgroundImage;
       if (bg && bg !== 'none') {
         for (const raw of extractBgImageUrls(bg)) {
           const url = resolveUrl(raw);
