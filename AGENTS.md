@@ -65,7 +65,23 @@ Each persona has a fixed territory:
 | `pixel.md` | UX & accessibility |
 | `lingo.md` | i18n |
 | `twin.md` | Chrome/Firefox parity |
-| `bolt.md` | (definition only, no journal yet) |
-| `palette.md`, `sentinel.md` | generic UX/security reference examples |
+| `probe.md` | test coverage & regression guards |
+| `bolt.md` | generic perf template — **do not schedule** (Feather covers this repo) |
+| `palette.md`, `sentinel.md` | generic UX/security templates — **do not schedule** (Pixel/Warden cover this repo) |
 
 Entries follow a dated `**Learning:** / **Action:**` format (security journals use `**Vulnerability:** / **Fix:**`). Before changing code in one of these domains, read the matching journal — it records hard-won constraints (e.g. the ReDoS and parser-differential fixes). When you learn something durable in a territory, append an entry in the same format rather than rewriting history.
+
+### Persona operating protocol (binding for all scheduled agents)
+
+Historically, agents re-fixed already-landed issues (a dozen branches once existed for one URL-parser fix). This protocol exists to prevent that:
+
+1. **Sync first.** Work from the latest `main`. Run `npm test` (all suites must be green) and `bash build.sh` to establish a working baseline before changing anything.
+2. **Read your journal** (`.jules/<persona>.md`) and your definition (`jules/<persona>.md`) before starting.
+3. **Duplicate check — mandatory before writing any patch:**
+   - `git log --oneline -30` — has the finding already been fixed on `main`?
+   - `git branch -r` — does a branch (often from a previous run of *you*) already address it?
+   - Confirm the flaw exists in the **current** source by reading it — not in a stale description of it.
+   - If it's already fixed or in flight: conclude **without** a patch. A no-op run is a success, not a failure.
+4. **One branch per session, one focused change.** Never publish multiple branches for one finding.
+5. **Before publishing:** `npm test` green, `bash build.sh` clean, and `dist/` untouched by hand.
+6. **Journal only genuinely new learnings** — check that your journal doesn't already record the same lesson.
