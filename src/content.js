@@ -91,24 +91,7 @@
 
   // Media discovery — scans the DOM for downloadable image and video URLs
 
-  function collectMediaUrls() {
-    const imageUrls = new Set();
-    const videoUrls = new Set();
-
-    function trackImage(url) {
-      const resolved = resolveUrl(url);
-      if (resolved && !resolved.startsWith('data:') && !imageUrls.has(resolved)) {
-        imageUrls.add(resolved);
-      }
-    }
-
-    function trackVideo(url) {
-      const resolved = resolveUrl(url);
-      if (resolved && !resolved.startsWith('data:') && !videoUrls.has(resolved)) {
-        videoUrls.add(resolved);
-      }
-    }
-
+  function collectImages(trackImage) {
     // <img src> and lazy loaded variants
     document.querySelectorAll('img[src], img[data-src], img[data-lazy-src], img[data-original]').forEach((img) => {
       if (img.src) trackImage(img.src);
@@ -343,7 +326,7 @@
 
   // Scan a single element for media URLs (used by MutationObserver)
 
-  function extractUrlsFromElement(el, imageSet, videoSet) {
+  function handleImg(el, imageSet) {
     if (el.tagName === 'IMG') {
       const attrs = ['src', 'data-src', 'data-lazy-src', 'data-original'];
       for (const attr of attrs) {
@@ -358,6 +341,7 @@
     }
   }
 
+  function handleSrcset(el, imageSet) {
     if (el.hasAttribute) {
       if (el.hasAttribute('srcset')) {
         for (const raw of parseSrcset(el.getAttribute('srcset'))) {
@@ -626,18 +610,8 @@
           }
         }
       }
-    });
-
-    // Drag-to-save (can be disabled in options)
-    document.addEventListener('dragend', (e) => {
-      if (e.target.tagName === 'IMG' && !isDragDisabled) {
-        const url = resolveUrl(e.target.src);
-        if (url) {
-          sendToBackground({ action: 'download_image', url });
-        }
-      }
-    });
-  }
+    }
+  });
 
   function syncDragPreference() {
     if (typeof browser !== 'undefined' && browser.storage) {
@@ -650,6 +624,6 @@
   syncDragPreference();
   browser.storage.onChanged.addListener(() => syncDragPreference());
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { extractBgImageUrls, resolveUrl };
+    module.exports = { extractBgImageUrls, resolveUrl, isVideoUrl };
   }
 })();
