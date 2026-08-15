@@ -23,6 +23,10 @@
   let popupPort = null;
   let isDragDisabled = false;
 
+  // Background image lazy evaluation queue (Feather: getComputedStyle batched at idle)
+  const pendingBackgroundCheckQueue = [];
+  let isBgCheckScheduled = false;
+
   // Helpers
 
   function sendToBackground(message) {
@@ -376,20 +380,50 @@
     }
   }
 
-  function handleBackgroundImage(el, imageSet) {
-    try {
-      // Fast path: skip elements with no styling hints to avoid expensive getComputedStyle calls
-      if (el.className || el.id || el.getAttribute('style')) {
+  function processBgImageQueue(deadline) {
+    const imageUrls = new Set();
+    const timeRemaining = deadline ? () => deadline.timeRemaining() : () => 50;
+
+    while (pendingBackgroundCheckQueue.length > 0 && timeRemaining() > 0) {
+      const el = pendingBackgroundCheckQueue.shift();
+      try {
         const bg = getComputedStyle(el).backgroundImage;
         if (bg && bg !== 'none') {
           for (const raw of extractBgImageUrls(bg)) {
             const url = resolveUrl(raw);
-            if (url && isImageUrl(url) && !url.startsWith('data:')) imageSet.add(url);
+            if (url && isImageUrl(url) && !url.startsWith('data:')) imageUrls.add(url);
           }
         }
+      } catch {
+        // Element may not be connected to DOM yet
       }
-    } catch {
-      // Element may not be connected to DOM yet
+    }
+
+    if (imageUrls.size > 0) addNewUrls(imageUrls, 'image');
+
+    if (pendingBackgroundCheckQueue.length > 0) {
+      if (typeof requestIdleCallback !== 'undefined') {
+        requestIdleCallback(processBgImageQueue);
+      } else {
+        setTimeout(processBgImageQueue, 1);
+      }
+    } else {
+      isBgCheckScheduled = false;
+    }
+  }
+
+  function handleBackgroundImage(el, imageSet) {
+    // Fast path: skip elements with no styling hints to avoid expensive getComputedStyle calls
+    if (el.className || el.id || el.getAttribute('style')) {
+      pendingBackgroundCheckQueue.push(el);
+      if (!isBgCheckScheduled) {
+        isBgCheckScheduled = true;
+        if (typeof requestIdleCallback !== 'undefined') {
+          requestIdleCallback(processBgImageQueue);
+        } else {
+          setTimeout(processBgImageQueue, 1);
+        }
+      }
     }
   }
 
@@ -466,6 +500,26 @@
       if (port.name !== 'imgsnag-popup') return;
       popupPort = port;
       port.postMessage({ action: 'init', images: [...discoveredMedia.values()] });
+
+      // Flush the background image check queue synchronously so the grid is complete
+      if (pendingBackgroundCheckQueue.length > 0) {
+        const imageUrls = new Set();
+        while (pendingBackgroundCheckQueue.length > 0) {
+          const el = pendingBackgroundCheckQueue.shift();
+          try {
+            const bg = getComputedStyle(el).backgroundImage;
+            if (bg && bg !== 'none') {
+              for (const raw of extractBgImageUrls(bg)) {
+                const url = resolveUrl(raw);
+                if (url && isImageUrl(url) && !url.startsWith('data:')) imageUrls.add(url);
+              }
+            }
+          } catch {
+            // Element may not be connected to DOM yet
+          }
+        }
+        if (imageUrls.size > 0) addNewUrls(imageUrls, 'image');
+      }
 
       // Process any images that were lazily delayed until the popup connected
       if (pendingNetworkFilter.size > 0) {
