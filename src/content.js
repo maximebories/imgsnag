@@ -513,7 +513,10 @@
       return urls;
     }
 
-    const bg = getComputedStyle(el).backgroundImage;
+    let bg = el.style?.backgroundImage;
+    if (!bg || bg === 'none' || bg === '') {
+      bg = getComputedStyle(el).backgroundImage;
+    }
     if (bg && bg !== 'none') {
       for (const raw of extractBgImageUrls(bg)) {
         const url = resolveUrl(raw);
@@ -565,7 +568,10 @@
         continue;
       }
 
-      const bg = getComputedStyle(el).backgroundImage;
+      let bg = el.style?.backgroundImage;
+      if (!bg || bg === 'none' || bg === '') {
+        bg = getComputedStyle(el).backgroundImage;
+      }
       if (bg && bg !== 'none') {
         for (const raw of extractBgImageUrls(bg)) {
           const url = resolveUrl(raw);
