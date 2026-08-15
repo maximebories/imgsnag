@@ -1,6 +1,6 @@
 {
   "name": "imgsnag",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "manifest_version": 3,
   "description": "__MSG_appDesc__",
   "default_locale": "en",
@@ -8,7 +8,10 @@
     "page": "options.html"
   },
   "background": {
-    "scripts": ["lib/browser-polyfill.min.js", "background.js"]
+    "scripts": [
+      "lib/browser-polyfill.min.js",
+      "background.js"
+    ]
   },
   "action": {
     "default_icon": {
@@ -21,8 +24,13 @@
   },
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
-      "js": ["lib/browser-polyfill.min.js", "content.js"],
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "lib/browser-polyfill.min.js",
+        "content.js"
+      ],
       "run_at": "document_end"
     }
   ],
@@ -32,8 +40,14 @@
     "64": "icons/64.png",
     "128": "icons/128.png"
   },
-  "permissions": ["storage", "downloads", "activeTab"],
-  "host_permissions": ["<all_urls>"],
+  "permissions": [
+    "storage",
+    "downloads",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
   "browser_specific_settings": {
     "gecko": {
       "id": "imgsnag@maximebories.com",
