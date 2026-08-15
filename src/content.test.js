@@ -17,7 +17,7 @@ global.browser = {
 };
 
 // Require the content script which executes the IIFE
-const { isVideoUrl } = require('./content');
+const { isVideoUrl, isSvgUrl } = require('./content');
 
 describe('isVideoUrl', () => {
   describe('valid video URLs', () => {
@@ -88,6 +88,68 @@ describe('isVideoUrl', () => {
 
     it('should return false for empty string', () => {
       expect(isVideoUrl('')).toBe(false);
+    });
+  });
+});
+
+describe('isSvgUrl', () => {
+  describe('valid SVG URLs', () => {
+    it('should return true for a valid .svg URL', () => {
+      expect(isSvgUrl('https://example.com/image.svg')).toBe(true);
+    });
+
+    it('should return true for a valid .svg URL with query parameters', () => {
+      expect(isSvgUrl('https://example.com/image.svg?v=123&scale=1')).toBe(true);
+    });
+
+    it('should return true for a valid .svg URL with hash fragments', () => {
+      expect(isSvgUrl('https://example.com/image.svg#icon')).toBe(true);
+    });
+
+    it('should return true for a valid uppercase .SVG URL', () => {
+      expect(isSvgUrl('https://example.com/image.SVG')).toBe(true);
+    });
+
+    it('should return true for a valid URL with mixed case .Svg', () => {
+      expect(isSvgUrl('https://example.com/image.Svg')).toBe(true);
+    });
+  });
+
+  describe('invalid or non-SVG URLs', () => {
+    it('should return false for other image URLs', () => {
+      expect(isSvgUrl('https://example.com/image.jpg')).toBe(false);
+      expect(isSvgUrl('https://example.com/image.png')).toBe(false);
+    });
+
+    it('should return false for web page URLs', () => {
+      expect(isSvgUrl('https://example.com/page.html')).toBe(false);
+      expect(isSvgUrl('https://example.com/')).toBe(false);
+    });
+
+    it('should return false for URLs with svg elsewhere in the path', () => {
+      expect(isSvgUrl('https://example.com/image.svg/page.html')).toBe(false);
+    });
+
+    it('should return false for URLs where svg is part of a longer extension', () => {
+      expect(isSvgUrl('https://example.com/image.svgz')).toBe(false);
+    });
+
+    it('should return false for malformed URLs that cannot be parsed', () => {
+      expect(isSvgUrl('not_a_valid_url')).toBe(false);
+    });
+  });
+
+  describe('edge cases', () => {
+    it('should return false for null', () => {
+      expect(isSvgUrl(null)).toBe(false);
+    });
+
+    it('should return false for undefined', () => {
+      expect(isSvgUrl(undefined)).toBe(false);
+    });
+
+    it('should return false for empty string', () => {
+      expect(isSvgUrl('')).toBe(false);
     });
   });
 });
