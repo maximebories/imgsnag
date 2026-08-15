@@ -1,4 +1,8 @@
 {
+  "categories": ["download-management", "photos-music-videos"],
+  "summary": {
+    "en-US": "Download images from web pages — bulk via the toolbar popup, Alt+Click any image, or drag-to-save."
+  },
   "version": {
     "license": "MIT"
   }
