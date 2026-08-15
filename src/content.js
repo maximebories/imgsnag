@@ -624,6 +624,6 @@
   syncDragPreference();
   browser.storage.onChanged.addListener(() => syncDragPreference());
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { extractBgImageUrls, resolveUrl, isVideoUrl, isImageUrl, isSvgUrl };
+    module.exports = { extractBgImageUrls, resolveUrl, isVideoUrl, isImageUrl, isSvgUrl, parseSrcset };
   }
 })();

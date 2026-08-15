@@ -55,3 +55,34 @@ describe('extractBgImageUrls', () => {
     expect(extractBgImageUrls(bgValue)).toEqual([]);
   });
 });
+
+describe('parseSrcset', () => {
+  const { parseSrcset } = require('../src/content.js');
+
+  it('should return empty array for empty, null or undefined input', () => {
+    expect(parseSrcset(null)).toEqual([]);
+    expect(parseSrcset(undefined)).toEqual([]);
+    expect(parseSrcset('')).toEqual([]);
+  });
+
+  it('should parse a basic single srcset entry without descriptors', () => {
+    expect(parseSrcset('image.jpg')).toEqual(['image.jpg']);
+  });
+
+  it('should parse a single srcset entry with descriptors', () => {
+    expect(parseSrcset('image.jpg 1x')).toEqual(['image.jpg']);
+    expect(parseSrcset('image2.png 100w')).toEqual(['image2.png']);
+  });
+
+  it('should parse multiple srcset entries', () => {
+    expect(parseSrcset('img1.jpg 1x, img2.jpg 2x')).toEqual(['img1.jpg', 'img2.jpg']);
+  });
+
+  it('should handle excessive whitespace correctly', () => {
+    expect(parseSrcset('  img1.jpg   1x  ,   img2.jpg   2x  ')).toEqual(['img1.jpg', 'img2.jpg']);
+  });
+
+  it('should drop trailing commas or empty entries', () => {
+    expect(parseSrcset('img1.jpg 1x, , img2.jpg 2x,')).toEqual(['img1.jpg', 'img2.jpg']);
+  });
+});
