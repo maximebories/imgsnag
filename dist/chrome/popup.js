@@ -53,11 +53,11 @@
     setTimeout(() => hide(flash), 400);
   }
 
-  function filenameFromUrl(url) {
+  function filenameFromUrl(url, full = false) {
     try {
       const path = new URL(url).pathname;
       const name = path.split('/').pop();
-      return name.length > 20 ? name.slice(0, 17) + '...' : name;
+      return (!full && name.length > 20) ? name.slice(0, 17) + '...' : name;
     } catch {
       return '';
     }
@@ -113,19 +113,23 @@
   function wrapCell(cell, item) {
     cell.tabIndex = 0;
     cell.setAttribute('role', 'button');
-    const filename = filenameFromUrl(item.url) || browser.i18n.getMessage('popupMediaFallback');
-    const downloadLabel = `${browser.i18n.getMessage('popupDownload')} ${filename}`;
-    cell.setAttribute('aria-label', downloadLabel);
-    cell.title = downloadLabel;
+    const fallback = browser.i18n.getMessage('popupMediaFallback');
+    const filename = filenameFromUrl(item.url) || fallback;
+    const fullFilename = filenameFromUrl(item.url, true) || fallback;
+    const dimSuffix = item.width && item.height ? ` (${item.width}×${item.height})` : '';
+
+    const fullDownloadLabel = `${browser.i18n.getMessage('popupDownload')} ${fullFilename}${dimSuffix}`;
+    cell.setAttribute('aria-label', fullDownloadLabel);
+    cell.title = fullDownloadLabel;
 
     const check = document.createElement('div');
     check.className = 'check';
     check.tabIndex = 0;
     check.setAttribute('role', 'checkbox');
     check.setAttribute('aria-checked', 'false');
-    const selectLabel = `${browser.i18n.getMessage('popupSelect')} ${filename}`;
-    check.setAttribute('aria-label', selectLabel);
-    check.title = selectLabel;
+    const fullSelectLabel = `${browser.i18n.getMessage('popupSelect')} ${fullFilename}${dimSuffix}`;
+    check.setAttribute('aria-label', fullSelectLabel);
+    check.title = fullSelectLabel;
 
     const flash = document.createElement('div');
     flash.className = 'flash';
