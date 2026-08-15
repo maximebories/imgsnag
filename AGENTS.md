@@ -15,6 +15,7 @@ node --check src/content.js           # quick syntax check (no build step exists
 ```
 
 - `dist/` is **committed build output** — never edit it by hand; run `build.sh` and commit the regenerated files.
+- CI (`.github/workflows/ci.yml`) runs syntax checks, tests, and the build on every push/PR. Releases are tag-driven (`.github/workflows/release.yml`): pushing a `vX.Y.Z` tag (which must match the `version` in **both** manifests) tests, builds, and publishes to the Chrome Web Store and addons.mozilla.org. Version bumps and tags are manual — agents never bump versions or push tags.
 - Test files live in several places (`src/*.test.js`, `src/tests/`, `tests/`, `test/`); Jest picks up all of them. `tests/setup.js` provides the `browser` API mocks.
 
 ## Architecture

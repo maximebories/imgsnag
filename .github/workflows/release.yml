@@ -1,0 +1,96 @@
+name: Release to stores
+
+on:
+  push:
+    tags: ['v*']
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+
+      - name: Verify manifest versions match tag
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          for m in manifest.chrome.json manifest.firefox.json; do
+            V=$(python3 -c "import json; print(json.load(open('$m'))['version'])")
+            if [ "$V" != "$TAG_VERSION" ]; then
+              echo "::error::$m version ($V) does not match tag ($TAG_VERSION)"
+              exit 1
+            fi
+          done
+
+      - name: Build extension packages
+        run: bash build.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          retention-days: 30
+
+  publish-chrome:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Upload and publish to Chrome Web Store
+        env:
+          CLIENT_ID: ${{ secrets.CHROME_CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.CHROME_CLIENT_SECRET }}
+          REFRESH_TOKEN: ${{ secrets.CHROME_REFRESH_TOKEN }}
+          PUBLISHER_ID: ${{ secrets.CHROME_PUBLISHER_ID }}
+          EXTENSION_ID: ${{ secrets.CHROME_EXTENSION_ID }}
+        run: |
+          TOKEN=$(curl -sS "https://oauth2.googleapis.com/token" \
+            -d "client_id=$CLIENT_ID&client_secret=$CLIENT_SECRET&refresh_token=$REFRESH_TOKEN&grant_type=refresh_token" \
+            | python3 -c "import json,sys; print(json.load(sys.stdin)['access_token'])")
+
+          echo "Uploading zip..."
+          curl -sS --fail-with-body -X POST \
+            -H "Authorization: Bearer $TOKEN" \
+            -T dist/imgsnag-chrome.zip \
+            "https://chromewebstore.googleapis.com/upload/v2/publishers/$PUBLISHER_ID/items/$EXTENSION_ID:upload"
+
+          echo "Publishing..."
+          curl -sS --fail-with-body -X POST \
+            -H "Authorization: Bearer $TOKEN" \
+            "https://chromewebstore.googleapis.com/v2/publishers/$PUBLISHER_ID/items/$EXTENSION_ID:publish"
+
+  publish-firefox:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Sign and submit to addons.mozilla.org
+        env:
+          AMO_API_KEY: ${{ secrets.AMO_API_KEY }}
+          AMO_API_SECRET: ${{ secrets.AMO_API_SECRET }}
+        # --approval-timeout 0: submit and exit without polling for review approval
+        run: |
+          npx --yes web-ext sign \
+            --source-dir dist/firefox \
+            --channel listed \
+            --api-key "$AMO_API_KEY" \
+            --api-secret "$AMO_API_SECRET" \
+            --approval-timeout 0
