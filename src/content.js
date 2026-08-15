@@ -178,9 +178,7 @@
       if (node.nodeType === Node.TEXT_NODE) {
         textToScan = node.nodeValue;
       } else if (node.nodeType === Node.ELEMENT_NODE) {
-        for (const attr of node.attributes) {
-          textToScan += ' ' + attr.value;
-        }
+        textToScan = Array.from(node.attributes, (attr) => attr.value).join(' ');
       }
 
       if (textToScan) {
