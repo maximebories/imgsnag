@@ -84,5 +84,5 @@ Historically, agents re-fixed already-landed issues (a dozen branches once exist
    - Confirm the flaw exists in the **current** source by reading it — not in a stale description of it.
    - If it's already fixed or in flight: conclude **without** a patch. A no-op run is a success, not a failure.
 4. **One branch per session, one focused change.** Never publish multiple branches for one finding.
-5. **Before publishing:** `npm test` green, `bash build.sh` clean, and `dist/` untouched by hand.
+5. **Before publishing:** `npm test` green, `bash build.sh` clean — but **commit only source files and your journal, never `dist/`**. Running `build.sh` dirties `dist/` in the working tree; discard those changes (`git reset` the stage, `git add` only your files, commit, then `git checkout -- dist/`). Never use `git rm --cached dist/` — dist is tracked and that commits its deletion. The orchestrator rebuilds and commits `dist/` after merging.
 6. **Journal only genuinely new learnings** — check that your journal doesn't already record the same lesson.
