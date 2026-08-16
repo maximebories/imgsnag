@@ -9,3 +9,7 @@
 ## 2026-08-15 - Meta and Preload Image Support
 **Learning:** Meta open graph images (`og:image`, `twitter:image`) and preload hints (`link[rel="preload"][as="image"]`) are commonly used for article/page thumbnails but are missed by standard `img` and `background-image` scanners. These elements reside in the `<head>` and provide valuable high-quality previews.
 **Action:** Add detection for `meta[property="og:image"]`, `meta[name="twitter:image"]`, and `link[rel="preload"][as="image"]` in `collectImages()` and handle dynamically added `META`/`LINK` nodes in the MutationObserver and `extractUrlsFromElement`. Change MutationObserver to observe `document.documentElement` to catch `<head>` modifications.
+
+## 2026-08-16 - CSS image-set() allows bare strings
+**Learning:** The CSS `image-set()` function allows specifying URLs as naked strings (e.g., `image-set("image.png" 1x)`), which our `url(...)` regex parser misses.
+**Action:** Enhance the `extractBgImageUrls` function to parse the inner content of `image-set()` and extract standard string literals inside quotes.

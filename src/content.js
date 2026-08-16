@@ -82,6 +82,18 @@
     while ((match = BG_URL_RE.exec(bgValue)) !== null) {
       urls.push(match[1]);
     }
+    const IMAGE_SET_RE = /(?:-webkit-)?image-set\(([\s\S]*?)\)/gi;
+    let setMatch;
+    while ((setMatch = IMAGE_SET_RE.exec(bgValue)) !== null) {
+      const setContent = setMatch[1];
+      const STRING_RE = /["']([^"']+)["']/g;
+      let strMatch;
+      while ((strMatch = STRING_RE.exec(setContent)) !== null) {
+        if (!urls.includes(strMatch[1])) {
+          urls.push(strMatch[1]);
+        }
+      }
+    }
     return urls;
   }
 

@@ -54,6 +54,20 @@ describe('extractBgImageUrls', () => {
     const bgValue = "some random text without url function";
     expect(extractBgImageUrls(bgValue)).toEqual([]);
   });
+
+  it('should extract URLs from image-set()', () => {
+    const bgValue = 'image-set("img1.png" 1x, url("img2.png") 2x)';
+    const urls = extractBgImageUrls(bgValue);
+    expect(urls).toContain('img1.png');
+    expect(urls).toContain('img2.png');
+    expect(urls.length).toBe(2);
+  });
+
+  it('should extract URLs from -webkit-image-set()', () => {
+    const bgValue = '-webkit-image-set("img1.png" 1x, "img2.png" 2x)';
+    const urls = extractBgImageUrls(bgValue);
+    expect(urls).toEqual(['img1.png', 'img2.png']);
+  });
 });
 
 describe('parseSrcset', () => {
