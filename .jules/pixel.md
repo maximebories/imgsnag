@@ -11,3 +11,7 @@
 ## 2026-08-15 - Full Context in Titles and Labels
 **Learning:** Cell tooltips and ARIA labels lacking full context (like full filename and image dimensions) reduce clarity for screen-reader users and mouse users alike, especially when visual placeholders truncate long filenames.
 **Action:** Always append metadata like `(width×height)` and provide untruncated filenames in `title` attributes while preserving compact UI labels.
+
+## 2026-08-16 - Native Buttons in Grid Cells
+**Learning:** Using native `<button>` elements for grid cells and selection toggles removes the need for custom `tabindex`, ARIA roles (like `role="button"`), and manual `keydown` event listeners for Enter/Space, while preserving screen-reader functionality and native keyboard activation.
+**Action:** Prefer semantic HTML `<button>` over ARIA-decorated `<div>`s for interactive popup elements. When using multiple actions per cell, layer them as sibling elements to avoid nested interactive elements.
