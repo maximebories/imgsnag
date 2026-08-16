@@ -258,8 +258,10 @@
 
   async function filterImagesBySize(urls) {
     const sizeMap = new Map();
-    for (let i = 0; i < document.images.length; i++) {
-      const img = document.images[i];
+    const imgs = document.images;
+    const len = imgs.length;
+    for (let i = 0; i < len; i++) {
+      const img = imgs[i];
       if (img.naturalWidth > 0 && img.naturalHeight > 0) {
         sizeMap.set(img.src, { width: img.naturalWidth, height: img.naturalHeight });
       }
@@ -310,8 +312,10 @@
 
     const sizeMap = type === 'image' ? new Map() : null;
     if (sizeMap) {
-      for (let i = 0; i < document.images.length; i++) {
-        const img = document.images[i];
+      const imgs = document.images;
+      const len = imgs.length;
+      for (let i = 0; i < len; i++) {
+        const img = imgs[i];
         if (img.naturalWidth > 0 && img.naturalHeight > 0) {
           sizeMap.set(img.src, { width: img.naturalWidth, height: img.naturalHeight });
         }
