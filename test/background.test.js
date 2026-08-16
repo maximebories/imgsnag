@@ -80,6 +80,35 @@ describe('Background Script', () => {
     expect(downloads[0].url).toBe('https://example.com/image.jpg');
   });
 
+
+  test('download_image: normalizes URL to prevent parser differentials', async () => {
+    const response = await messageListener({
+      action: 'download_image',
+      url: '  https://example.com/path/../image.jpg  '
+    }, {});
+
+    expect(response).toEqual({ success: true });
+    expect(downloads).toHaveLength(1);
+    expect(downloads[0].url).toBe('https://example.com/image.jpg');
+  });
+
+  test('download_images_bulk: normalizes URLs to prevent parser differentials', async () => {
+    const response = await messageListener({
+      action: 'download_images_bulk',
+      urls: [
+        '  https://example.com/path/../1.jpg  ',
+        'https://example.com/2.jpg\n'
+      ]
+    }, {});
+
+    expect(response).toEqual({ started: true, completed: true });
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    expect(downloads).toHaveLength(2);
+    expect(downloads[0].url).toBe('https://example.com/1.jpg');
+    expect(downloads[1].url).toBe('https://example.com/2.jpg');
+  });
+
   test('download_image: invalid URL', async () => {
     const response = await messageListener({
       action: 'download_image',
