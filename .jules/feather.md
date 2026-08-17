@@ -7,3 +7,6 @@
 ## 2026-08-15 - Inline-style fast path before getComputedStyle (discovery only)
 **Learning:** Elements with an inline `background-image` (common in lazy-load galleries) can be read via `el.style.backgroundImage` without forcing a computed-style resolution. Orchestrator review restricted this to the discovery paths: on the Alt+Click download path, inline style can diverge from the rendered image (stylesheet `!important` overrides), so display-accurate paths keep `getComputedStyle`.
 **Action:** Prefer `el.style.backgroundImage` with a `getComputedStyle` fallback in discovery loops; never substitute it where the user downloads what they see.
+## 2024-05-24 - Cache HTMLCollection length in document.images loops
+**Learning:** Iterating over `document.images` without caching its length (`for (let i = 0; i < document.images.length; i++)`) causes O(N^2) overhead because reading `.length` on a live `HTMLCollection` forces recalculation on every iteration. On pages with thousands of images, this scanning step takes tens of seconds.
+**Action:** Always cache both the `document.images` collection and its `.length` property in local variables before looping over it (`const images = document.images; const len = images.length;`) to achieve O(N) performance.
