@@ -11,3 +11,6 @@
 ## 2026-08-15 - Full Context in Titles and Labels
 **Learning:** Cell tooltips and ARIA labels lacking full context (like full filename and image dimensions) reduce clarity for screen-reader users and mouse users alike, especially when visual placeholders truncate long filenames.
 **Action:** Always append metadata like `(width×height)` and provide untruncated filenames in `title` attributes while preserving compact UI labels.
+## 2024-11-20 - Semantic Buttons in Media Grids
+**Learning:** For interactive popup elements like grid cells and selection checks, using semantic `<button>` elements instead of ARIA-decorated `<div>`s eliminates the need for manual `tabindex` management, explicit ARIA roles, and manual keyboard event listeners (like Enter/Space handling), reducing code size and improving accessibility reliability. When multiple actions exist in a single component, layer them as sibling elements (e.g., an absolute positioned download button covering the cell and a z-indexed checkbox on top) to avoid nested interactive controls which confuse screen readers.
+**Action:** Always prefer semantic HTML `<button>`s for click targets in popups, and layer multiple actions as sibling elements rather than nesting them.

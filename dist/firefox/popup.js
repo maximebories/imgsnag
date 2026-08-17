@@ -111,22 +111,20 @@
   }
 
   function wrapCell(cell, item) {
-    cell.tabIndex = 0;
-    cell.setAttribute('role', 'button');
     const fallback = browser.i18n.getMessage('popupMediaFallback');
     const filename = filenameFromUrl(item.url) || fallback;
     const fullFilename = filenameFromUrl(item.url, true) || fallback;
     const dimSuffix = item.width && item.height ? ` (${item.width}×${item.height})` : '';
 
+    const downloadBtn = document.createElement('button');
+    downloadBtn.className = 'download-btn';
     const fullDownloadLabel = `${browser.i18n.getMessage('popupDownload')} ${fullFilename}${dimSuffix}`;
-    cell.setAttribute('aria-label', fullDownloadLabel);
-    cell.title = fullDownloadLabel;
+    downloadBtn.setAttribute('aria-label', fullDownloadLabel);
+    downloadBtn.title = fullDownloadLabel;
 
-    const check = document.createElement('div');
+    const check = document.createElement('button');
     check.className = 'check';
-    check.tabIndex = 0;
-    check.setAttribute('role', 'checkbox');
-    check.setAttribute('aria-checked', 'false');
+    check.setAttribute('aria-pressed', 'false');
     const fullSelectLabel = `${browser.i18n.getMessage('popupSelect')} ${fullFilename}${dimSuffix}`;
     check.setAttribute('aria-label', fullSelectLabel);
     check.title = fullSelectLabel;
@@ -140,36 +138,25 @@
       if (selectedUrls.has(item.url)) {
         selectedUrls.delete(item.url);
         check.classList.remove('selected');
-        check.setAttribute('aria-checked', 'false');
+        check.setAttribute('aria-pressed', 'false');
       } else {
         selectedUrls.add(item.url);
         check.classList.add('selected');
-        check.setAttribute('aria-checked', 'true');
+        check.setAttribute('aria-pressed', 'true');
       }
       updateCounter();
     }
 
     check.addEventListener('click', toggleCheck);
-    check.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        toggleCheck(e);
-      }
-    });
 
     function downloadCell() {
       browser.runtime.sendMessage({ action: 'download_image', url: item.url });
       flashCell(cell);
     }
 
-    cell.addEventListener('click', downloadCell);
-    cell.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        downloadCell();
-      }
-    });
+    downloadBtn.addEventListener('click', downloadCell);
 
+    cell.prepend(downloadBtn);
     cell.append(check, flash);
     return cell;
   }
