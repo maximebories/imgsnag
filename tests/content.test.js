@@ -40,6 +40,16 @@ describe('extractBgImageUrls', () => {
     expect(extractBgImageUrls(bgValue)).toEqual(['bg.jpg']);
   });
 
+  it('should extract URLs from image-set() strings', () => {
+    const bgValue = 'image-set("img1.png" 1x, url("img2.png") 2x)';
+    expect(extractBgImageUrls(bgValue)).toEqual(['img2.png', 'img1.png']);
+  });
+
+  it('should extract URLs from -webkit-image-set() strings', () => {
+    const bgValue = '-webkit-image-set("img1.png" 1x, "img2.png" 2x)';
+    expect(extractBgImageUrls(bgValue)).toEqual(['img1.png', 'img2.png']);
+  });
+
   it('should extract URLs with extraneous spaces inside the parentheses (current regex behavior)', () => {
     const bgValue = "url(  'image.jpg'  )";
     expect(extractBgImageUrls(bgValue)).toEqual(["  'image.jpg'  "]);
