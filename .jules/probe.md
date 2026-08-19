@@ -5,3 +5,7 @@
 ## 2026-08-16 - Parser differential regression test
 **Learning:** Found a journal-documented security fix from the Sentinel persona regarding parser differentials in `src/background.js` (passing raw strings instead of normalized `urlObj.href` to `browser.downloads.download()`) that lacked a corresponding regression test.
 **Action:** Always verify that URL parser differential fixes are pinned with regression tests that assert the final downloaded URL is strictly the normalized output of the URL parser, not the raw input.
+
+## 2026-08-18 - Synthetic Events Testing
+**Learning:** Verified that the `e.isTrusted` check implemented by Warden protects the click and dragend listeners in `src/content.js`. However, testing `e.isTrusted` in jsdom requires intercepting `document.addEventListener` since standard synthesized events cannot easily have `isTrusted` overridden as true.
+**Action:** Added `tests/trust_boundaries.test.js` to pin the `e.isTrusted` checks for alt-click and drag-to-save behavior, making sure these boundaries remain guarded against regression.
