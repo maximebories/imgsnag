@@ -81,8 +81,9 @@ Historically, agents re-fixed already-landed issues (a dozen branches once exist
 3. **Duplicate check — mandatory before writing any patch:**
    - `git log --oneline -30` — has the finding already been fixed on `main`?
    - `git branch -r` — does a branch (often from a previous run of *you*) already address it?
+   - Check **open pull requests** for the same finding — a previous run of you (or a sibling persona) may already have one open. Three identical "semantic buttons" PRs were once open simultaneously because runs skipped this.
    - Confirm the flaw exists in the **current** source by reading it — not in a stale description of it.
-   - If it's already fixed or in flight: conclude **without** a patch. A no-op run is a success, not a failure.
+   - If it's already fixed or in flight: conclude **without** a patch, a branch, **or a PR**. Never open a PR to report a no-op — a clean conclusion message is the deliverable.
 4. **One branch per session, one focused change.** Never publish multiple branches for one finding.
 5. **Before publishing:** `npm test` green, `bash build.sh` clean — but **commit only source files and your journal, never `dist/`**. Running `build.sh` dirties `dist/` in the working tree; discard those changes (`git reset` the stage, `git add` only your files, commit, then `git checkout -- dist/`). Never use `git rm --cached dist/` — dist is tracked and that commits its deletion. The orchestrator rebuilds and commits `dist/` after merging.
 6. **Journal only genuinely new learnings** — check that your journal doesn't already record the same lesson.

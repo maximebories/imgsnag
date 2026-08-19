@@ -111,20 +111,19 @@
   }
 
   function wrapCell(cell, item) {
-    cell.tabIndex = 0;
-    cell.setAttribute('role', 'button');
     const fallback = browser.i18n.getMessage('popupMediaFallback');
     const filename = filenameFromUrl(item.url) || fallback;
     const fullFilename = filenameFromUrl(item.url, true) || fallback;
     const dimSuffix = item.width && item.height ? ` (${item.width}×${item.height})` : '';
 
+    const actionBtn = document.createElement('button');
+    actionBtn.className = 'cell-action';
     const fullDownloadLabel = `${browser.i18n.getMessage('popupDownload')} ${fullFilename}${dimSuffix}`;
-    cell.setAttribute('aria-label', fullDownloadLabel);
-    cell.title = fullDownloadLabel;
+    actionBtn.setAttribute('aria-label', fullDownloadLabel);
+    actionBtn.title = fullDownloadLabel;
 
-    const check = document.createElement('div');
+    const check = document.createElement('button');
     check.className = 'check';
-    check.tabIndex = 0;
     check.setAttribute('role', 'checkbox');
     check.setAttribute('aria-checked', 'false');
     const fullSelectLabel = `${browser.i18n.getMessage('popupSelect')} ${fullFilename}${dimSuffix}`;
@@ -150,27 +149,15 @@
     }
 
     check.addEventListener('click', toggleCheck);
-    check.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        toggleCheck(e);
-      }
-    });
 
     function downloadCell() {
       browser.runtime.sendMessage({ action: 'download_image', url: item.url });
       flashCell(cell);
     }
 
-    cell.addEventListener('click', downloadCell);
-    cell.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        downloadCell();
-      }
-    });
+    actionBtn.addEventListener('click', downloadCell);
 
-    cell.append(check, flash);
+    cell.append(actionBtn, check, flash);
     return cell;
   }
 
