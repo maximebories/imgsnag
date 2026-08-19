@@ -45,6 +45,9 @@
       #grid, #video-grid {
         display: none;
         grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+        /* Explicit row height: aspect-ratio rows collapse when the scroll
+           container is height-constrained and cells have overflow:hidden */
+        grid-auto-rows: 110px;
         gap: 4px;
         padding: 4px;
         overflow-y: auto;
@@ -54,7 +57,6 @@
 
       .cell {
         position: relative;
-        aspect-ratio: 1;
         overflow: hidden;
         border-radius: 4px;
         background: #e0e0e0;
