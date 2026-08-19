@@ -1,0 +1,3 @@
+## 2026-08-19 - Inline SVG serialization capture (first RFC)
+**Learning:** Inline `<svg>` is the first derived-file channel: the pipeline is URL-plumbing end to end, so capture requires XMLSerializer→blob→download, inverting the SVG size-exemption (rendered getBoundingClientRect size IS measurable for inline, unlike external SVG intrinsic size). Key hazards: `<use>` refs serialize empty, external CSS/currentColor do not survive, and SVG may embed scripts — output must only ever be treated as an image.
+**Action:** Verdict GO, staged — RFC #118. Keep derived-file channels on-demand only (popup-open/Alt+Click); never enumerate during ambient discovery.
