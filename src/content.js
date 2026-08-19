@@ -8,6 +8,7 @@
   const IMAGE_EXT_RE = /\.(?:jpe?g|gif|png|webp|svg|avif)(?:[?#]|$)/i;
   const VIDEO_EXT_RE = /\.(?:mp4|webm|ogv|mov|m4v|avi)(?:[?#]|$)/i;
   const BG_URL_RE = /url\(["']?(.*?)["']?\)/gi;
+  const IMAGE_SET_RE = /(?:-webkit-)?image-set\(([^)]+)\)/gi;
 
   // Catches image URLs embedded in inline scripts or JSON-LD that DOM queries miss
   const IMAGE_URL_RE =
@@ -81,6 +82,23 @@
     let match;
     while ((match = BG_URL_RE.exec(bgValue)) !== null) {
       urls.push(match[1]);
+    }
+
+    IMAGE_SET_RE.lastIndex = 0;
+    let setMatch;
+    while ((setMatch = IMAGE_SET_RE.exec(bgValue)) !== null) {
+      const inner = setMatch[1];
+      const entries = inner.split(',');
+      for (const entry of entries) {
+        const trimmed = entry.trim();
+        if (trimmed.startsWith('"') || trimmed.startsWith("'")) {
+          const quote = trimmed[0];
+          const endQuote = trimmed.indexOf(quote, 1);
+          if (endQuote !== -1) {
+            urls.push(trimmed.substring(1, endQuote));
+          }
+        }
+      }
     }
     return urls;
   }
