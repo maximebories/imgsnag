@@ -51,5 +51,8 @@
   },
   "popupDerivedBadge": {
     "message": "Generated SVG"
+  },
+  "popupEmptyHint": {
+    "message": "Tip: Alt+Click or drag any media on the page to save it directly"
   }
 }
