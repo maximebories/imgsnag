@@ -67,6 +67,7 @@ Each persona has a fixed territory:
 | `lingo.md` | i18n |
 | `twin.md` | Chrome/Firefox parity |
 | `probe.md` | test coverage & regression guards |
+| `prospector.md` | R&D on new capture channels — deliverable is an RFC issue, never a patch |
 | `bolt.md` | generic perf template — **do not schedule** (Feather covers this repo) |
 | `palette.md`, `sentinel.md` | generic UX/security templates — **do not schedule** (Pixel/Warden cover this repo) |
 
