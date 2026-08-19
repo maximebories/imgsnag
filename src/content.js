@@ -213,17 +213,23 @@
 
     let node;
     while ((node = walker.nextNode())) {
-      let textToScan = '';
       if (node.nodeType === Node.TEXT_NODE) {
-        textToScan = node.nodeValue;
+        if (node.nodeValue) {
+          let match;
+          while ((match = IMAGE_URL_RE.exec(node.nodeValue)) !== null) {
+            trackImage(match[0]);
+          }
+        }
       } else if (node.nodeType === Node.ELEMENT_NODE) {
-        textToScan = Array.from(node.attributes, (attr) => attr.value).join(' ');
-      }
-
-      if (textToScan) {
-        let match;
-        while ((match = IMAGE_URL_RE.exec(textToScan)) !== null) {
-          trackImage(match[0]);
+        const attrs = node.attributes;
+        for (let i = 0, len = attrs.length; i < len; i++) {
+          const val = attrs[i].value;
+          if (val) {
+            let match;
+            while ((match = IMAGE_URL_RE.exec(val)) !== null) {
+              trackImage(match[0]);
+            }
+          }
         }
       }
     }
