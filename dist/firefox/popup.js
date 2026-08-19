@@ -173,6 +173,16 @@
     actionBtn.addEventListener('click', downloadCell);
 
     cell.append(actionBtn, check, flash);
+    
+    if (isDerivedSvg) {
+      const badge = document.createElement('span');
+      badge.className = 'badge-derived';
+      badge.textContent = 'SVG';
+      badge.setAttribute('role', 'img');
+      badge.setAttribute('aria-label', browser.i18n.getMessage('popupDerivedBadge'));
+      cell.append(badge);
+    }
+    
     return cell;
   }
 

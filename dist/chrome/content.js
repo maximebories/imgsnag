@@ -169,6 +169,12 @@
       trackImage(video.getAttribute('poster'));
     });
 
+    // <object>/<embed>/<iframe> whose source is an image file
+    document.querySelectorAll('object[data], embed[src], iframe[src]').forEach((el) => {
+      const raw = el.tagName === 'OBJECT' ? el.getAttribute('data') : el.getAttribute('src');
+      if (isImageUrl(resolveUrl(raw))) trackImage(raw);
+    });
+
     // CSS background-image on likely container elements
     document.querySelectorAll(BG_IMAGE_SELECTORS).forEach((el) => {
       // Fast path: skip elements with no styling hints to avoid expensive getComputedStyle calls
@@ -306,6 +312,14 @@
 
   const pendingNetworkFilter = new Set();
 
+  function passesSizeFilter(size) {
+    if (!size) return false;
+    // A successful load reporting 0×0 is an SVG without intrinsic size —
+    // exempt it like explicit .svg URLs (extension-less SVG CDN endpoints)
+    if (size.width === 0 && size.height === 0) return true;
+    return size.width >= MIN_IMAGE_SIZE && size.height >= MIN_IMAGE_SIZE;
+  }
+
   async function filterImagesBySize(urls) {
     const sizeMap = new Map();
     const imgs = document.images;
@@ -322,8 +336,7 @@
         if (isSvgUrl(url)) return url;
         const domSize = sizeMap.get(url) || getDomImageSize(url);
         if (domSize) {
-          if (domSize.width >= MIN_IMAGE_SIZE && domSize.height >= MIN_IMAGE_SIZE) return url;
-          return null;
+          return passesSizeFilter(domSize) ? url : null;
         }
 
         // Lazy network fetch: if popup is closed, delay the expensive new Image() call
@@ -333,8 +346,7 @@
         }
 
         const size = await getImageSize(url);
-        if (size && size.width >= MIN_IMAGE_SIZE && size.height >= MIN_IMAGE_SIZE) return url;
-        return null;
+        return passesSizeFilter(size) ? url : null;
       })
     );
     return results.filter(Boolean);
@@ -488,6 +500,14 @@
     }
   }
 
+  function handleEmbed(el, imageSet) {
+    const tag = el.tagName;
+    if (tag !== 'OBJECT' && tag !== 'EMBED' && tag !== 'IFRAME') return;
+    const raw = tag === 'OBJECT' ? el.getAttribute('data') : el.getAttribute('src');
+    const url = resolveUrl(raw);
+    if (url && isImageUrl(url) && !url.startsWith('data:')) imageSet.add(url);
+  }
+
   function handleBackgroundImage(el, imageSet) {
     // Fast path: skip elements with no styling hints to avoid expensive getComputedStyle calls
     if (el.className || el.id || el.getAttribute('style')) {
@@ -510,6 +530,7 @@
     handleSource(el, videoSet);
     handleBackgroundImage(el, imageSet);
     handleMeta(el, imageSet);
+    handleEmbed(el, imageSet);
   }
 
   // Observers — continuous media tracking
@@ -532,6 +553,7 @@
                 tag === 'DIV' || tag === 'SPAN' || tag === 'SECTION' || tag === 'ARTICLE' ||
                 tag === 'HEADER' || tag === 'FOOTER' || tag === 'A' || tag === 'LI' ||
                 tag === 'FIGURE' || tag === 'I' || tag === 'META' || tag === 'LINK' ||
+                tag === 'OBJECT' || tag === 'EMBED' || tag === 'IFRAME' ||
                 (el.hasAttribute && (el.hasAttribute('srcset') || el.hasAttribute('data-srcset') || el.hasAttribute('data-src') || el.hasAttribute('data-lazy-src') || el.hasAttribute('data-original'))) ||
                 (el.hasAttribute && el.hasAttribute('style') && el.style && el.style.backgroundImage)
               ) {
@@ -760,6 +782,6 @@
   syncDragPreference();
   browser.storage.onChanged.addListener(() => syncDragPreference());
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { extractBgImageUrls, resolveUrl, isVideoUrl, isImageUrl, isSvgUrl, parseSrcset, collectInlineSvgs };
+    module.exports = { extractBgImageUrls, resolveUrl, isVideoUrl, isImageUrl, isSvgUrl, parseSrcset, collectInlineSvgs, handleEmbed, passesSizeFilter };
   }
 })();
