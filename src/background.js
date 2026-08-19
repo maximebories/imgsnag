@@ -6,6 +6,12 @@ if (typeof importScripts === 'function') {
 
 const PREFIX = 'dl_';
 
+// blob: URLs pending revocation once their download leaves in_progress.
+// In-memory is correct here: a blob URL cannot outlive its creating context,
+// so persisting this map across suspension would be useless anyway.
+const blobUrlsByDownloadId = new Map();
+const MAX_INLINE_SVG_CHARS = 2 * 1024 * 1024;
+
 async function getActiveDownloadIds() {
   const data = await browser.storage.local.get();
   return Object.keys(data)
@@ -91,6 +97,40 @@ browser.runtime.onMessage.addListener((message) => {
     })();
   }
 
+  if (message.action === 'download_svg') {
+    // Serialized inline-SVG markup from the popup (RFC #118). The background
+    // constructs the URL itself so no page-controlled URL crosses this
+    // boundary; the http/https allowlist above stays untouched.
+    const markup = message.markup;
+    if (
+      typeof markup !== 'string' ||
+      markup.length === 0 ||
+      markup.length > MAX_INLINE_SVG_CHARS ||
+      !markup.trimStart().startsWith('<svg')
+    ) {
+      return Promise.resolve({ success: false, error: 'Invalid SVG payload' });
+    }
+
+    return (async () => {
+      // Firefox's event page has createObjectURL; Chrome's service worker
+      // does not, so fall back to a data: URL there.
+      const canBlob = typeof URL !== 'undefined' && typeof URL.createObjectURL === 'function';
+      const url = canBlob
+        ? URL.createObjectURL(new Blob([markup], { type: 'image/svg+xml' }))
+        : 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(markup);
+      try {
+        const downloadId = await browser.downloads.download({ url, filename: 'imgsnag-inline.svg' });
+        await addActiveDownloadId(downloadId);
+        if (canBlob) blobUrlsByDownloadId.set(downloadId, url);
+        return { success: true };
+      } catch (err) {
+        if (canBlob) URL.revokeObjectURL(url);
+        console.warn('[imgsnag] SVG download failed:', err.message);
+        return { success: false, error: err.message };
+      }
+    })();
+  }
+
   if (message.action === 'cancel_downloads') {
     return (async () => {
       const ids = await getActiveDownloadIds();
@@ -109,5 +149,11 @@ browser.runtime.onMessage.addListener((message) => {
 browser.downloads.onChanged.addListener((delta) => {
   if (delta.state && delta.state.current !== 'in_progress') {
     removeActiveDownloadId(delta.id);
+    // Revoke only after the download completes (see MDN downloads.download)
+    const blobUrl = blobUrlsByDownloadId.get(delta.id);
+    if (blobUrl) {
+      URL.revokeObjectURL(blobUrl);
+      blobUrlsByDownloadId.delete(delta.id);
+    }
   }
 });

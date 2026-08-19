@@ -19,6 +19,10 @@
 
   const MIN_IMAGE_SIZE = 200;
 
+  // Inline-SVG capture (derived files, RFC #118 stage 1)
+  const SVG_DATA_PREFIX = 'data:image/svg+xml;charset=utf-8,';
+  const MAX_INLINE_SVG_CHARS = 2 * 1024 * 1024;
+
   // Persistent media store — survives DOM removal (infinite scroll recycling)
   const discoveredMedia = new Map();
   let popupPort = null;
@@ -227,6 +231,34 @@
     document.querySelectorAll('video source[src]').forEach((source) => {
       trackVideo(source.src);
     });
+  }
+
+  // Inline <svg> elements have no URL — serialize them into data: URLs on
+  // demand. Only runs when the popup connects (never during ambient
+  // discovery) so pages that are never snagged pay nothing.
+  function collectInlineSvgs() {
+    const items = [];
+    document.querySelectorAll('svg').forEach((svg) => {
+      if (svg.ownerSVGElement) return; // nested <svg> — captured via its root
+      if (svg.querySelector('use')) return; // stage 1: <use> refs serialize empty
+      const rect = svg.getBoundingClientRect();
+      if (rect.width < MIN_IMAGE_SIZE || rect.height < MIN_IMAGE_SIZE) return;
+      let markup;
+      try {
+        markup = new XMLSerializer().serializeToString(svg);
+      } catch {
+        return;
+      }
+      if (!markup || markup.length > MAX_INLINE_SVG_CHARS) return;
+      items.push({
+        url: SVG_DATA_PREFIX + encodeURIComponent(markup),
+        type: 'image',
+        width: Math.round(rect.width),
+        height: Math.round(rect.height),
+        derived: true
+      });
+    });
+    return items;
   }
 
   function collectMediaUrls() {
@@ -544,6 +576,12 @@
     browser.runtime.onConnect.addListener((port) => {
       if (port.name !== 'imgsnag-popup') return;
       popupPort = port;
+
+      // Capture inline SVGs now so they ride along in the init payload
+      for (const item of collectInlineSvgs()) {
+        if (!discoveredMedia.has(item.url)) discoveredMedia.set(item.url, item);
+      }
+
       port.postMessage({ action: 'init', images: [...discoveredMedia.values()] });
 
       // Flush the background image check queue synchronously so the grid is complete
@@ -722,6 +760,6 @@
   syncDragPreference();
   browser.storage.onChanged.addListener(() => syncDragPreference());
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { extractBgImageUrls, resolveUrl, isVideoUrl, isImageUrl, isSvgUrl, parseSrcset };
+    module.exports = { extractBgImageUrls, resolveUrl, isVideoUrl, isImageUrl, isSvgUrl, parseSrcset, collectInlineSvgs };
   }
 })();

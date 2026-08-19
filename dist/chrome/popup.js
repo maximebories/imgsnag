@@ -6,6 +6,20 @@
   const selectedUrls = new Set();
   const allUrls = new Set();
 
+  // Derived inline-SVG items carry their markup as a data: URL (RFC #118)
+  const SVG_DATA_PREFIX = 'data:image/svg+xml;charset=utf-8,';
+
+  function sendDownload(url) {
+    if (url.startsWith(SVG_DATA_PREFIX)) {
+      browser.runtime.sendMessage({
+        action: 'download_svg',
+        markup: decodeURIComponent(url.slice(SVG_DATA_PREFIX.length))
+      });
+    } else {
+      browser.runtime.sendMessage({ action: 'download_image', url });
+    }
+  }
+
   // DOM refs
   const loadingEl = document.getElementById('loading');
   const emptyEl = document.getElementById('empty');
@@ -112,8 +126,9 @@
 
   function wrapCell(cell, item) {
     const fallback = browser.i18n.getMessage('popupMediaFallback');
-    const filename = filenameFromUrl(item.url) || fallback;
-    const fullFilename = filenameFromUrl(item.url, true) || fallback;
+    const isDerivedSvg = item.url.startsWith(SVG_DATA_PREFIX);
+    const filename = isDerivedSvg ? 'inline.svg' : (filenameFromUrl(item.url) || fallback);
+    const fullFilename = isDerivedSvg ? 'inline.svg' : (filenameFromUrl(item.url, true) || fallback);
     const dimSuffix = item.width && item.height ? ` (${item.width}×${item.height})` : '';
 
     const actionBtn = document.createElement('button');
@@ -151,7 +166,7 @@
     check.addEventListener('click', toggleCheck);
 
     function downloadCell() {
-      browser.runtime.sendMessage({ action: 'download_image', url: item.url });
+      sendDownload(item.url);
       flashCell(cell);
     }
 
@@ -202,7 +217,13 @@
   }
 
   function downloadAndClose(urls) {
-    browser.runtime.sendMessage({ action: 'download_images_bulk', urls });
+    // Derived SVGs go through download_svg individually; the rest in bulk
+    const svgUrls = urls.filter((u) => u.startsWith(SVG_DATA_PREFIX));
+    const fetchable = urls.filter((u) => !u.startsWith(SVG_DATA_PREFIX));
+    for (const u of svgUrls) sendDownload(u);
+    if (fetchable.length > 0) {
+      browser.runtime.sendMessage({ action: 'download_images_bulk', urls: fetchable });
+    }
     window.close();
   }
 

@@ -13,3 +13,6 @@
 ## 2024-11-20 - image-set() CSS Property Support
 **Learning:** `image-set()` and `-webkit-image-set()` in CSS background values often contain raw string URLs (e.g., `image-set("img.png" 1x)`) that do not use the standard `url()` wrapper. The `extractBgImageUrls` function previously only extracted URLs wrapped in `url()`, missing these images.
 **Action:** Added `IMAGE_SET_RE` and parsing logic inside `extractBgImageUrls` to split the `image-set` contents by commas and extract raw string URLs that start with quotes.
+## 2026-08-19 - Inline SVG capture is message-design first, detection second (RFC #118 stage 1)
+**Learning:** Derived files must not ride the URL pipeline: sending serialized markup under a dedicated `download_svg` action (background constructs the blob/data URL itself) keeps the http/https allowlist on `download_image` fully intact. Chrome MV3 service workers lack `URL.createObjectURL`, so the data: fallback is mandatory there while Firefox event pages use blob + revoke-on-onChanged. Rendered `getBoundingClientRect` size IS measurable for inline SVG, inverting the external-SVG size-exemption.
+**Action:** Any future derived-file channel (canvas, manifests) should follow this shape: dedicated action, fail-closed payload validation in background, popup-connect-only enumeration.

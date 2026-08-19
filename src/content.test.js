@@ -17,7 +17,7 @@ global.browser = {
 };
 
 // Require the content script which executes the IIFE
-const { isVideoUrl, isImageUrl, isSvgUrl } = require('./content');
+const { isVideoUrl, isImageUrl, isSvgUrl, collectInlineSvgs } = require('./content');
 
 describe('isVideoUrl', () => {
   describe('valid video URLs', () => {
@@ -213,5 +213,48 @@ describe('isSvgUrl', () => {
     it('should return false for empty string', () => {
       expect(isSvgUrl('')).toBe(false);
     });
+  });
+});
+
+describe('collectInlineSvgs', () => {
+  const SVG_NS = 'http://www.w3.org/2000/svg';
+
+  function addSvg({ width = 300, height = 300, withUse = false } = {}) {
+    const svg = document.createElementNS(SVG_NS, 'svg');
+    svg.getBoundingClientRect = () => ({ width, height });
+    const rect = document.createElementNS(SVG_NS, 'rect');
+    svg.appendChild(rect);
+    if (withUse) svg.appendChild(document.createElementNS(SVG_NS, 'use'));
+    document.body.appendChild(svg);
+    return svg;
+  }
+
+  afterEach(() => {
+    document.body.innerHTML = '';
+  });
+
+  it('captures a large inline SVG as a derived data: URL item', () => {
+    addSvg({ width: 320, height: 250 });
+    const items = collectInlineSvgs();
+    expect(items).toHaveLength(1);
+    expect(items[0].url.startsWith('data:image/svg+xml;charset=utf-8,')).toBe(true);
+    expect(items[0].derived).toBe(true);
+    expect(items[0].type).toBe('image');
+    expect(items[0].width).toBe(320);
+    expect(items[0].height).toBe(250);
+    const markup = decodeURIComponent(items[0].url.split(',').slice(1).join(','));
+    expect(markup).toContain('<svg');
+    expect(markup).toContain('rect');
+  });
+
+  it('skips SVGs rendered below the minimum size', () => {
+    addSvg({ width: 24, height: 24 });
+    addSvg({ width: 300, height: 100 });
+    expect(collectInlineSvgs()).toHaveLength(0);
+  });
+
+  it('skips SVGs containing <use> references (stage 1)', () => {
+    addSvg({ withUse: true });
+    expect(collectInlineSvgs()).toHaveLength(0);
   });
 });

@@ -181,6 +181,28 @@ describe('Background Script', () => {
     expect(badgeText).toBe(''); // Should be reset at the end
   });
 
+  test('download_svg: valid markup downloads with a generated filename', async () => {
+    const response = await messageListener({
+      action: 'download_svg',
+      markup: '<svg xmlns="http://www.w3.org/2000/svg"><rect width="10" height="10"/></svg>'
+    }, {});
+
+    expect(response).toEqual({ success: true });
+    expect(downloads).toHaveLength(1);
+    // jsdom has no URL.createObjectURL, so the data: fallback path is exercised
+    expect(downloads[0].url.startsWith('data:image/svg+xml')).toBe(true);
+    expect(downloads[0].filename).toBe('imgsnag-inline.svg');
+    expect(global.mockStorage).toHaveProperty('dl_1');
+  });
+
+  test('download_svg: rejects payloads that are not SVG markup', async () => {
+    for (const markup of ['<script>alert(1)</script>', '', 'hello', 42, null, '<svg'.padEnd(2 * 1024 * 1024 + 5, 'a')]) {
+      const response = await messageListener({ action: 'download_svg', markup }, {});
+      expect(response).toEqual({ success: false, error: 'Invalid SVG payload' });
+    }
+    expect(downloads).toHaveLength(0);
+  });
+
   test('cancel_downloads: cancels all active downloads', async () => {
     // Start some downloads
     await messageListener({

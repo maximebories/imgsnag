@@ -28,10 +28,11 @@ Three extension contexts, one shared source tree (`src/`), packaged twice by `bu
    - `discoveredMedia` (a `Map`) persists found media across DOM node recycling (infinite scroll).
    - Size filter: images must be ≥ 200×200 (`MIN_IMAGE_SIZE`); SVGs and videos are exempt. Sizes come from a one-pass `document.images` cache; network probing via `new Image()` is deferred into `pendingNetworkFilter` until the popup connects.
    - Direct download paths: Alt+Click (`elementsFromPoint`, downloads the stack under the cursor) and drag-to-save (toggleable via the `disableDrag` sync-storage setting).
+   - Inline-SVG capture (RFC #118): `collectInlineSvgs()` runs **only when the popup connects** (never ambiently), serializing top-level `<svg>` elements ≥ 200×200 *rendered* size (no `<use>` refs, stage 1) into `data:image/svg+xml` items flagged `derived: true`.
 
 2. **`src/popup.js`** — opens a port named `imgsnag-popup` to the active tab's content script; receives `init` (current store) then `new_images` (live updates); renders image/video grids of clickable cells (click = download, checkbox = select for bulk).
 
-3. **`src/background.js`** — the **only** caller of `browser.downloads.download`. Handles runtime messages `download_image`, `download_images_bulk` (badge shows `completed/total` progress), and `cancel_downloads`. Tracks in-flight download ids in `storage.local` under `dl_<id>` keys so cancellation survives service-worker suspension; `downloads.onChanged` cleans them up.
+3. **`src/background.js`** — the **only** caller of `browser.downloads.download`. Handles runtime messages `download_image`, `download_images_bulk` (badge shows `completed/total` progress), `download_svg` (raw serialized markup in, validated fail-closed, URL constructed **by the background** — blob where `createObjectURL` exists i.e. Firefox event pages, `data:` fallback in Chrome's service worker; blob URLs revoked via `downloads.onChanged`), and `cancel_downloads`. Tracks in-flight download ids in `storage.local` under `dl_<id>` keys so cancellation survives service-worker suspension; `downloads.onChanged` cleans them up.
 
 ### Cross-browser parity
 
