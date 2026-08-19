@@ -48,5 +48,8 @@
   },
   "optionsTitle": {
     "message": "Opciones"
+  },
+  "popupDerivedBadge": {
+    "message": "SVG generado"
   }
 }
