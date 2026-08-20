@@ -9,3 +9,7 @@
 ## 2026-08-18 - Synthetic Events Testing
 **Learning:** Verified that the `e.isTrusted` check implemented by Warden protects the click and dragend listeners in `src/content.js`. However, testing `e.isTrusted` in jsdom requires intercepting `document.addEventListener` since standard synthesized events cannot easily have `isTrusted` overridden as true.
 **Action:** Added `tests/trust_boundaries.test.js` to pin the `e.isTrusted` checks for alt-click and drag-to-save behavior, making sure these boundaries remain guarded against regression.
+
+## 2026-08-20 - Badge Clear Parity Regression Test
+**Learning:** Found a journal-documented parity fix from the Twin persona regarding badge clearing (`browser.action.setBadgeText({ text: null })` vs `''`) that lacked a corresponding regression test.
+**Action:** Always verify that cross-browser parity fixes (like badge clearing mechanisms) are pinned with regression tests that simulate browser-specific API failures (e.g., throwing on `null`) to ensure the fallback logic remains intact.
