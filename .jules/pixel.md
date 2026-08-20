@@ -22,3 +22,6 @@
 ## 2026-08-19 - Distinguishing generated files from fetched files via badge
 **Learning:** For distinguishing derived files (e.g. dynamically generated inline SVGs serialized by content script) from typical network-fetched media items, a minimal visual badge using native `span` with `role="img"` and `aria-label` routed to the localization system provides clear and accessible feedback without disrupting grid UX or selection overlays. The badge should maintain the existing minimal visual language, keeping out of the way of other functional overlays (selection check, play button). 
 **Action:** When adding badges to visual cells, position them carefully (e.g., top-left to avoid colliding with top-right checks), style them consistently (e.g. using the `#2563eb` accent and white text), apply `box-shadow` for contrast against unknown backgrounds, and route their accessible name to a new key across all locales in `messages.json`.
+## 2026-08-20 - Empty states as teaching moments
+**Learning:** Users encountering an empty state (e.g., when a page has no easily parsed media) may not realize the extension supports alternative interactions like Alt+Click or drag-to-save.
+**Action:** Always use empty states to surface discoverable, alternative interactions to help users succeed even when the primary flow fails.

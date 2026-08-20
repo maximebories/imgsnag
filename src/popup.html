@@ -31,6 +31,13 @@
         display: flex;
       }
 
+      .hint {
+        font-size: 11px;
+        opacity: 0.8;
+        text-align: center;
+        max-width: 250px;
+      }
+
       .spinner {
         width: 24px;
         height: 24px;
@@ -294,6 +301,7 @@
 
     <div id="empty" role="status" aria-live="polite">
       <span id="empty-text"></span>
+      <span id="empty-hint" class="hint"></span>
     </div>
 
     <div id="error" role="alert" aria-live="assertive">

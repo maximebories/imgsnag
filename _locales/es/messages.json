@@ -28,6 +28,9 @@
   "popupNoMedia": {
     "message": "No se encontraron imágenes ni videos"
   },
+  "popupEmptyHint": {
+    "message": "Consejo: Alt+Clic o arrastre imágenes para guardar"
+  },
   "popupVideos": {
     "message": "Videos"
   },
