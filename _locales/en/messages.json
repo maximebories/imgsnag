@@ -51,5 +51,8 @@
   },
   "popupDerivedBadge": {
     "message": "Generated SVG"
+  },
+  "popupDerivedBadgeText": {
+    "message": "SVG"
   }
 }
