@@ -16,3 +16,6 @@
 ## 2026-08-20 - Badge Clear Parity Regression Test
 **Learning:** Found a journal-documented parity fix from the Twin persona regarding badge clearing (`browser.action.setBadgeText({ text: null })` vs `''`) that lacked a corresponding regression test.
 **Action:** Always verify that cross-browser parity fixes (like badge clearing mechanisms) are pinned with regression tests that simulate browser-specific API failures (e.g., throwing on `null`) to ensure the fallback logic remains intact.
+## 2026-08-22 - ReDoS TreeWalker regression test
+**Learning:** The Warden-documented ReDoS fix (regex strip replaced by a native DOM TreeWalker) lacked a regression test.
+**Action:** Added tests/redos_fallback.test.js pinning TreeWalker extraction from text nodes, attributes, and JSON-LD, and the rejection of URLs inside non-JSON-LD script and style blocks.
