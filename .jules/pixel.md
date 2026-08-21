@@ -25,3 +25,6 @@
 ## 2024-10-24 - Empty State Hints
 **Learning:** An empty state in a utility extension should not just be a dead end; it should teach the user alternative ways to achieve their goal (e.g. keyboard shortcuts or interactions) when primary discovery fails.
 **Action:** Include a secondary `<span class="hint">` in empty states that provides localized tips on alternative features.
+## 2026-08-22 - Positional Context for Screen Readers
+**Learning:** Providing positional context ("image N of M") manually in `aria-label`s requires expensive DOM rewrites as lists grow dynamically (like infinite scroll grids). Using semantic list elements (`<ul>` and `<li>`) with explicit `role="list"` and `role="listitem"` enables screen readers to calculate and announce positional context natively and automatically without touching the DOM on every append.
+**Action:** Replace `div`-based container and cell wrappers with `<ul role="list">` and `<li role="listitem">` in dynamic popups grids to gain positional context for free. Reset default list styles via CSS.

@@ -51,12 +51,14 @@
       /* Image grid */
       #grid, #video-grid {
         display: none;
+        list-style: none;
+        margin: 0;
+        padding: 4px;
         grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
         /* Explicit row height: aspect-ratio rows collapse when the scroll
            container is height-constrained and cells have overflow:hidden */
         grid-auto-rows: 110px;
         gap: 4px;
-        padding: 4px;
         overflow-y: auto;
         max-height: 430px;
       }
@@ -309,12 +311,12 @@
       <span id="error-text"></span>
     </div>
 
-    <div id="grid"></div>
+    <ul id="grid" role="list"></ul>
 
     <div id="video-header" class="group-header">
       <span id="video-header-text"></span>
     </div>
-    <div id="video-grid"></div>
+    <ul id="video-grid" role="list"></ul>
 
     <div id="bar">
       <span id="counter" aria-live="polite" aria-atomic="true"></span>
