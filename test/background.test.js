@@ -181,6 +181,25 @@ describe('Background Script', () => {
     expect(badgeText).toBe(''); // Should be reset at the end
   });
 
+  test('download_images_bulk: clears badge text using fallback (Chrome parity)', async () => {
+    const calls = [];
+    global.browser.action.setBadgeText = async (details) => {
+      calls.push(details.text);
+      if (details.text === null) throw new TypeError('Chrome does not support null');
+      badgeText = details.text ?? '';
+    };
+
+    await messageListener({
+      action: 'download_images_bulk',
+      urls: ['https://example.com/1.jpg']
+    }, {});
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    expect(calls).toContain(null);
+    expect(calls).toContain('');
+    expect(badgeText).toBe('');
+  });
+
   test('download_svg: valid markup downloads with a generated filename', async () => {
     const response = await messageListener({
       action: 'download_svg',
