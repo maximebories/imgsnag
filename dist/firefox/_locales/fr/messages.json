@@ -51,5 +51,8 @@
   },
   "popupDerivedBadge": {
     "message": "SVG généré"
+  },
+  "popupEmptyHint": {
+    "message": "Astuce : faites Alt+Clic ou glissez une image sur la page pour l'enregistrer directement."
   }
 }
