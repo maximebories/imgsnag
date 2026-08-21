@@ -19,3 +19,7 @@
 ## 2026-08-19 - Embed-element sources and the 0x0 SVG signature
 **Learning:** <object data>, <embed src>, and <iframe src> can point directly at image files and were only caught incidentally (absolute-URL text sweep or PerformanceObserver). Also, extension-less SVG endpoints load successfully but report 0x0 natural size from new Image(), so the extension-keyed SVG exemption silently dropped them — a successful load at 0x0 IS the SVG signature.
 **Action:** Extension-check embed sources with isImageUrl to hold the false-positive line (iframes usually contain pages); centralize size acceptance in one helper (passesSizeFilter) so exemption rules stay consistent across DOM and network paths.
+
+## 2024-05-24 - Missed Lazy Loaded Images in Picture Source Elements
+**Learning:** The MutationObserver path `handleSource` previously only checked `<source>` elements within `<video>` tags. It missed `<source>` tags used within `<picture>` elements. Consequently, lazy-loaded attributes on dynamically inserted `<picture source>` tags (`data-src`, `data-lazy-src`, `data-original`) created an attribute-coverage drift between the initial scan `collectImages()` and the dynamic path.
+**Action:** Updated `handleSource` and `extractUrlsFromElement` to pass an `imageSet` and extract `src`, `data-src`, `data-lazy-src`, and `data-original` when `el.parentElement.tagName === 'PICTURE'`.

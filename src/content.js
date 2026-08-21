@@ -446,10 +446,23 @@
     }
   }
 
-  function handleSource(el, videoSet) {
-    if (el.tagName === 'SOURCE' && el.parentElement?.tagName === 'VIDEO') {
-      const url = resolveUrl(el.src);
-      if (url && !url.startsWith('data:')) videoSet.add(url);
+  function handleSource(el, imageSet, videoSet) {
+    if (el.tagName === 'SOURCE') {
+      if (el.parentElement?.tagName === 'VIDEO') {
+        const url = resolveUrl(el.src);
+        if (url && !url.startsWith('data:')) videoSet.add(url);
+      } else if (el.parentElement?.tagName === 'PICTURE') {
+        const attrs = ['src', 'data-src', 'data-lazy-src', 'data-original'];
+        for (const attr of attrs) {
+          let val;
+          if (attr === 'src') val = el.src;
+          else val = el.hasAttribute(attr) ? el.getAttribute(attr) : null;
+          if (val) {
+            const url = resolveUrl(val);
+            if (url && !url.startsWith('data:')) imageSet.add(url);
+          }
+        }
+      }
     }
   }
 
@@ -527,7 +540,7 @@
     handleImg(el, imageSet);
     handleSrcset(el, imageSet);
     handleVideo(el, imageSet, videoSet);
-    handleSource(el, videoSet);
+    handleSource(el, imageSet, videoSet);
     handleBackgroundImage(el, imageSet);
     handleMeta(el, imageSet);
     handleEmbed(el, imageSet);
