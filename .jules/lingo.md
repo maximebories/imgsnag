@@ -4,3 +4,6 @@
 ## 2026-07-21 - Dynamic lang and title for extension HTML pages
 **Learning:** Static HTML pages without user-facing copy lack `lang` attributes and titles, causing screen readers to use incorrect pronunciation or read raw URLs.
 **Action:** Dynamically inject `document.documentElement.lang = browser.i18n.getUILanguage();` during initialization and set `document.title` via `browser.i18n.getMessage(...)`.
+## 2026-07-25 - Localized SVG Badge Text
+**Learning:** Hardcoded text like 'SVG' in visual badges bypasses the i18n pipeline and prevents consistent translation across locales.
+**Action:** When adding visual indicators or badges, always extract the text into a localization key in `messages.json` and use `browser.i18n.getMessage` in JS.
