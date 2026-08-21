@@ -311,7 +311,12 @@
   function getDomImageSize(url) {
     const el = document.querySelector(`img[src="${CSS.escape(url)}"]`);
     if (el && el.naturalWidth > 0 && el.naturalHeight > 0) {
-      return { width: el.naturalWidth, height: el.naturalHeight };
+      // Responsive images render their srcset-chosen candidate; only trust the
+      // natural size when the queried URL is actually the one being rendered
+      const activeUrl = el.currentSrc || el.src;
+      if (activeUrl === url) {
+        return { width: el.naturalWidth, height: el.naturalHeight };
+      }
     }
     return null;
   }
@@ -326,14 +331,17 @@
     return size.width >= MIN_IMAGE_SIZE && size.height >= MIN_IMAGE_SIZE;
   }
 
-  async function filterImagesBySize(urls) {
-    const sizeMap = new Map();
-    const imgs = document.images;
-    const len = imgs.length;
-    for (let i = 0; i < len; i++) {
-      const img = imgs[i];
-      if (img.naturalWidth > 0 && img.naturalHeight > 0) {
-        sizeMap.set(img.src, { width: img.naturalWidth, height: img.naturalHeight });
+  async function filterImagesBySize(urls, providedSizeMap) {
+    let sizeMap = providedSizeMap;
+    if (!sizeMap) {
+      sizeMap = new Map();
+      const imgs = document.images;
+      const len = imgs.length;
+      for (let i = 0; i < len; i++) {
+        const img = imgs[i];
+        if (img.naturalWidth > 0 && img.naturalHeight > 0) {
+          sizeMap.set(img.currentSrc || img.src, { width: img.naturalWidth, height: img.naturalHeight });
+        }
       }
     }
 
@@ -370,14 +378,6 @@
     const unknown = [...urls].filter((url) => !discoveredMedia.has(url));
     if (unknown.length === 0) return;
 
-    let accepted;
-    if (type === 'video') {
-      // Videos skip size filtering — can't measure with new Image()
-      accepted = unknown;
-    } else {
-      accepted = await filterImagesBySize(new Set(unknown));
-    }
-
     const sizeMap = type === 'image' ? new Map() : null;
     if (sizeMap) {
       const imgs = document.images;
@@ -385,9 +385,17 @@
       for (let i = 0; i < len; i++) {
         const img = imgs[i];
         if (img.naturalWidth > 0 && img.naturalHeight > 0) {
-          sizeMap.set(img.src, { width: img.naturalWidth, height: img.naturalHeight });
+          sizeMap.set(img.currentSrc || img.src, { width: img.naturalWidth, height: img.naturalHeight });
         }
       }
+    }
+
+    let accepted;
+    if (type === 'video') {
+      // Videos skip size filtering — can't measure with new Image()
+      accepted = unknown;
+    } else {
+      accepted = await filterImagesBySize(new Set(unknown), sizeMap);
     }
 
     const items = accepted.map((url) => {

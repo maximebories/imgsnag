@@ -13,3 +13,6 @@
 ## 2026-08-19 - Expensive Array.from and join in attribute scan
 **Learning:** Iterating over `Node.ELEMENT_NODE` attributes by collecting them into an array via `Array.from(node.attributes).map(...).join(' ')` causes excessive memory allocation and string concatenation overhead, especially on heavy pages, which can take over 1.3s on large pages.
 **Action:** Replace `Array.from` and `join` with a direct `for` loop over `node.attributes` and apply the regex on each attribute value directly. This reduces the overhead significantly (~2x faster).
+## 2026-08-22 - Duplicated live DOM collection iterations
+**Learning:** Constructing a sizeMap by iterating the live `document.images` collection twice within the same event loop (once in `filterImagesBySize`, once in `addNewUrls`) causes redundant collection scanning on heavy pages (~100ms to ~1.6s observed).
+**Action:** Hoist the map generation to the top of `addNewUrls` and pass it by reference into the filter function so the live collection is walked once.

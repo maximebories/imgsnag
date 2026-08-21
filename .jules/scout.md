@@ -23,3 +23,6 @@
 ## 2024-05-24 - Missed Lazy Loaded Images in Picture Source Elements
 **Learning:** The MutationObserver path `handleSource` previously only checked `<source>` elements within `<video>` tags. It missed `<source>` tags used within `<picture>` elements. Consequently, lazy-loaded attributes on dynamically inserted `<picture source>` tags (`data-src`, `data-lazy-src`, `data-original`) created an attribute-coverage drift between the initial scan `collectImages()` and the dynamic path.
 **Action:** Updated `handleSource` and `extractUrlsFromElement` to pass an `imageSet` and extract `src`, `data-src`, `data-lazy-src`, and `data-original` when `el.parentElement.tagName === 'PICTURE'`.
+## 2026-08-22 - False positive tracking pixels passing size filter via srcset
+**Learning:** `img` elements that use `srcset` to load large images still list a tiny 1x1 tracking-pixel fallback in `src`. The size map keyed by `img.src` assigned the rendered srcset candidate's large naturalWidth/Height to the tracking pixel's URL, letting 1x1 pixels bypass the size filter and bloat the grid.
+**Action:** Key size lookups by `img.currentSrc || img.src`, and in getDomImageSize only trust natural dimensions when the queried URL is the actively rendered one.
