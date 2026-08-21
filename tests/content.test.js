@@ -96,3 +96,39 @@ describe('parseSrcset', () => {
     expect(parseSrcset('img1.jpg 1x, , img2.jpg 2x,')).toEqual(['img1.jpg', 'img2.jpg']);
   });
 });
+
+describe('handleMeta', () => {
+  const { handleMeta } = require('../src/content.js');
+
+  function el(tag, attrs = {}) {
+    const e = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+    return e;
+  }
+
+  it('captures meta[property="og:image"]', () => {
+    const set = new Set();
+    handleMeta(el('meta', { property: 'og:image', content: 'https://example.com/og.jpg' }), set);
+    expect([...set]).toEqual(['https://example.com/og.jpg']);
+  });
+
+  it('captures meta[name="twitter:image"]', () => {
+    const set = new Set();
+    handleMeta(el('meta', { name: 'twitter:image', content: 'https://example.com/twitter.jpg' }), set);
+    expect([...set]).toEqual(['https://example.com/twitter.jpg']);
+  });
+
+  it('captures link[rel="preload"][as="image"]', () => {
+    const set = new Set();
+    handleMeta(el('link', { rel: 'preload', as: 'image', href: 'https://example.com/preload.png' }), set);
+    expect([...set]).toEqual(['https://example.com/preload.png']);
+  });
+
+  it('ignores other meta and link tags', () => {
+    const set = new Set();
+    handleMeta(el('meta', { name: 'description', content: 'hello' }), set);
+    handleMeta(el('link', { rel: 'stylesheet', href: 'style.css' }), set);
+    handleMeta(el('div', { class: 'something' }), set);
+    expect(set.size).toBe(0);
+  });
+});

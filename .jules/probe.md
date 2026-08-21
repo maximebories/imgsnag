@@ -9,3 +9,6 @@
 ## 2026-08-18 - Synthetic Events Testing
 **Learning:** Verified that the `e.isTrusted` check implemented by Warden protects the click and dragend listeners in `src/content.js`. However, testing `e.isTrusted` in jsdom requires intercepting `document.addEventListener` since standard synthesized events cannot easily have `isTrusted` overridden as true.
 **Action:** Added `tests/trust_boundaries.test.js` to pin the `e.isTrusted` checks for alt-click and drag-to-save behavior, making sure these boundaries remain guarded against regression.
+## 2026-08-20 - Meta and Preload regression test
+**Learning:** Verified that the Scout persona's fix for capturing `meta[property="og:image"]`, `meta[name="twitter:image"]`, and `link[rel="preload"][as="image"]` lacked a regression test.
+**Action:** Added `handleMeta` regression test in `tests/content.test.js` to ensure the correct extraction of meta and preload images.
