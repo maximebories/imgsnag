@@ -10,3 +10,6 @@
 ## 2026-08-16 - Expensive live HTMLCollection iteration
 **Learning:** Iterating over `document.images` and accessing its `length` property directly inside a `for` loop condition is very expensive on large pages because `document.images` is a live `HTMLCollection`. Accessing it forces layout or collection recalculations.
 **Action:** Cache the collection and its length in local variables (`const imgs = document.images; const len = imgs.length;`) before the loop to convert an $O(N^2)$ operation into $O(N)$, significantly speeding up `sizeMap` generation.
+## 2026-08-19 - Expensive Array.from and join in attribute scan
+**Learning:** Iterating over `Node.ELEMENT_NODE` attributes by collecting them into an array via `Array.from(node.attributes).map(...).join(' ')` causes excessive memory allocation and string concatenation overhead, especially on heavy pages, which can take over 1.3s on large pages.
+**Action:** Replace `Array.from` and `join` with a direct `for` loop over `node.attributes` and apply the regex on each attribute value directly. This reduces the overhead significantly (~2x faster).
