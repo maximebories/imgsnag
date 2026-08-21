@@ -12,3 +12,7 @@
 ## 2026-08-20 - Meta and Preload regression test
 **Learning:** Verified that the Scout persona's fix for capturing `meta[property="og:image"]`, `meta[name="twitter:image"]`, and `link[rel="preload"][as="image"]` lacked a regression test.
 **Action:** Added `handleMeta` regression test in `tests/content.test.js` to ensure the correct extraction of meta and preload images.
+
+## 2026-08-20 - Badge Clear Parity Regression Test
+**Learning:** Found a journal-documented parity fix from the Twin persona regarding badge clearing (`browser.action.setBadgeText({ text: null })` vs `''`) that lacked a corresponding regression test.
+**Action:** Always verify that cross-browser parity fixes (like badge clearing mechanisms) are pinned with regression tests that simulate browser-specific API failures (e.g., throwing on `null`) to ensure the fallback logic remains intact.

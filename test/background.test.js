@@ -223,6 +223,36 @@ describe('Background Script', () => {
     expect(downloads[1].cancelled).toBe(true);
   });
 
+  test('download_images_bulk: badge-clear parity falls back to empty string if null throws', async () => {
+    // Override the mock for this specific test to simulate Chrome's behavior where null throws
+    const originalSetBadgeText = global.browser.action.setBadgeText;
+    const setBadgeCalls = [];
+    global.browser.action.setBadgeText = async (details) => {
+      setBadgeCalls.push(details.text);
+      if (details.text === null) {
+        throw new TypeError('Simulated Chrome TypeError for null badge text');
+      }
+      return originalSetBadgeText(details);
+    };
+
+    const response = await messageListener({
+      action: 'download_images_bulk',
+      urls: ['https://example.com/1.jpg']
+    }, {});
+
+    expect(response).toEqual({ started: true, completed: true });
+
+    // Wait for the async operations to settle
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    // Verify it attempted null, failed, and fell back to empty string
+    expect(setBadgeCalls).toContain(null);
+    expect(badgeText).toBe('');
+
+    // Restore mock
+    global.browser.action.setBadgeText = originalSetBadgeText;
+  });
+
   test('onChanged listener removes finished downloads', async () => {
     // Start a download
     await messageListener({
