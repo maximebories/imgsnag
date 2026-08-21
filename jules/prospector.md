@@ -22,7 +22,7 @@ Initial DOM scan (`collectImages`/`collectVideos`: img + lazy attrs, srcset/data
 - Streaming manifests: HLS `.m3u8` / DASH `.mpd` detection and what "downloading" them should even mean
 - `blob:` URLs held in JS and `canvas.toBlob()` extraction for canvas/WebGL-rendered images
 - Service-worker Cache Storage inspection; WebSocket- or `background-fetch`-delivered media
-- CSS surfaces beyond background-image: `mask-image`, `content: url()`, SVG `<image href>`, `cursor` sprites
+- ~~CSS `mask-image` / `content: url()`~~ — RFC filed: #138 (go with caveats; element styles only, idle queue). Still open: SVG `<image href>`, `cursor` sprites
 - Highest-quality variant resolution: picking the densest srcset/CDN candidate rather than what the page loaded
 - Anything you discover in the wild that the pipeline structurally cannot see — document the page pattern first
 

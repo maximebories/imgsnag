@@ -4,3 +4,6 @@
 ## 2026-08-21 - Shadow DOM traversal RFC (filed #135) — and a deliverable-shape correction
 **Learning:** Two runs (Aug 20/21) both investigated shadow DOM and both delivered the RFC as a PR with a markdown file, violating the RFC-issue deliverable; they also duplicated each other because the duplicate check skipped closed/open PRs of the persona itself. Evidence quality was good (MDN: 3 hidden images, ~0.2ms walk cost; jsdom 50k-node benchmark 360ms → keep off hot paths).
 **Action:** The RFC deliverable is an issue with the `rfc` label — never a PR, never a committed .md file. Search existing rfc issues AND recent PRs before starting.
+## 2026-08-22 - CSS content/mask-image RFC (filed #138 by orchestrator)
+**Learning:** CSS `content: url()` and `mask-image` are viable capture channels but sit on the getComputedStyle hot path; pseudo-elements triple the style-resolution cost per element. The session sandbox has no gh auth — RFC issues must be filed by the orchestrator from the journal/message when a run cannot reach GitHub.
+**Action:** Any implementation must ride the existing idle-time queue and the styling-hint fast path; element styles first, pseudo-elements only with real-page evidence.
