@@ -91,8 +91,9 @@
   }
 
   function createMediaCell(item) {
-    const cell = document.createElement('div');
+    const cell = document.createElement('li');
     cell.className = 'cell';
+    cell.setAttribute('role', 'listitem');
 
     const isVideo = item.type === 'video';
     const media = document.createElement(isVideo ? 'video' : 'img');
