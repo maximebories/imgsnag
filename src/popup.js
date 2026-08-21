@@ -39,6 +39,8 @@
     browser.i18n.getMessage('popupLoading');
   document.getElementById('empty-text').textContent =
     browser.i18n.getMessage('popupNoMedia');
+  document.getElementById('empty-hint').textContent =
+    browser.i18n.getMessage('popupEmptyHint');
   document.getElementById('error-text').textContent =
     browser.i18n.getMessage('popupReload');
   document.getElementById('video-header-text').textContent =
