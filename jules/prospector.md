@@ -17,7 +17,7 @@ Initial DOM scan (`collectImages`/`collectVideos`: img + lazy attrs, srcset/data
 ## Candidate backlog (pick ONE per run; strike through in your journal as investigated)
 
 - ~~Inline `<svg>` serialization capture~~ — RFC filed: #118 (verdict: go, staged; Stage 1 with Scout)
-- Shadow DOM traversal (open shadow roots are invisible to querySelectorAll — how common is media inside them? cost of piercing?)
+- ~~Shadow DOM traversal~~ — RFC filed: #135 (verdict: go, staged; Stage 1 with Scout)
 - Same-origin iframe descent (embedded galleries/widgets; frame-boundary and permission semantics)
 - Streaming manifests: HLS `.m3u8` / DASH `.mpd` detection and what "downloading" them should even mean
 - `blob:` URLs held in JS and `canvas.toBlob()` extraction for canvas/WebGL-rendered images
