@@ -39,6 +39,8 @@
     browser.i18n.getMessage('popupLoading');
   document.getElementById('empty-text').textContent =
     browser.i18n.getMessage('popupNoMedia');
+  document.getElementById('empty-hint').textContent =
+    browser.i18n.getMessage('popupEmptyHint');
   document.getElementById('error-text').textContent =
     browser.i18n.getMessage('popupReload');
   document.getElementById('video-header-text').textContent =
@@ -177,7 +179,7 @@
     if (isDerivedSvg) {
       const badge = document.createElement('span');
       badge.className = 'badge-derived';
-      badge.textContent = 'SVG';
+      badge.textContent = browser.i18n.getMessage('popupDerivedBadgeText');
       badge.setAttribute('role', 'img');
       badge.setAttribute('aria-label', browser.i18n.getMessage('popupDerivedBadge'));
       cell.append(badge);

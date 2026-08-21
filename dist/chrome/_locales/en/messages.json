@@ -51,5 +51,11 @@
   },
   "popupDerivedBadge": {
     "message": "Generated SVG"
+  },
+  "popupDerivedBadgeText": {
+    "message": "SVG"
+  },
+  "popupEmptyHint": {
+    "message": "Tip: Alt+Click or drag images to save directly"
   }
 }

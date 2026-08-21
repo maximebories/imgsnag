@@ -31,6 +31,13 @@
         display: flex;
       }
 
+      #empty .hint {
+        font-size: 11px;
+        color: #777;
+        text-align: center;
+        max-width: 80%;
+      }
+
       .spinner {
         width: 24px;
         height: 24px;
@@ -267,6 +274,7 @@
         .group-header { color: #a3a3a3; }
         #btn-all { background: #374151; color: #f9fafb; }
         #btn-all:hover { background: #4b5563; }
+        #empty .hint { color: #888; }
       }
 
       @media (prefers-reduced-motion: reduce) {
@@ -294,6 +302,7 @@
 
     <div id="empty" role="status" aria-live="polite">
       <span id="empty-text"></span>
+      <span id="empty-hint" class="hint"></span>
     </div>
 
     <div id="error" role="alert" aria-live="assertive">

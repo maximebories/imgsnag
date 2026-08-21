@@ -213,17 +213,23 @@
 
     let node;
     while ((node = walker.nextNode())) {
-      let textToScan = '';
       if (node.nodeType === Node.TEXT_NODE) {
-        textToScan = node.nodeValue;
+        if (node.nodeValue) {
+          let match;
+          while ((match = IMAGE_URL_RE.exec(node.nodeValue)) !== null) {
+            trackImage(match[0]);
+          }
+        }
       } else if (node.nodeType === Node.ELEMENT_NODE) {
-        textToScan = Array.from(node.attributes, (attr) => attr.value).join(' ');
-      }
-
-      if (textToScan) {
-        let match;
-        while ((match = IMAGE_URL_RE.exec(textToScan)) !== null) {
-          trackImage(match[0]);
+        const attrs = node.attributes;
+        for (let i = 0, len = attrs.length; i < len; i++) {
+          const val = attrs[i].value;
+          if (val) {
+            let match;
+            while ((match = IMAGE_URL_RE.exec(val)) !== null) {
+              trackImage(match[0]);
+            }
+          }
         }
       }
     }
@@ -446,10 +452,23 @@
     }
   }
 
-  function handleSource(el, videoSet) {
-    if (el.tagName === 'SOURCE' && el.parentElement?.tagName === 'VIDEO') {
-      const url = resolveUrl(el.src);
-      if (url && !url.startsWith('data:')) videoSet.add(url);
+  function handleSource(el, imageSet, videoSet) {
+    if (el.tagName === 'SOURCE') {
+      if (el.parentElement?.tagName === 'VIDEO') {
+        const url = resolveUrl(el.src);
+        if (url && !url.startsWith('data:')) videoSet.add(url);
+      } else if (el.parentElement?.tagName === 'PICTURE') {
+        const attrs = ['src', 'data-src', 'data-lazy-src', 'data-original'];
+        for (const attr of attrs) {
+          let val;
+          if (attr === 'src') val = el.src;
+          else val = el.hasAttribute(attr) ? el.getAttribute(attr) : null;
+          if (val) {
+            const url = resolveUrl(val);
+            if (url && !url.startsWith('data:')) imageSet.add(url);
+          }
+        }
+      }
     }
   }
 
@@ -527,7 +546,7 @@
     handleImg(el, imageSet);
     handleSrcset(el, imageSet);
     handleVideo(el, imageSet, videoSet);
-    handleSource(el, videoSet);
+    handleSource(el, imageSet, videoSet);
     handleBackgroundImage(el, imageSet);
     handleMeta(el, imageSet);
     handleEmbed(el, imageSet);
@@ -782,6 +801,6 @@
   syncDragPreference();
   browser.storage.onChanged.addListener(() => syncDragPreference());
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { extractBgImageUrls, resolveUrl, isVideoUrl, isImageUrl, isSvgUrl, parseSrcset, collectInlineSvgs, handleEmbed, passesSizeFilter };
+    module.exports = { extractBgImageUrls, resolveUrl, isVideoUrl, isImageUrl, isSvgUrl, parseSrcset, collectInlineSvgs, handleEmbed, passesSizeFilter, handleMeta };
   }
 })();
