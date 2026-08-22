@@ -67,12 +67,14 @@ try {
   }, tabId);
   await popup.setViewportSize({ width: 400, height: 560 });
   await popup.goto(`chrome-extension://${extId}/popup.html`);
-  await popup.waitForTimeout(5000);
+  await popup.waitForTimeout(7000); // includes the ~1s-deferred visual-dedup pass
 
   const stats = await popup.evaluate(() => {
-    const srcs = [...document.querySelectorAll('#grid img')].map(i => i.src.split('?')[0]);
+    const srcs = [...document.querySelectorAll('#grid .cell:not([hidden]) img')].map(i => i.src.split('?')[0]);
     return {
       cells: document.querySelectorAll('#grid .cell').length,
+      visibleCells: document.querySelectorAll('#grid .cell:not([hidden])').length,
+      dedupHidden: document.querySelectorAll('#grid .cell[hidden]').length,
       videos: document.querySelectorAll('#video-grid .cell').length,
       queryDupes: srcs.length - new Set(srcs).size,
       state: ['loading', 'empty', 'error'].find(id => document.getElementById(id)?.classList.contains('visible')) || 'populated'

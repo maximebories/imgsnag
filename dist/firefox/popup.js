@@ -9,6 +9,131 @@
   // Derived inline-SVG items carry their markup as a data: URL (RFC #118)
   const SVG_DATA_PREFIX = 'data:image/svg+xml;charset=utf-8,';
 
+  // Visual dedup: the same photo can appear under several genuinely different
+  // URLs (CDN crops, zoom variants). A 64-bit dHash fingerprint groups
+  // near-identical thumbnails; only the largest of each group stays visible.
+  const HASH_W = 9, HASH_H = 8;
+  const DEDUPE_HAMMING = 6;
+  const DEDUPE_MAX_CELLS = 300;
+  const hashCache = new Map();
+  const imageEntries = [];
+
+  async function dHash(url) {
+    if (hashCache.has(url)) return hashCache.get(url);
+    let hash = null;
+    try {
+      // fetch → blob keeps the canvas untainted (extension host permissions);
+      // the bytes are HTTP-cache hits since the grid just rendered this URL
+      const blob = await (await fetch(url)).blob();
+      const bmp = await createImageBitmap(blob, { resizeWidth: HASH_W, resizeHeight: HASH_H, resizeQuality: 'low' });
+      const canvas = document.createElement('canvas');
+      canvas.width = HASH_W;
+      canvas.height = HASH_H;
+      const c2d = canvas.getContext('2d', { willReadFrequently: true });
+      c2d.drawImage(bmp, 0, 0, HASH_W, HASH_H);
+      bmp.close();
+      const d = c2d.getImageData(0, 0, HASH_W, HASH_H).data;
+      const gray = new Array(HASH_W * HASH_H);
+      for (let i = 0; i < gray.length; i++) {
+        gray[i] = d[i * 4] * 0.299 + d[i * 4 + 1] * 0.587 + d[i * 4 + 2] * 0.114;
+      }
+      let hi = 0, lo = 0, bit = 0;
+      for (let y = 0; y < HASH_H; y++) {
+        for (let x = 0; x < HASH_W - 1; x++) {
+          const v = gray[y * HASH_W + x] > gray[y * HASH_W + x + 1] ? 1 : 0;
+          if (bit < 32) lo = (lo << 1) | v; else hi = (hi << 1) | v;
+          bit++;
+        }
+      }
+      hash = { hi, lo };
+    } catch {
+      hash = null; // best-effort: unhashable images are never hidden
+    }
+    hashCache.set(url, hash);
+    return hash;
+  }
+
+  function popcount32(n) {
+    n = n - ((n >> 1) & 0x55555555);
+    n = (n & 0x33333333) + ((n >> 2) & 0x33333333);
+    return (((n + (n >> 4)) & 0x0f0f0f0f) * 0x01010101) >> 24;
+  }
+
+  function hammingDistance(a, b) {
+    return popcount32(a.hi ^ b.hi) + popcount32(a.lo ^ b.lo);
+  }
+
+  // Pure: given [{url, hash, area, aspect}], return the urls of every
+  // near-duplicate that is NOT the largest of its cluster.
+  function pickDuplicateUrls(entries) {
+    const toHide = [];
+    const buckets = new Map();
+    for (const e of entries) {
+      if (!e.hash) continue;
+      const key = Math.round(e.aspect * 10) / 10; // compare like aspects only
+      if (!buckets.has(key)) buckets.set(key, []);
+      buckets.get(key).push(e);
+    }
+    for (const group of buckets.values()) {
+      const clusters = [];
+      for (const e of group) {
+        let placed = false;
+        for (const c of clusters) {
+          if (hammingDistance(c[0].hash, e.hash) <= DEDUPE_HAMMING) {
+            c.push(e);
+            placed = true;
+            break;
+          }
+        }
+        if (!placed) clusters.push([e]);
+      }
+      for (const c of clusters) {
+        if (c.length < 2) continue;
+        c.sort((a, b) => b.area - a.area);
+        for (let i = 1; i < c.length; i++) toHide.push(c[i].url);
+      }
+    }
+    return toHide;
+  }
+
+  let dedupeTimer = null;
+  let dedupeRunning = false;
+
+  function scheduleDedupe() {
+    if (dedupeTimer) clearTimeout(dedupeTimer);
+    dedupeTimer = setTimeout(runDedupe, 900);
+  }
+
+  async function runDedupe() {
+    if (dedupeRunning) { scheduleDedupe(); return; }
+    dedupeRunning = true;
+    try {
+      const candidates = imageEntries
+        .filter(e => !e.cell.hidden && !e.url.startsWith('data:'))
+        .slice(0, DEDUPE_MAX_CELLS);
+      for (let i = 0; i < candidates.length; i += 8) {
+        await Promise.all(candidates.slice(i, i + 8).map(async e => { e.hash = await dHash(e.url); }));
+      }
+      const entries = candidates.map(e => {
+        const img = e.cell.querySelector('img');
+        const w = e.width || img?.naturalWidth || 0;
+        const h = e.height || img?.naturalHeight || 0;
+        return { url: e.url, hash: e.hash, area: w * h, aspect: h > 0 ? w / h : 0 };
+      });
+      for (const url of pickDuplicateUrls(entries)) {
+        const entry = imageEntries.find(e => e.url === url);
+        if (entry) {
+          entry.cell.hidden = true;
+          allUrls.delete(url);
+          selectedUrls.delete(url);
+        }
+      }
+      updateCounter();
+    } finally {
+      dedupeRunning = false;
+    }
+  }
+
   function sendDownload(url) {
     if (url.startsWith(SVG_DATA_PREFIX)) {
       browser.runtime.sendMessage({
@@ -207,6 +332,7 @@
         hasVideo = true;
       } else {
         imageFragment.appendChild(cell);
+        imageEntries.push({ url: item.url, width: item.width, height: item.height, cell });
         hasImage = true;
       }
     }
@@ -220,6 +346,7 @@
     if (hasImage) {
       gridEl.appendChild(imageFragment);
       show(gridEl);
+      scheduleDedupe();
     }
 
     if (allUrls.size > 0) {
@@ -281,4 +408,8 @@
   }
 
   document.addEventListener('DOMContentLoaded', init);
+
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { hammingDistance, pickDuplicateUrls };
+  }
 })();

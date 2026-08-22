@@ -78,6 +78,7 @@
         transition: opacity 0.15s;
       }
       .cell:hover img { opacity: 0.85; }
+      .cell[hidden] { display: none; } /* visual-dedup hides smaller variants */
 
       .cell-action {
         position: absolute;
