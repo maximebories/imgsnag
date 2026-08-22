@@ -32,3 +32,6 @@
 ## 2026-08-22 - Visual dedup via dHash in the popup
 **Learning:** URL-level dedup cannot catch the same photo under genuinely different URLs (CDN crops, zoom variants). A 64-bit dHash (9x8 gradient fingerprint) over the already-rendered thumbnails groups near-identical images at negligible cost; fetch-to-blob avoids canvas taint via host permissions. Verified: a 3-variant fixture collapses to 1 visible cell. Known limits: dimensionless SVG blobs fail createImageBitmap (hash null, never hidden — safe), and aggressive crops that change aspect ratio are treated as distinct content on purpose.
 **Action:** Keep dedup best-effort and popup-side only (zero ambient page cost); never hide an unhashable image; compare only within like aspect buckets.
+## 2024-11-21 - CSS mask-image and pseudo-elements
+**Learning:** Images can be hidden in `mask-image`, `webkit-mask-image`, and `content: url()` CSS properties, as well as in `::before` and `::after` pseudo-elements. These sit on the `getComputedStyle` hot path; evaluating them synchronously during DOM traversal causes severe performance drops.
+**Action:** Centralize CSS property extraction into `extractUrlsFromStyle` covering masks and pseudo-elements. Update `collectImages` to enqueue elements to `pendingBackgroundCheckQueue` instead of resolving styles synchronously, deferring evaluations to the idle queue.
