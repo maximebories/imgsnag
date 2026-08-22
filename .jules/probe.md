@@ -19,3 +19,6 @@
 ## 2026-08-22 - ReDoS TreeWalker regression test
 **Learning:** The Warden-documented ReDoS fix (regex strip replaced by a native DOM TreeWalker) lacked a regression test.
 **Action:** Added tests/redos_fallback.test.js pinning TreeWalker extraction from text nodes, attributes, and JSON-LD, and the rejection of URLs inside non-JSON-LD script and style blocks.
+## 2026-08-25 - Storage-backed download tracking regression test
+**Learning:** Verified that the Twin persona's fix for tracking download IDs in `browser.storage.local` using independent `dl_<id>` keys lacked a dedicated regression test asserting this exact behavior during bulk downloads and cancellation.
+**Action:** Added a regression test in `test/background.test.js` to explicitly pin the `dl_<id>` storage writes and removals, guaranteeing that Service Worker state persistence is strictly maintained.
