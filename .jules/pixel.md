@@ -28,3 +28,6 @@
 ## 2026-08-22 - Positional Context for Screen Readers
 **Learning:** Providing positional context ("image N of M") manually in `aria-label`s requires expensive DOM rewrites as lists grow dynamically (like infinite scroll grids). Using semantic list elements (`<ul>` and `<li>`) with explicit `role="list"` and `role="listitem"` enables screen readers to calculate and announce positional context natively and automatically without touching the DOM on every append.
 **Action:** Replace `div`-based container and cell wrappers with `<ul role="list">` and `<li role="listitem">` in dynamic popups grids to gain positional context for free. Reset default list styles via CSS.
+## 2024-10-30 - Explicit Counts for Bulk Actions
+**Learning:** Bulk action buttons (like "Download All") lacking explicit counts leave users uncertain about the scope of the operation, especially in dynamic grids where deduplication alters the total item count silently.
+**Action:** Always append the total expected item count to bulk action buttons (e.g., "Download All (42)") and ensure the count updates reacting to live state changes like dynamic deduplication.

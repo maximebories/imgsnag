@@ -186,6 +186,13 @@
       ? `${n} ${browser.i18n.getMessage('popupSelected')}`
       : '';
     btnSelected.disabled = n === 0;
+
+    const all = allUrls.size;
+    if (all > 0) {
+      btnAll.textContent = `${browser.i18n.getMessage('popupDownloadAll')} (${all})`;
+    } else {
+      btnAll.textContent = browser.i18n.getMessage('popupDownloadAll');
+    }
   }
 
   function flashCell(cell) {
@@ -353,6 +360,7 @@
       hide(loadingEl);
       hide(emptyEl);
       show(barEl);
+      updateCounter();
     }
   }
 
