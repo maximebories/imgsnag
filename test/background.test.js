@@ -274,4 +274,29 @@ describe('Background Script', () => {
 
     expect(global.mockStorage).not.toHaveProperty('dl_1');
   });
+
+  test('storage-backed download tracking pins active downloads to storage.local', async () => {
+    // 1. Verify storage is initially empty
+    expect(global.mockStorage).toEqual({});
+
+    // 2. Start bulk download
+    await messageListener({
+      action: 'download_images_bulk',
+      urls: ['https://example.com/a.jpg', 'https://example.com/b.jpg']
+    }, {});
+
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    // 3. Verify storage has dl_1 and dl_2
+    expect(global.mockStorage).toHaveProperty('dl_1', true);
+    expect(global.mockStorage).toHaveProperty('dl_2', true);
+
+    // 4. Cancel downloads
+    await messageListener({ action: 'cancel_downloads' }, {});
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    // 5. Verify storage is cleared
+    expect(global.mockStorage).not.toHaveProperty('dl_1');
+    expect(global.mockStorage).not.toHaveProperty('dl_2');
+  });
 });
