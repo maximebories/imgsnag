@@ -132,3 +132,29 @@ describe('handleMeta', () => {
     expect(set.size).toBe(0);
   });
 });
+
+describe('pickBestFromSrcset', () => {
+  const { pickBestFromSrcset } = require('../src/content.js');
+
+  it('picks the widest w descriptor', () => {
+    expect(pickBestFromSrcset('a.jpg 400w, b.jpg 1200w, c.jpg 800w')).toBe('b.jpg');
+  });
+
+  it('picks the highest density x descriptor', () => {
+    expect(pickBestFromSrcset('a.jpg 1x, b.jpg 3x, c.jpg 2x')).toBe('b.jpg');
+  });
+
+  it('treats a missing descriptor as 1x', () => {
+    expect(pickBestFromSrcset('a.jpg, b.jpg 2x')).toBe('b.jpg');
+    expect(pickBestFromSrcset('only.jpg')).toBe('only.jpg');
+  });
+
+  it('returns null for empty or missing input', () => {
+    expect(pickBestFromSrcset('')).toBeNull();
+    expect(pickBestFromSrcset(null)).toBeNull();
+  });
+
+  it('survives malformed entries', () => {
+    expect(pickBestFromSrcset(' , a.jpg 800w, , b.jpg oops')).toBe('a.jpg');
+  });
+});

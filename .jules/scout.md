@@ -26,3 +26,6 @@
 ## 2026-08-22 - False positive tracking pixels passing size filter via srcset
 **Learning:** `img` elements that use `srcset` to load large images still list a tiny 1x1 tracking-pixel fallback in `src`. The size map keyed by `img.src` assigned the rendered srcset candidate's large naturalWidth/Height to the tracking pixel's URL, letting 1x1 pixels bypass the size filter and bloat the grid.
 **Action:** Key size lookups by `img.currentSrc || img.src`, and in getDomImageSize only trust natural dimensions when the queried URL is the actively rendered one.
+## 2026-08-22 - srcset/picture variants flooded the grid with duplicates
+**Learning:** Tracking every srcset candidate and every <picture> source meant each image appeared once per width variant and once per format (user report from sonos.com: 475 cells, 426 of them query-string duplicates — 90% of the grid). The PerformanceObserver added the rendered variant on top.
+**Action:** One URL per image: pickBestFromSrcset (highest w/x descriptor) everywhere candidates were iterated; per-<picture> selection preferring img.currentSrc; skip img src when a srcset exists; skip srcset-family attributes in the TreeWalker sweep; skip rendered srcset variants in the PerformanceObserver. Verified with tools/e2e-smoke.mjs on the reported page: 475→52 cells, 426→3 dupes.

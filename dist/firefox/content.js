@@ -115,6 +115,31 @@
       .filter(Boolean);
   }
 
+  // A srcset lists the SAME image at several sizes/densities. Tracking every
+  // candidate floods the grid with duplicates (one cell per width variant),
+  // so pick the single best candidate: highest w or x descriptor.
+  function pickBestFromSrcset(srcset) {
+    if (!srcset) return null;
+    let bestUrl = null;
+    let bestScore = -1;
+    for (const entry of srcset.split(',')) {
+      const parts = entry.trim().split(/\s+/);
+      const url = parts[0];
+      if (!url) continue;
+      let score = 1;
+      const d = parts[1];
+      if (d) {
+        const n = parseFloat(d);
+        if (!Number.isNaN(n)) score = /w$/i.test(d) ? n : n * 1000;
+      }
+      if (score > bestScore) {
+        bestScore = score;
+        bestUrl = url;
+      }
+    }
+    return bestUrl;
+  }
+
   // Media discovery — scans the DOM for downloadable image and video URLs
 
   function collectImages(trackImage) {
@@ -124,43 +149,41 @@
       if (url) trackImage(url);
     });
 
-    // <img src> and lazy loaded variants
+    // <img src> and lazy loaded variants. When the element carries a srcset
+    // (or data-srcset), src is just one more variant of the same image — the
+    // srcset best-pick below covers it, so skip src to avoid duplicates.
     document.querySelectorAll('img[src], img[data-src], img[data-lazy-src], img[data-original]').forEach((img) => {
-      if (img.src) trackImage(img.src);
+      const hasSet = img.hasAttribute('srcset') || img.hasAttribute('data-srcset');
+      if (img.src && !hasSet) trackImage(img.src);
       if (img.hasAttribute('data-src')) trackImage(img.getAttribute('data-src'));
       if (img.hasAttribute('data-lazy-src')) trackImage(img.getAttribute('data-lazy-src'));
       if (img.hasAttribute('data-original')) trackImage(img.getAttribute('data-original'));
     });
 
-    // srcset attributes (img, source, etc.) and lazy loaded variants
+    // srcset attributes (img, source, etc.) — best candidate only.
+    // <picture> sources are handled per-picture below (format alternatives).
     document.querySelectorAll('[srcset], [data-srcset]').forEach((el) => {
-      if (el.hasAttribute('srcset')) {
-        for (const url of parseSrcset(el.getAttribute('srcset'))) {
-          trackImage(url);
-        }
-      }
-      if (el.hasAttribute('data-srcset')) {
-        for (const url of parseSrcset(el.getAttribute('data-srcset'))) {
-          trackImage(url);
-        }
-      }
+      if (el.tagName === 'SOURCE' && el.parentElement?.tagName === 'PICTURE') return;
+      const best = pickBestFromSrcset(el.getAttribute('srcset')) ||
+                   pickBestFromSrcset(el.getAttribute('data-srcset'));
+      if (best) trackImage(best);
     });
 
-    // <picture> <source> elements
-    document.querySelectorAll('picture source').forEach((source) => {
-      if (source.hasAttribute('src')) trackImage(source.getAttribute('src'));
-      if (source.hasAttribute('data-src')) trackImage(source.getAttribute('data-src'));
-      if (source.hasAttribute('data-lazy-src')) trackImage(source.getAttribute('data-lazy-src'));
-      if (source.hasAttribute('data-original')) trackImage(source.getAttribute('data-original'));
-      if (source.hasAttribute('srcset')) {
-        for (const url of parseSrcset(source.getAttribute('srcset'))) {
-          trackImage(url);
-        }
+    // <picture>: every <source> is the SAME image in another format/breakpoint.
+    // Prefer the variant the browser actually rendered; otherwise take the
+    // best candidate of the first usable source.
+    document.querySelectorAll('picture').forEach((pic) => {
+      const img = pic.querySelector('img');
+      if (img && img.currentSrc) {
+        trackImage(img.currentSrc);
+        return;
       }
-      if (source.hasAttribute('data-srcset')) {
-        for (const url of parseSrcset(source.getAttribute('data-srcset'))) {
-          trackImage(url);
-        }
+      for (const source of pic.querySelectorAll('source')) {
+        const best = pickBestFromSrcset(source.getAttribute('srcset')) ||
+                     pickBestFromSrcset(source.getAttribute('data-srcset')) ||
+                     source.getAttribute('src') || source.getAttribute('data-src') ||
+                     source.getAttribute('data-lazy-src') || source.getAttribute('data-original');
+        if (best) { trackImage(best); return; }
       }
     });
 
@@ -223,6 +246,9 @@
       } else if (node.nodeType === Node.ELEMENT_NODE) {
         const attrs = node.attributes;
         for (let i = 0, len = attrs.length; i < len; i++) {
+          // srcset-family attributes hold many variants of one image; the
+          // structural scan already tracked the best candidate
+          if (attrs[i].name.includes('srcset')) continue;
           const val = attrs[i].value;
           if (val) {
             let match;
@@ -417,10 +443,12 @@
 
   function handleImg(el, imageSet) {
     if (el.tagName === 'IMG') {
+      // With a srcset present, src is just another variant of the same image
+      const hasSet = el.hasAttribute('srcset') || el.hasAttribute('data-srcset');
       const attrs = ['src', 'data-src', 'data-lazy-src', 'data-original'];
       for (const attr of attrs) {
         let val;
-        if (attr === 'src') val = el.src;
+        if (attr === 'src') val = hasSet ? null : el.src;
         else val = el.hasAttribute(attr) ? el.getAttribute(attr) : null;
         if (val) {
           const url = resolveUrl(val);
@@ -432,17 +460,13 @@
 
   function handleSrcset(el, imageSet) {
     if (el.hasAttribute) {
-      if (el.hasAttribute('srcset')) {
-        for (const raw of parseSrcset(el.getAttribute('srcset'))) {
-          const url = resolveUrl(raw);
-          if (url && !url.startsWith('data:')) imageSet.add(url);
-        }
-      }
-      if (el.hasAttribute('data-srcset')) {
-        for (const raw of parseSrcset(el.getAttribute('data-srcset'))) {
-          const url = resolveUrl(raw);
-          if (url && !url.startsWith('data:')) imageSet.add(url);
-        }
+      // Picture sources are format alternatives handled by handleSource
+      if (el.tagName === 'SOURCE' && el.parentElement?.tagName === 'PICTURE') return;
+      const raw = pickBestFromSrcset(el.getAttribute('srcset')) ||
+                  pickBestFromSrcset(el.getAttribute('data-srcset'));
+      if (raw) {
+        const url = resolveUrl(raw);
+        if (url && !url.startsWith('data:')) imageSet.add(url);
       }
     }
   }
@@ -466,15 +490,14 @@
         const url = resolveUrl(el.src);
         if (url && !url.startsWith('data:')) videoSet.add(url);
       } else if (el.parentElement?.tagName === 'PICTURE') {
-        const attrs = ['src', 'data-src', 'data-lazy-src', 'data-original'];
-        for (const attr of attrs) {
-          let val;
-          if (attr === 'src') val = el.src;
-          else val = el.hasAttribute(attr) ? el.getAttribute(attr) : null;
-          if (val) {
-            const url = resolveUrl(val);
-            if (url && !url.startsWith('data:')) imageSet.add(url);
-          }
+        // One URL per source: format/breakpoint alternatives of the same image
+        const raw = pickBestFromSrcset(el.getAttribute('srcset')) ||
+                    pickBestFromSrcset(el.getAttribute('data-srcset')) ||
+                    el.getAttribute('src') || el.getAttribute('data-src') ||
+                    el.getAttribute('data-lazy-src') || el.getAttribute('data-original');
+        if (raw) {
+          const url = resolveUrl(raw);
+          if (url && !url.startsWith('data:')) imageSet.add(url);
         }
       }
     }
@@ -601,6 +624,22 @@
       const observer = new PerformanceObserver((list) => {
         const imageUrls = new Set();
         const videoUrls = new Set();
+        // URLs currently rendered by srcset-bearing imgs: the structural scan
+        // already tracked their best candidate — re-adding the rendered
+        // variant would duplicate the same image under a second URL
+        let renderedVariants = null;
+        const getRenderedVariants = () => {
+          if (renderedVariants) return renderedVariants;
+          renderedVariants = new Set();
+          const imgs = document.images;
+          for (let i = 0, len = imgs.length; i < len; i++) {
+            const im = imgs[i];
+            if (im.currentSrc && (im.hasAttribute('srcset') || im.hasAttribute('data-srcset') || im.parentElement?.tagName === 'PICTURE')) {
+              renderedVariants.add(im.currentSrc);
+            }
+          }
+          return renderedVariants;
+        };
         for (const entry of list.getEntries()) {
           const url = resolveUrl(entry.name);
           if (!url || url.startsWith('data:') || discoveredMedia.has(url)) continue;
@@ -608,6 +647,7 @@
           if (isVideoUrl(url) || entry.initiatorType === 'video') {
             videoUrls.add(url);
           } else if (IMAGE_EXT_RE.test(entry.name) || entry.initiatorType === 'img') {
+            if (entry.initiatorType === 'img' && getRenderedVariants().has(url)) continue;
             imageUrls.add(url);
           }
         }
@@ -809,6 +849,6 @@
   syncDragPreference();
   browser.storage.onChanged.addListener(() => syncDragPreference());
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { extractBgImageUrls, resolveUrl, isVideoUrl, isImageUrl, isSvgUrl, parseSrcset, collectInlineSvgs, handleEmbed, passesSizeFilter, handleMeta, collectMediaUrls };
+    module.exports = { extractBgImageUrls, resolveUrl, isVideoUrl, isImageUrl, isSvgUrl, parseSrcset, pickBestFromSrcset, collectInlineSvgs, handleEmbed, passesSizeFilter, handleMeta, collectMediaUrls };
   }
 })();
