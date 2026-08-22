@@ -1,6 +1,6 @@
 {
   "name": "imgsnag",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Browser extension to download images from web pages.",
   "scripts": {
     "test": "jest"
