@@ -158,3 +158,27 @@ describe('pickBestFromSrcset', () => {
     expect(pickBestFromSrcset(' , a.jpg 800w, , b.jpg oops')).toBe('a.jpg');
   });
 });
+
+describe('handleSource', () => {
+  const { handleSource } = require('../src/content.js');
+
+  function el(tag, attrs = {}) {
+    const e = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+    return e;
+  }
+
+  it('captures fallback and lazy-loaded attributes from picture source elements', () => {
+    const imageSet = new Set();
+    const videoSet = new Set();
+    const picture = el('picture');
+    const source = el('source', {
+      'data-lazy-src': 'https://example.com/lazy.jpg'
+    });
+    picture.appendChild(source);
+
+    handleSource(source, imageSet, videoSet);
+
+    expect([...imageSet]).toEqual(['https://example.com/lazy.jpg']);
+  });
+});

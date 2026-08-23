@@ -19,3 +19,6 @@
 ## 2026-08-22 - ReDoS TreeWalker regression test
 **Learning:** The Warden-documented ReDoS fix (regex strip replaced by a native DOM TreeWalker) lacked a regression test.
 **Action:** Added tests/redos_fallback.test.js pinning TreeWalker extraction from text nodes, attributes, and JSON-LD, and the rejection of URLs inside non-JSON-LD script and style blocks.
+## 2026-08-23 - Picture Source Elements regression test
+**Learning:** Verified that the Scout persona's fix for lazy-loaded picture source elements (extracting `src`, `data-src`, `data-lazy-src`, `data-original`, `srcset`, and `data-srcset` from `SOURCE` children of `PICTURE`) lacked a regression test.
+**Action:** Exported `handleSource` and added a regression test in `tests/content.test.js` to ensure the correct extraction of attributes from fallback and lazy-loaded picture source elements.
