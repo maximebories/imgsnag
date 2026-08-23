@@ -16,3 +16,6 @@
 ## 2026-08-22 - Duplicated live DOM collection iterations
 **Learning:** Constructing a sizeMap by iterating the live `document.images` collection twice within the same event loop (once in `filterImagesBySize`, once in `addNewUrls`) causes redundant collection scanning on heavy pages (~100ms to ~1.6s observed).
 **Action:** Hoist the map generation to the top of `addNewUrls` and pass it by reference into the filter function so the live collection is walked once.
+## 2026-08-25 - Fast-path regex pre-check for fallback URL scanning
+**Learning:** When applying complex regular expressions (like URL extractors) across thousands of DOM text nodes or attributes, it causes severe main-thread CPU overhead for strings that will never match.
+**Action:** Implement a fast-path pre-check (e.g., `.includes('http')`) before executing the regex to bypass the engine entirely for non-matching strings, yielding significant main-thread CPU savings.
