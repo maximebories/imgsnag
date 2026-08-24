@@ -19,3 +19,6 @@
 ## 2026-08-22 - ReDoS TreeWalker regression test
 **Learning:** The Warden-documented ReDoS fix (regex strip replaced by a native DOM TreeWalker) lacked a regression test.
 **Action:** Added tests/redos_fallback.test.js pinning TreeWalker extraction from text nodes, attributes, and JSON-LD, and the rejection of URLs inside non-JSON-LD script and style blocks.
+## 2026-08-24 - Missing CSS.escape mock in jsdom
+**Learning:** Verified that testing DOM scanning logic like `MutationObserver` triggers `CSS.escape`, which is not available in standard `jsdom` environments, throwing a `ReferenceError: CSS is not defined`.
+**Action:** Added a simple `global.CSS = { escape: (str) => str }` mock to `tests/setup.js` to avoid the `ReferenceError` when running DOM-dependent content tests.

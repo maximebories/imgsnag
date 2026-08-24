@@ -158,3 +158,47 @@ describe('pickBestFromSrcset', () => {
     expect(pickBestFromSrcset(' , a.jpg 800w, , b.jpg oops')).toBe('a.jpg');
   });
 });
+
+describe('handleSource', () => {
+  const { handleSource } = require('../src/content.js');
+
+  function el(tag, attrs = {}) {
+    const e = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+    return e;
+  }
+
+  it('extracts lazy loaded image URLs in picture source elements', () => {
+    const imageSet = new Set();
+    const videoSet = new Set();
+
+    const picture = el('picture');
+    const source = el('source', { 'data-src': 'https://example.com/lazy-pic.jpg' });
+    picture.appendChild(source);
+    document.body.appendChild(picture);
+
+    handleSource(source, imageSet, videoSet);
+
+    expect([...imageSet]).toEqual(['https://example.com/lazy-pic.jpg']);
+    expect(videoSet.size).toBe(0);
+
+    document.body.removeChild(picture);
+  });
+
+  it('extracts video src in video source elements', () => {
+    const imageSet = new Set();
+    const videoSet = new Set();
+
+    const video = el('video');
+    const source = el('source', { src: 'https://example.com/video.mp4' });
+    video.appendChild(source);
+    document.body.appendChild(video);
+
+    handleSource(source, imageSet, videoSet);
+
+    expect(imageSet.size).toBe(0);
+    expect([...videoSet]).toEqual(['https://example.com/video.mp4']);
+
+    document.body.removeChild(video);
+  });
+});
