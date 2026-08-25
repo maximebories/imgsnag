@@ -182,10 +182,13 @@
 
   function updateCounter() {
     const n = selectedUrls.size;
+    const total = allUrls.size;
     counterEl.textContent = n > 0
       ? `${n} ${browser.i18n.getMessage('popupSelected')}`
       : '';
     btnSelected.disabled = n === 0;
+    btnSelected.textContent = `${browser.i18n.getMessage('popupDownloadSelected')} (${n})`;
+    btnAll.textContent = `${browser.i18n.getMessage('popupDownloadAll')} (${total})`;
   }
 
   function flashCell(cell) {
@@ -353,6 +356,7 @@
       hide(loadingEl);
       hide(emptyEl);
       show(barEl);
+      updateCounter();
     }
   }
 
