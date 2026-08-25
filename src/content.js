@@ -198,6 +198,12 @@
       if (isImageUrl(resolveUrl(raw))) trackImage(raw);
     });
 
+    // <svg image> embedded images
+    document.querySelectorAll('svg image, image').forEach((el) => {
+      const raw = el.getAttribute('href') || el.getAttribute('xlink:href');
+      if (raw) trackImage(raw);
+    });
+
     // CSS background-image on likely container elements
     document.querySelectorAll(BG_IMAGE_SELECTORS).forEach((el) => {
       // Fast path: skip elements with no styling hints to avoid expensive getComputedStyle calls
@@ -587,6 +593,14 @@
     }
   }
 
+  function handleSvgImage(el, imageSet) {
+    if (el.tagName === 'image' || el.tagName === 'IMAGE') {
+      const raw = el.getAttribute('href') || el.getAttribute('xlink:href');
+      const url = resolveUrl(raw);
+      if (url && !url.startsWith('data:')) imageSet.add(url);
+    }
+  }
+
   function extractUrlsFromElement(el, imageSet, videoSet) {
     handleImg(el, imageSet);
     handleSrcset(el, imageSet);
@@ -596,6 +610,7 @@
     handleMeta(el, imageSet);
     handleEmbed(el, imageSet);
     handlePicture(el, imageSet);
+    handleSvgImage(el, imageSet);
   }
 
   // Observers — continuous media tracking
@@ -618,7 +633,7 @@
                 tag === 'DIV' || tag === 'SPAN' || tag === 'SECTION' || tag === 'ARTICLE' ||
                 tag === 'HEADER' || tag === 'FOOTER' || tag === 'A' || tag === 'LI' ||
                 tag === 'FIGURE' || tag === 'I' || tag === 'META' || tag === 'LINK' ||
-                tag === 'OBJECT' || tag === 'EMBED' || tag === 'IFRAME' ||
+                tag === 'OBJECT' || tag === 'EMBED' || tag === 'IFRAME' || tag === 'image' || tag === 'IMAGE' ||
                 (el.hasAttribute && (el.hasAttribute('srcset') || el.hasAttribute('data-srcset') || el.hasAttribute('data-src') || el.hasAttribute('data-lazy-src') || el.hasAttribute('data-original'))) ||
                 (el.hasAttribute && el.hasAttribute('style') && el.style && el.style.backgroundImage)
               ) {
