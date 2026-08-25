@@ -14,6 +14,10 @@
   const IMAGE_URL_RE =
     /https?:\/\/[^\s"'<>]+\.(?:jpe?g|gif|png|webp|svg|avif)(?:\?[^\s"'<>]*)?/gi;
 
+  // Cheap pre-check before the expensive URL sweep. Case-insensitive because
+  // IMAGE_URL_RE is: a literal includes('http') check would miss "HtTp://".
+  const HTTP_HINT_RE = /http/i;
+
   const BG_IMAGE_SELECTORS =
     'div, span, section, article, header, footer, a, li, figure, i, [style*="background"]';
 
@@ -274,7 +278,7 @@
     let node;
     while ((node = walker.nextNode())) {
       if (node.nodeType === Node.TEXT_NODE) {
-        if (node.nodeValue && (node.nodeValue.includes('http') || node.nodeValue.includes('HTTP'))) {
+        if (node.nodeValue && HTTP_HINT_RE.test(node.nodeValue)) {
           let match;
           while ((match = IMAGE_URL_RE.exec(node.nodeValue)) !== null) {
             trackImage(match[0]);
@@ -287,7 +291,7 @@
           // structural scan already tracked the best candidate
           if (attrs[i].name.includes('srcset')) continue;
           const val = attrs[i].value;
-          if (val && (val.includes('http') || val.includes('HTTP'))) {
+          if (val && HTTP_HINT_RE.test(val)) {
             let match;
             while ((match = IMAGE_URL_RE.exec(val)) !== null) {
               trackImage(match[0]);
