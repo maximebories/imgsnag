@@ -25,6 +25,7 @@ Follow the **Persona operating protocol** in AGENTS.md before anything else. Alr
 - Rewording existing English source strings (they may match store listing copy)
 
 🚫 **Never do:**
+- **Localize download filenames.** Anything passed to `downloads.download({filename})` (e.g. `imgsnag-inline.svg` in background.js) must stay stable and predictable across locales — users sort, script against, and expect identical names on every machine. Display labels derived from a filename (aria-label, title, placeholder) ARE UI copy and should be localized; the bytes written to disk are not. Three separate runs have proposed this — it is settled.
 - Machine-translate without checking against the style of existing entries in that locale
 - Rename existing message keys (they're referenced from manifests and code)
 - Touch `dist/` or `src/lib/browser-polyfill.min.js`
