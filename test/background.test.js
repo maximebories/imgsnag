@@ -80,6 +80,25 @@ describe('Background Script', () => {
     expect(downloads[0].url).toBe('https://example.com/image.jpg');
   });
 
+  test('rejects popup-only actions from content script', async () => {
+    const actions = ['download_images_bulk', 'download_svg', 'cancel_downloads'];
+    const sender = { tab: { id: 1 } }; // Content script has sender.tab
+
+    for (const action of actions) {
+      const response = await messageListener({ action, url: 'http://test' }, sender);
+      expect(response).toEqual({ success: false, error: 'Unauthorized sender' });
+    }
+  });
+
+  test('accepts download_image from content script', async () => {
+    const sender = { tab: { id: 1 } };
+    const response = await messageListener({
+      action: 'download_image',
+      url: 'https://example.com/image.jpg'
+    }, sender);
+    expect(response).toEqual({ success: true });
+  });
+
 
   test('download_image: normalizes URL to prevent parser differentials', async () => {
     const response = await messageListener({
