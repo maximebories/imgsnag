@@ -255,8 +255,9 @@
   function wrapCell(cell, item) {
     const fallback = browser.i18n.getMessage('popupMediaFallback');
     const isDerivedSvg = item.url.startsWith(SVG_DATA_PREFIX);
-    const filename = isDerivedSvg ? 'inline.svg' : (filenameFromUrl(item.url) || fallback);
-    const fullFilename = isDerivedSvg ? 'inline.svg' : (filenameFromUrl(item.url, true) || fallback);
+    const inlineSvgName = browser.i18n.getMessage('popupInlineSvg');
+    const filename = isDerivedSvg ? inlineSvgName : (filenameFromUrl(item.url) || fallback);
+    const fullFilename = isDerivedSvg ? inlineSvgName : (filenameFromUrl(item.url, true) || fallback);
     const dimSuffix = item.width && item.height ? ` (${item.width}×${item.height})` : '';
 
     const actionBtn = document.createElement('button');
