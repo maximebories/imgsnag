@@ -153,7 +153,7 @@
     // (or data-srcset), src is just one more variant of the same image — the
     // srcset best-pick below covers it, so skip src to avoid duplicates.
     document.querySelectorAll('img[src], img[data-src], img[data-lazy-src], img[data-original]').forEach((img) => {
-      const hasSet = img.hasAttribute('srcset') || img.hasAttribute('data-srcset');
+      const hasSet = img.hasAttribute('srcset') || img.hasAttribute('data-srcset') || img.parentElement?.tagName === 'PICTURE';
       if (img.src && !hasSet) trackImage(img.src);
       if (img.hasAttribute('data-src')) trackImage(img.getAttribute('data-src'));
       if (img.hasAttribute('data-lazy-src')) trackImage(img.getAttribute('data-lazy-src'));
@@ -444,7 +444,7 @@
   function handleImg(el, imageSet) {
     if (el.tagName === 'IMG') {
       // With a srcset present, src is just another variant of the same image
-      const hasSet = el.hasAttribute('srcset') || el.hasAttribute('data-srcset');
+      const hasSet = el.hasAttribute('srcset') || el.hasAttribute('data-srcset') || el.parentElement?.tagName === 'PICTURE';
       const attrs = ['src', 'data-src', 'data-lazy-src', 'data-original'];
       for (const attr of attrs) {
         let val;
@@ -490,15 +490,7 @@
         const url = resolveUrl(el.src);
         if (url && !url.startsWith('data:')) videoSet.add(url);
       } else if (el.parentElement?.tagName === 'PICTURE') {
-        // One URL per source: format/breakpoint alternatives of the same image
-        const raw = pickBestFromSrcset(el.getAttribute('srcset')) ||
-                    pickBestFromSrcset(el.getAttribute('data-srcset')) ||
-                    el.getAttribute('src') || el.getAttribute('data-src') ||
-                    el.getAttribute('data-lazy-src') || el.getAttribute('data-original');
-        if (raw) {
-          const url = resolveUrl(raw);
-          if (url && !url.startsWith('data:')) imageSet.add(url);
-        }
+        // Handled per-picture in extractUrlsFromElement
       }
     }
   }
@@ -573,6 +565,28 @@
     }
   }
 
+  function handlePicture(el, imageSet) {
+    if (el.tagName === 'PICTURE') {
+      const img = el.querySelector('img');
+      if (img && img.currentSrc) {
+        const url = resolveUrl(img.currentSrc);
+        if (url && !url.startsWith('data:')) imageSet.add(url);
+        return;
+      }
+      for (const source of el.querySelectorAll('source')) {
+        const best = pickBestFromSrcset(source.getAttribute('srcset')) ||
+                     pickBestFromSrcset(source.getAttribute('data-srcset')) ||
+                     source.getAttribute('src') || source.getAttribute('data-src') ||
+                     source.getAttribute('data-lazy-src') || source.getAttribute('data-original');
+        if (best) {
+          const url = resolveUrl(best);
+          if (url && !url.startsWith('data:')) imageSet.add(url);
+          return;
+        }
+      }
+    }
+  }
+
   function extractUrlsFromElement(el, imageSet, videoSet) {
     handleImg(el, imageSet);
     handleSrcset(el, imageSet);
@@ -581,6 +595,7 @@
     handleBackgroundImage(el, imageSet);
     handleMeta(el, imageSet);
     handleEmbed(el, imageSet);
+    handlePicture(el, imageSet);
   }
 
   // Observers — continuous media tracking
