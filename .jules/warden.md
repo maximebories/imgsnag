@@ -4,3 +4,8 @@
 
 ## 2025-02-28 - ReDoS Vulnerability in Content Script
 **Vulnerability:** A ReDoS vulnerability was present in `src/content.js` due to a regular expression `/<(script|style)\b[^>]*>[\s\S]*?<\/\1>/gi` being executed via `.replace()` against the entire `document.body.innerHTML`. This caused severe performance degradation (taking over 2 seconds) on pages with exceptionally large `<script>` tags, making it exploitable. Fixed by replacing the regex strip operation with a native DOM `TreeWalker` to securely extract relevant text nodes and element attributes instead.
+
+## 2026-08-24 - Restrict Popup-Only Actions to Extension Context
+**Vulnerability:** The `background.js` script listens for messages on `browser.runtime.onMessage` and executes actions such as `download_images_bulk`, `download_svg`, and `cancel_downloads` unconditionally, regardless of the message sender. Since content scripts run with `<all_urls>` and can send messages, a compromised page or malicious script could send messages to trigger these actions, potentially causing denial of service (canceling downloads) or unauthorized actions (triggering bulk downloads or SVG generation) by spoofing popup actions.
+**Learning:** Handlers for `browser.runtime.onMessage` must validate the sender to ensure that actions meant only for the extension's internal UI (like the popup) cannot be invoked by content scripts (which act as an untrusted boundary).
+**Prevention:** Always verify `sender.tab` for messages handled in the background script. If `sender.tab` is present, the message originated from a content script and should be restricted to allowlisted actions (e.g., `download_image`).

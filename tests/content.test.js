@@ -158,3 +158,100 @@ describe('pickBestFromSrcset', () => {
     expect(pickBestFromSrcset(' , a.jpg 800w, , b.jpg oops')).toBe('a.jpg');
   });
 });
+
+describe('handleSource', () => {
+  const { handleSource } = require('../src/content.js');
+
+  function el(tag, attrs = {}) {
+    const e = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+    return e;
+  }
+
+  // Picture sources are owned by handlePicture (one URL per <picture>) so the
+  // grid never shows the same image once per format/breakpoint variant.
+  it('leaves picture sources to handlePicture', () => {
+    const { handlePicture } = require('../src/content.js');
+    const imageSet = new Set();
+    const videoSet = new Set();
+
+    const picture = el('picture');
+    const source = el('source', { 'data-src': 'https://example.com/lazy-pic.jpg' });
+    picture.appendChild(source);
+    document.body.appendChild(picture);
+
+    handleSource(source, imageSet, videoSet);
+    expect(imageSet.size).toBe(0);
+    expect(videoSet.size).toBe(0);
+
+    handlePicture(picture, imageSet);
+    expect([...imageSet]).toEqual(['https://example.com/lazy-pic.jpg']);
+
+    document.body.removeChild(picture);
+  });
+
+  it('extracts video src in video source elements', () => {
+    const imageSet = new Set();
+    const videoSet = new Set();
+
+    const video = el('video');
+    const source = el('source', { src: 'https://example.com/video.mp4' });
+    video.appendChild(source);
+    document.body.appendChild(video);
+
+    handleSource(source, imageSet, videoSet);
+
+    expect(imageSet.size).toBe(0);
+    expect([...videoSet]).toEqual(['https://example.com/video.mp4']);
+
+    document.body.removeChild(video);
+  });
+});
+
+describe('handlePicture', () => {
+  const { handlePicture } = require('../src/content.js');
+
+  function el(tag, attrs = {}) {
+    const e = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+    return e;
+  }
+
+  it('selects img.currentSrc over sources when available', () => {
+    const imageSet = new Set();
+    const picture = el('picture');
+    const source = el('source', { srcset: 'https://example.com/source.jpg' });
+    const img = el('img');
+    // Mock currentSrc as JSDOM does not dynamically resolve it
+    Object.defineProperty(img, 'currentSrc', {
+      value: 'https://example.com/current.jpg',
+      writable: true,
+      configurable: true
+    });
+
+    picture.appendChild(source);
+    picture.appendChild(img);
+
+    handlePicture(picture, imageSet);
+    expect([...imageSet]).toEqual(['https://example.com/current.jpg']);
+  });
+
+  it('falls back to first usable source when img.currentSrc is empty', () => {
+    const imageSet = new Set();
+    const picture = el('picture');
+    const source1 = el('source', { 'data-src': 'https://example.com/fallback.jpg' });
+    const img = el('img');
+
+    Object.defineProperty(img, 'currentSrc', {
+      value: '',
+      writable: true,
+      configurable: true
+    });
+
+    picture.appendChild(source1);
+    picture.appendChild(img);
+
+    handlePicture(picture, imageSet);
+    expect([...imageSet]).toEqual(['https://example.com/fallback.jpg']);
+  });
+});

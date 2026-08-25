@@ -14,3 +14,4 @@ global.browser = {
     }
   }
 };
+global.CSS = { escape: (str) => str };

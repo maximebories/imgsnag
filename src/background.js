@@ -36,7 +36,12 @@ async function clearActiveDownloadIds() {
 }
 
 // Messages from popup and content script
-browser.runtime.onMessage.addListener((message) => {
+browser.runtime.onMessage.addListener((message, sender) => {
+  // Warden: Trust boundary - prevent content scripts from triggering popup-only actions
+  if ((message.action === 'download_images_bulk' || message.action === 'download_svg' || message.action === 'cancel_downloads') && sender && sender.tab) {
+    return Promise.resolve({ success: false, error: 'Unauthorized sender' });
+  }
+
   if (message.action === 'download_image') {
     try {
       const urlObj = new URL(message.url);

@@ -80,6 +80,25 @@ describe('Background Script', () => {
     expect(downloads[0].url).toBe('https://example.com/image.jpg');
   });
 
+  test('rejects popup-only actions from content script', async () => {
+    const actions = ['download_images_bulk', 'download_svg', 'cancel_downloads'];
+    const sender = { tab: { id: 1 } }; // Content script has sender.tab
+
+    for (const action of actions) {
+      const response = await messageListener({ action, url: 'http://test' }, sender);
+      expect(response).toEqual({ success: false, error: 'Unauthorized sender' });
+    }
+  });
+
+  test('accepts download_image from content script', async () => {
+    const sender = { tab: { id: 1 } };
+    const response = await messageListener({
+      action: 'download_image',
+      url: 'https://example.com/image.jpg'
+    }, sender);
+    expect(response).toEqual({ success: true });
+  });
+
 
   test('download_image: normalizes URL to prevent parser differentials', async () => {
     const response = await messageListener({
@@ -273,5 +292,30 @@ describe('Background Script', () => {
     await new Promise(resolve => setTimeout(resolve, 0));
 
     expect(global.mockStorage).not.toHaveProperty('dl_1');
+  });
+
+  test('storage-backed download tracking pins active downloads to storage.local', async () => {
+    // 1. Verify storage is initially empty
+    expect(global.mockStorage).toEqual({});
+
+    // 2. Start bulk download
+    await messageListener({
+      action: 'download_images_bulk',
+      urls: ['https://example.com/a.jpg', 'https://example.com/b.jpg']
+    }, {});
+
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    // 3. Verify storage has dl_1 and dl_2
+    expect(global.mockStorage).toHaveProperty('dl_1', true);
+    expect(global.mockStorage).toHaveProperty('dl_2', true);
+
+    // 4. Cancel downloads
+    await messageListener({ action: 'cancel_downloads' }, {});
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    // 5. Verify storage is cleared
+    expect(global.mockStorage).not.toHaveProperty('dl_1');
+    expect(global.mockStorage).not.toHaveProperty('dl_2');
   });
 });

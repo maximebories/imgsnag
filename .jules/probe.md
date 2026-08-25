@@ -19,3 +19,12 @@
 ## 2026-08-22 - ReDoS TreeWalker regression test
 **Learning:** The Warden-documented ReDoS fix (regex strip replaced by a native DOM TreeWalker) lacked a regression test.
 **Action:** Added tests/redos_fallback.test.js pinning TreeWalker extraction from text nodes, attributes, and JSON-LD, and the rejection of URLs inside non-JSON-LD script and style blocks.
+## 2026-08-25 - Storage-backed download tracking regression test
+**Learning:** Verified that the Twin persona's fix for tracking download IDs in `browser.storage.local` using independent `dl_<id>` keys lacked a dedicated regression test asserting this exact behavior during bulk downloads and cancellation.
+**Action:** Added a regression test in `test/background.test.js` to explicitly pin the `dl_<id>` storage writes and removals, guaranteeing that Service Worker state persistence is strictly maintained.
+## 2026-08-24 - Missing CSS.escape mock in jsdom
+**Learning:** Verified that testing DOM scanning logic like `MutationObserver` triggers `CSS.escape`, which is not available in standard `jsdom` environments, throwing a `ReferenceError: CSS is not defined`.
+**Action:** Added a simple `global.CSS = { escape: (str) => str }` mock to `tests/setup.js` to avoid the `ReferenceError` when running DOM-dependent content tests.
+## 2026-08-25 - handlePicture regression test
+**Learning:** Verified that the Scout persona's fix for handling `<picture>` elements properly (picking `img.currentSrc` or the first usable source and avoiding duplicate format variants) lacked a regression test.
+**Action:** Added `handlePicture` regression tests in `tests/content.test.js` to pin the logic that selects exactly one URL per `<picture>` element and prioritizes `img.currentSrc`.

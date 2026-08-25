@@ -2,7 +2,7 @@
 **Learning:** Example
 **Action:** Example
 
-## 2024-05-24 - Missed Lazy Loaded Images
+## 2026-08-25 - Missed Lazy Loaded Images
 **Learning:** Common lazy-loading attributes (`data-src`, `data-lazy-src`, `data-original`, and `data-srcset`) are missed by `PerformanceObserver` and standard `img[src]` DOM scans because they are not loaded by the browser network and their `src` attributes are placeholders (like `data:` URIs).
 **Action:** Explicitly query `img[data-src]`, `img[data-lazy-src]`, `img[data-original]`, and `[data-srcset]` in DOM scanning functions (`collectMediaUrls` and `extractUrlsFromElement`), and adapt Alt+Click and Drag-to-save listeners to fall back to these attributes.
 
@@ -10,7 +10,7 @@
 **Learning:** Meta open graph images (`og:image`, `twitter:image`) and preload hints (`link[rel="preload"][as="image"]`) are commonly used for article/page thumbnails but are missed by standard `img` and `background-image` scanners. These elements reside in the `<head>` and provide valuable high-quality previews.
 **Action:** Add detection for `meta[property="og:image"]`, `meta[name="twitter:image"]`, and `link[rel="preload"][as="image"]` in `collectImages()` and handle dynamically added `META`/`LINK` nodes in the MutationObserver and `extractUrlsFromElement`. Change MutationObserver to observe `document.documentElement` to catch `<head>` modifications.
 
-## 2024-11-20 - image-set() CSS Property Support
+## 2026-08-25 - image-set() CSS Property Support
 **Learning:** `image-set()` and `-webkit-image-set()` in CSS background values often contain raw string URLs (e.g., `image-set("img.png" 1x)`) that do not use the standard `url()` wrapper. The `extractBgImageUrls` function previously only extracted URLs wrapped in `url()`, missing these images.
 **Action:** Added `IMAGE_SET_RE` and parsing logic inside `extractBgImageUrls` to split the `image-set` contents by commas and extract raw string URLs that start with quotes.
 ## 2026-08-19 - Inline SVG capture is message-design first, detection second (RFC #118 stage 1)
@@ -20,7 +20,7 @@
 **Learning:** <object data>, <embed src>, and <iframe src> can point directly at image files and were only caught incidentally (absolute-URL text sweep or PerformanceObserver). Also, extension-less SVG endpoints load successfully but report 0x0 natural size from new Image(), so the extension-keyed SVG exemption silently dropped them — a successful load at 0x0 IS the SVG signature.
 **Action:** Extension-check embed sources with isImageUrl to hold the false-positive line (iframes usually contain pages); centralize size acceptance in one helper (passesSizeFilter) so exemption rules stay consistent across DOM and network paths.
 
-## 2024-05-24 - Missed Lazy Loaded Images in Picture Source Elements
+## 2026-08-25 - Missed Lazy Loaded Images in Picture Source Elements
 **Learning:** The MutationObserver path `handleSource` previously only checked `<source>` elements within `<video>` tags. It missed `<source>` tags used within `<picture>` elements. Consequently, lazy-loaded attributes on dynamically inserted `<picture source>` tags (`data-src`, `data-lazy-src`, `data-original`) created an attribute-coverage drift between the initial scan `collectImages()` and the dynamic path.
 **Action:** Updated `handleSource` and `extractUrlsFromElement` to pass an `imageSet` and extract `src`, `data-src`, `data-lazy-src`, and `data-original` when `el.parentElement.tagName === 'PICTURE'`.
 ## 2026-08-22 - False positive tracking pixels passing size filter via srcset
@@ -32,3 +32,13 @@
 ## 2026-08-22 - Visual dedup via dHash in the popup
 **Learning:** URL-level dedup cannot catch the same photo under genuinely different URLs (CDN crops, zoom variants). A 64-bit dHash (9x8 gradient fingerprint) over the already-rendered thumbnails groups near-identical images at negligible cost; fetch-to-blob avoids canvas taint via host permissions. Verified: a 3-variant fixture collapses to 1 visible cell. Known limits: dimensionless SVG blobs fail createImageBitmap (hash null, never hidden — safe), and aggressive crops that change aspect ratio are treated as distinct content on purpose.
 **Action:** Keep dedup best-effort and popup-side only (zero ambient page cost); never hide an unhashable image; compare only within like aspect buckets.
+## 2026-08-25 - MutationObserver drifting on picture/source and fallback duplicates
+**Learning:** The initial scan handled `<picture>` as a unit, picking only the best candidate, but its `<img>` scan still checked `<img>` fallbacks without checking `img.parentElement?.tagName === 'PICTURE'`, generating duplicates. The MutationObserver's `handleSource` also individually scanned every `<source>` and recorded it, breaking the single-best-candidate rule for dynamic insertions.
+**Action:** Exclude `<img>` elements inside `<picture>` from fallback `src` tracking in both `collectImages()` and `handleImg()`. Disable tracking `<source>` elements directly in `<picture>` elements for `handleSource()` since `handleImg` and the structure handles them appropriately or it prevents duplicate insertion spam. Added `handlePicture` to `extractUrlsFromElement`.
+## 2026-08-25 - SVG <image> embed capture
+**Learning:** Embedded images in SVGs using `<image href="..."/>` and `<image xlink:href="..."/>` are widely used and represent a valid image loading pattern that standard `img[src]` structural scans, MutationObserver tag matchers, and even TreeWalker URL regex sweeps (which only look for matching extensions) often miss.
+**Action:** Added targeted DOM attribute extraction for `image` tags (`href` and `xlink:href`) to both the initial document query scan in `collectImages()` and the MutationObserver path `extractUrlsFromElement()`, and whitelisted the tag in the MutationObserver tree walker fast path.
+
+## 2026-08-25 - CSS Masks and Pseudo-elements
+**Learning:** Modern web apps heavily utilize CSS \`mask-image\` / \`-webkit-mask-image\` for monochromatic icons, and \`content: url(...)\` within pseudo-elements (\`::before\`, \`::after\`) for decorative graphics. These were entirely missed because the CSS media extraction previously only looked at \`style.backgroundImage\` on the element itself.
+**Action:** Introduced \`getCssMediaUrls(el)\` helper function to extract URLs not just from \`backgroundImage\`, but also \`maskImage\`, \`webkitMaskImage\`, and \`content\`. Crucially, this function now also evaluates \`getComputedStyle(el, '::before')\` and \`getComputedStyle(el, '::after')\`. Updated all usages (MutationObserver, background idle queue, popup connect flush, Alt+Click) to use this generalized helper instead of directly reading \`backgroundImage\`. Tested and confirmed that \`getComputedStyle(el, pseudo)\` works and safely catches errors where not implemented.
