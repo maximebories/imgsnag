@@ -57,5 +57,8 @@
   },
   "popupEmptyHint": {
     "message": "Tip: Alt+Click or drag images to save directly"
+  },
+  "popupInlineSvg": {
+    "message": "inline.svg"
   }
 }

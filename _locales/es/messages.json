@@ -57,5 +57,8 @@
   },
   "popupEmptyHint": {
     "message": "Consejo: Alt+Clic o arrastre imágenes para guardar"
+  },
+  "popupInlineSvg": {
+    "message": "en-linea.svg"
   }
 }
