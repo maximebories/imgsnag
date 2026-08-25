@@ -32,3 +32,7 @@
 ## 2024-05-24 - Explicit Counts on Bulk Action Buttons
 **Learning:** For bulk action buttons (like 'Download All') in dynamic grids, appending the explicit total expected item count to the button text provides users certainty about the scope of the operation, ensuring the count updates dynamically as state changes.
 **Action:** Always append the explicit total expected item count to the button text for bulk actions.
+
+## 2024-05-24 - Hidden Items Notification
+**Learning:** When silent background processes (like deduplication) mutate list visibility, users may be confused if the total displayed items don't match the scroll area, or feel a lack of feedback. Providing a subtle, localized UI notification (like a "hidden items" count banner) gracefully integrates this feedback.
+**Action:** When creating silent list filters, always provide explicit UI feedback regarding the quantity of hidden items to maintain clear system status.

@@ -152,6 +152,7 @@
   const gridEl = document.getElementById('grid');
   const videoHeaderEl = document.getElementById('video-header');
   const videoGridEl = document.getElementById('video-grid');
+  const hiddenCountEl = document.getElementById('hidden-count');
   const barEl = document.getElementById('bar');
   const counterEl = document.getElementById('counter');
   const btnSelected = document.getElementById('btn-selected');
@@ -183,12 +184,21 @@
   function updateCounter() {
     const n = selectedUrls.size;
     const total = allUrls.size;
+    const hiddenCount = imageEntries.filter(e => e.cell.hidden).length;
+
     counterEl.textContent = n > 0
       ? `${n} ${browser.i18n.getMessage('popupSelected')}`
       : '';
     btnSelected.disabled = n === 0;
     btnSelected.textContent = `${browser.i18n.getMessage('popupDownloadSelected')} (${n})`;
     btnAll.textContent = `${browser.i18n.getMessage('popupDownloadAll')} (${total})`;
+
+    if (hiddenCount > 0) {
+      hiddenCountEl.textContent = browser.i18n.getMessage('popupHiddenCount', [hiddenCount.toString()]);
+      show(hiddenCountEl);
+    } else {
+      hide(hiddenCountEl);
+    }
   }
 
   function flashCell(cell) {

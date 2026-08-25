@@ -57,5 +57,13 @@
   },
   "popupEmptyHint": {
     "message": "Tip: Alt+Click or drag images to save directly"
+  },
+  "popupHiddenCount": {
+    "message": "$COUNT$ variants hidden",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
   }
 }

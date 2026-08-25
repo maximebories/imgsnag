@@ -57,5 +57,13 @@
   },
   "popupEmptyHint": {
     "message": "Consejo: Alt+Clic o arrastre imágenes para guardar"
+  },
+  "popupHiddenCount": {
+    "message": "$COUNT$ variantes ocultas",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
   }
 }
