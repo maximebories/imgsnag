@@ -107,6 +107,37 @@
     return urls;
   }
 
+  function getCssMediaUrls(el) {
+    const urls = [];
+    try {
+      const styles = [
+        getComputedStyle(el)
+      ];
+      try { styles.push(getComputedStyle(el, '::before')); } catch {}
+      try { styles.push(getComputedStyle(el, '::after')); } catch {}
+
+      for (const style of styles) {
+        if (!style) continue;
+        const props = [
+          style.backgroundImage,
+          style.maskImage || style.getPropertyValue('mask-image'),
+          style.webkitMaskImage || style.getPropertyValue('-webkit-mask-image'),
+          style.content
+        ];
+        for (const bg of props) {
+          if (bg && bg !== 'none' && bg !== 'normal') {
+            for (const raw of extractBgImageUrls(bg)) {
+              urls.push(raw);
+            }
+          }
+        }
+      }
+    } catch {
+      // Element may not be connected to DOM yet
+    }
+    return urls;
+  }
+
   function parseSrcset(srcset) {
     if (!srcset) return [];
     return srcset
@@ -209,13 +240,13 @@
       // Fast path: skip elements with no styling hints to avoid expensive getComputedStyle calls
       if (!el.className && !el.id && !el.getAttribute('style')) return;
 
-      const inlineBg = el.style?.backgroundImage;
-      const bg = inlineBg && inlineBg !== 'none' ? inlineBg : getComputedStyle(el).backgroundImage;
-      if (bg && bg !== 'none') {
-        for (const url of extractBgImageUrls(bg)) {
-          if (isImageUrl(resolveUrl(url))) {
-            trackImage(url);
-          }
+      pendingBackgroundCheckQueue.push(el);
+      if (!isBgCheckScheduled) {
+        isBgCheckScheduled = true;
+        if (typeof requestIdleCallback !== 'undefined') {
+          requestIdleCallback(processBgImageQueue);
+        } else {
+          setTimeout(processBgImageQueue, 1);
         }
       }
     });
@@ -508,13 +539,9 @@
     while (pendingBackgroundCheckQueue.length > 0 && timeRemaining() > 0) {
       const el = pendingBackgroundCheckQueue.shift();
       try {
-        const inlineBg = el.style?.backgroundImage;
-        const bg = inlineBg && inlineBg !== 'none' ? inlineBg : getComputedStyle(el).backgroundImage;
-        if (bg && bg !== 'none') {
-          for (const raw of extractBgImageUrls(bg)) {
-            const url = resolveUrl(raw);
-            if (url && isImageUrl(url) && !url.startsWith('data:')) imageUrls.add(url);
-          }
+        for (const raw of getCssMediaUrls(el)) {
+          const url = resolveUrl(raw);
+          if (url && isImageUrl(url) && !url.startsWith('data:')) imageUrls.add(url);
         }
       } catch {
         // Element may not be connected to DOM yet
@@ -709,13 +736,9 @@
         while (pendingBackgroundCheckQueue.length > 0) {
           const el = pendingBackgroundCheckQueue.shift();
           try {
-            const inlineBg = el.style?.backgroundImage;
-            const bg = inlineBg && inlineBg !== 'none' ? inlineBg : getComputedStyle(el).backgroundImage;
-            if (bg && bg !== 'none') {
-              for (const raw of extractBgImageUrls(bg)) {
-                const url = resolveUrl(raw);
-                if (url && isImageUrl(url) && !url.startsWith('data:')) imageUrls.add(url);
-              }
+            for (const raw of getCssMediaUrls(el)) {
+              const url = resolveUrl(raw);
+              if (url && isImageUrl(url) && !url.startsWith('data:')) imageUrls.add(url);
             }
           } catch {
             // Element may not be connected to DOM yet
@@ -768,12 +791,9 @@
       return urls;
     }
 
-    const bg = getComputedStyle(el).backgroundImage;
-    if (bg && bg !== 'none') {
-      for (const raw of extractBgImageUrls(bg)) {
-        const url = resolveUrl(raw);
-        if (url && isImageUrl(url) && !url.startsWith('data:')) urls.push(url);
-      }
+    for (const raw of getCssMediaUrls(el)) {
+      const url = resolveUrl(raw);
+      if (url && isImageUrl(url) && !url.startsWith('data:')) urls.push(url);
     }
 
     return urls;
@@ -820,15 +840,12 @@
         continue;
       }
 
-      const bg = getComputedStyle(el).backgroundImage;
-      if (bg && bg !== 'none') {
-        for (const raw of extractBgImageUrls(bg)) {
-          const url = resolveUrl(raw);
-          if (url && isImageUrl(url) && !url.startsWith('data:') && !downloadedUrls.has(url)) {
-            downloadedUrls.add(url);
-            sendToBackground({ action: 'download_image', url });
-            didDownload = true;
-          }
+      for (const raw of getCssMediaUrls(el)) {
+        const url = resolveUrl(raw);
+        if (url && isImageUrl(url) && !url.startsWith('data:') && !downloadedUrls.has(url)) {
+          downloadedUrls.add(url);
+          sendToBackground({ action: 'download_image', url });
+          didDownload = true;
         }
       }
     }
