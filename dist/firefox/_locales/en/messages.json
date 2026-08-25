@@ -57,5 +57,9 @@
   },
   "popupEmptyHint": {
     "message": "Tip: Alt+Click or drag images to save directly"
+  },
+  "popupInlineSvg": {
+    "message": "imgsnag-inline.svg",
+    "description": "Filename shown in the cell label for a captured inline SVG. Must match the real download filename in background.js — do not translate."
   }
 }

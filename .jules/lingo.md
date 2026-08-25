@@ -7,3 +7,6 @@
 ## 2026-08-25 - Filenames are not UI copy
 **Learning:** Three separate runs proposed localizing the inline-SVG filename. The distinction that settles it: strings shown in the popup (cell aria-label/title) are UI copy and SHOULD be localized; the value passed to downloads.download({filename}) is written to the user disk and must stay locale-stable (users sort and script against it).
 **Action:** Localize display labels, never download filenames. Recorded in jules/lingo.md as settled doctrine.
+## 2026-08-25 - A localized label that shows a filename must show the REAL filename
+**Learning:** Routing the inline-SVG cell label through i18n produced es/fr values (en-linea.svg, en-ligne.svg) that no longer matched the file background.js actually writes (imgsnag-inline.svg) — the tooltip promised one name and the disk got another.
+**Action:** Localize the words AROUND a filename; give every locale the real filename itself. Recorded in jules/lingo.md.
