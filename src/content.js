@@ -12,7 +12,7 @@
 
   // Catches image URLs embedded in inline scripts or JSON-LD that DOM queries miss
   const IMAGE_URL_RE =
-    /https?:\/\/[^\s"'<>]+\.(?:jpe?g|gif|png|webp|svg|avif)(?:\?[^\s"'<>]*)?/gi;
+    /https?:(?:\\?\/){2}[^\s"'<>]+\.(?:jpe?g|gif|png|webp|svg|avif)(?:\?[^\s"'<>]*)?/gi;
 
   // Cheap pre-check before the expensive URL sweep. Case-insensitive because
   // IMAGE_URL_RE is: a literal includes('http') check would miss "HtTp://".
@@ -281,7 +281,9 @@
         if (node.nodeValue && HTTP_HINT_RE.test(node.nodeValue)) {
           let match;
           while ((match = IMAGE_URL_RE.exec(node.nodeValue)) !== null) {
-            trackImage(match[0]);
+            let url = match[0];
+            if (url.includes('\\')) url = url.replace(/\\/g, '');
+            trackImage(url);
           }
         }
       } else if (node.nodeType === Node.ELEMENT_NODE) {
@@ -294,7 +296,9 @@
           if (val && HTTP_HINT_RE.test(val)) {
             let match;
             while ((match = IMAGE_URL_RE.exec(val)) !== null) {
-              trackImage(match[0]);
+              let url = match[0];
+              if (url.includes('\\')) url = url.replace(/\\/g, '');
+              trackImage(url);
             }
           }
         }
