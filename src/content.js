@@ -278,9 +278,10 @@
     let node;
     while ((node = walker.nextNode())) {
       if (node.nodeType === Node.TEXT_NODE) {
-        if (node.nodeValue && HTTP_HINT_RE.test(node.nodeValue)) {
+        const val = node.nodeValue;
+        if (val && (val.includes('http') || val.includes('HTTP') || val.toLowerCase().includes('http'))) {
           let match;
-          while ((match = IMAGE_URL_RE.exec(node.nodeValue)) !== null) {
+          while ((match = IMAGE_URL_RE.exec(val)) !== null) {
             trackImage(match[0]);
           }
         }
@@ -291,7 +292,7 @@
           // structural scan already tracked the best candidate
           if (attrs[i].name.includes('srcset')) continue;
           const val = attrs[i].value;
-          if (val && HTTP_HINT_RE.test(val)) {
+          if (val && (val.includes('http') || val.includes('HTTP') || val.toLowerCase().includes('http'))) {
             let match;
             while ((match = IMAGE_URL_RE.exec(val)) !== null) {
               trackImage(match[0]);
