@@ -214,6 +214,18 @@
       }
       .group-header.visible { display: block; }
 
+      #hidden-count {
+        display: none;
+        padding: 4px 8px;
+        font-size: 11px;
+        color: #666;
+        background: #e5e7eb;
+        text-align: center;
+        border-top: 1px solid #e0e0e0;
+        flex-shrink: 0;
+      }
+      #hidden-count.visible { display: block; }
+
       /* Bottom bar */
       #bar {
         display: none;
@@ -272,6 +284,7 @@
         :root { color-scheme: light dark; }
         body { background: #1a1a1a; color: #f5f5f5; }
         #bar { background: #1a1a1a; border-top-color: #333; }
+        #hidden-count { background: #1a1a1a; color: #888; border-top-color: #333; }
         #counter { color: #a3a3a3; }
         .cell { background: #333; }
         .group-header { color: #a3a3a3; }
@@ -319,6 +332,7 @@
     </div>
     <ul id="video-grid" role="list"></ul>
 
+    <div id="hidden-count" aria-live="polite"></div>
     <div id="bar">
       <span id="counter" aria-live="polite" aria-atomic="true"></span>
       <div class="actions">
