@@ -10,3 +10,6 @@
 ## 2026-08-27 - [Locale Key Parity Across Supported Languages]
 **Learning:** `_locales` keys referenced via `__MSG_*__` in the manifest and `browser.i18n.getMessage` in code must exist identically across all supported languages (e.g., `en`, `es`, `fr`). Counting the exact number of keys is brittle as features are added; instead, always verify that the set of keys in all localized `messages.json` files perfectly matches each other and the references in the source.
 **Action:** Before releasing or after adding new i18n strings, audit `_locales/*/messages.json` to guarantee all language files maintain a 1:1 parity in their key sets, preventing silent missing translations in specific locales.
+## 2026-08-27 - [Manifest Icons Size Lists Divergence]
+**Learning:** The `icons` array size lists in `manifest.chrome.json` (16/48/128) and `manifest.firefox.json` (32/48/64/128) are intentionally different to comply with store/browser UI conventions (about:addons and AMO vs Chrome Web Store). Neither list is missing entries; it is not a behavioural parity bug. Firefox downscales gracefully where necessary.
+**Action:** Do not flag differences in the manifest `icons` size list as a parity defect. Focus on behavioural parity (storage, badge fallback, triggered downloads, etc.) rather than store metadata.
