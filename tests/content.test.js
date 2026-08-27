@@ -207,3 +207,147 @@ describe('handleSource', () => {
     document.body.removeChild(video);
   });
 });
+
+describe('handlePicture', () => {
+  const { handlePicture } = require('../src/content.js');
+
+  function el(tag, attrs = {}) {
+    const e = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+    return e;
+  }
+
+  it('selects img.currentSrc over sources when available', () => {
+    const imageSet = new Set();
+    const picture = el('picture');
+    const source = el('source', { srcset: 'https://example.com/source.jpg' });
+    const img = el('img');
+    // Mock currentSrc as JSDOM does not dynamically resolve it
+    Object.defineProperty(img, 'currentSrc', {
+      value: 'https://example.com/current.jpg',
+      writable: true,
+      configurable: true
+    });
+
+    picture.appendChild(source);
+    picture.appendChild(img);
+
+    handlePicture(picture, imageSet);
+    expect([...imageSet]).toEqual(['https://example.com/current.jpg']);
+  });
+
+  it('falls back to first usable source when img.currentSrc is empty', () => {
+    const imageSet = new Set();
+    const picture = el('picture');
+    const source1 = el('source', { 'data-src': 'https://example.com/fallback.jpg' });
+    const img = el('img');
+
+    Object.defineProperty(img, 'currentSrc', {
+      value: '',
+      writable: true,
+      configurable: true
+    });
+
+    picture.appendChild(source1);
+    picture.appendChild(img);
+
+    handlePicture(picture, imageSet);
+    expect([...imageSet]).toEqual(['https://example.com/fallback.jpg']);
+  });
+});
+
+describe('getCssMediaUrls', () => {
+  const { getCssMediaUrls } = require('../src/content.js');
+  let originalGetComputedStyle;
+
+  beforeEach(() => {
+    originalGetComputedStyle = window.getComputedStyle;
+  });
+
+  afterEach(() => {
+    window.getComputedStyle = originalGetComputedStyle;
+  });
+
+  it('extracts URLs from various CSS properties and pseudo-elements (computed path)', () => {
+    const el = document.createElement('div');
+    // Force the computed path: give it a class
+    el.className = 'test-class';
+
+    window.getComputedStyle = jest.fn((element, pseudoElt) => {
+      if (pseudoElt === '::before') {
+        return { content: 'url("https://example.com/before.png")', getPropertyValue: () => '' };
+      }
+      if (pseudoElt === '::after') {
+        return { backgroundImage: 'url("https://example.com/after.png")', getPropertyValue: () => '' };
+      }
+      return {
+        backgroundImage: 'url("https://example.com/bg.jpg")',
+        maskImage: 'url("https://example.com/mask.svg")',
+        webkitMaskImage: 'url("https://example.com/webkit-mask.svg")',
+        getPropertyValue: (prop) => {
+          if (prop === 'mask-image') return 'url("https://example.com/mask-prop.svg")';
+          if (prop === '-webkit-mask-image') return 'url("https://example.com/webkit-mask-prop.svg")';
+          return '';
+        }
+      };
+    });
+
+    const urls = getCssMediaUrls(el);
+    expect(window.getComputedStyle).toHaveBeenCalled();
+    expect(urls).toContain('https://example.com/bg.jpg');
+    expect(urls).toContain('https://example.com/mask.svg');
+    expect(urls).toContain('https://example.com/webkit-mask.svg');
+    expect(urls).toContain('https://example.com/before.png');
+    expect(urls).toContain('https://example.com/after.png');
+  });
+
+  it('skips getComputedStyle on the inline fast path when appropriate', () => {
+    const el = document.createElement('div');
+    // No class, no id, no mask or content in style
+    el.style.backgroundImage = 'url("https://example.com/inline-bg.jpg")';
+
+    window.getComputedStyle = jest.fn();
+
+    const urls = getCssMediaUrls(el);
+
+    expect(window.getComputedStyle).not.toHaveBeenCalled();
+    expect(urls).toContain('https://example.com/inline-bg.jpg');
+  });
+
+  it('uses display accurate path when requested even if it could take inline fast path', () => {
+    const el = document.createElement('div');
+    // Set an inline style, but request display accurate
+    el.style.backgroundImage = 'url("https://example.com/inline-bg.jpg")';
+
+    window.getComputedStyle = jest.fn((element, pseudoElt) => {
+      if (pseudoElt) return { getPropertyValue: () => '' };
+      return {
+        backgroundImage: 'url("https://example.com/computed-bg.jpg")',
+        getPropertyValue: () => ''
+      };
+    });
+
+    const urls = getCssMediaUrls(el, true);
+
+    expect(window.getComputedStyle).toHaveBeenCalled();
+    expect(urls).toContain('https://example.com/computed-bg.jpg');
+    expect(urls).not.toContain('https://example.com/inline-bg.jpg');
+  });
+
+  it('catches and ignores getComputedStyle errors for pseudo-elements', () => {
+    const el = document.createElement('div');
+    el.className = 'test'; // Force computed path
+    window.getComputedStyle = jest.fn((element, pseudoElt) => {
+      if (pseudoElt) {
+        throw new Error('Not implemented');
+      }
+      return {
+        backgroundImage: 'url("https://example.com/bg.jpg")',
+        getPropertyValue: () => ''
+      };
+    });
+
+    const urls = getCssMediaUrls(el);
+    expect(urls).toEqual(['https://example.com/bg.jpg']);
+  });
+});

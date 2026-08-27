@@ -42,3 +42,7 @@
 ## 2026-08-25 - CSS Masks and Pseudo-elements
 **Learning:** Modern web apps heavily utilize CSS \`mask-image\` / \`-webkit-mask-image\` for monochromatic icons, and \`content: url(...)\` within pseudo-elements (\`::before\`, \`::after\`) for decorative graphics. These were entirely missed because the CSS media extraction previously only looked at \`style.backgroundImage\` on the element itself.
 **Action:** Introduced \`getCssMediaUrls(el)\` helper function to extract URLs not just from \`backgroundImage\`, but also \`maskImage\`, \`webkitMaskImage\`, and \`content\`. Crucially, this function now also evaluates \`getComputedStyle(el, '::before')\` and \`getComputedStyle(el, '::after')\`. Updated all usages (MutationObserver, background idle queue, popup connect flush, Alt+Click) to use this generalized helper instead of directly reading \`backgroundImage\`. Tested and confirmed that \`getComputedStyle(el, pseudo)\` works and safely catches errors where not implemented.
+
+## 2026-08-25 - Extracted URLs in JSON-LD with escaped slashes
+**Learning:** Image URLs inside JSON-LD (`application/ld+json`) blocks or `data-*` attributes containing JSON often escape forward slashes as `\/`. The strict `IMAGE_URL_RE` regex missed these URLs because they contained `\\`. Replacing `//` with `(?:\\?\/){2}` and stripping the slashes allows detecting them safely without causing false positives.
+**Action:** Relaxed `IMAGE_URL_RE` to allow escaped slashes `\\/` and implemented backslash stripping for any matches extracted during the TreeWalker scan.

@@ -46,6 +46,12 @@ describe('Content script ReDoS fallback (TreeWalker)', () => {
     script.textContent = '{"image": "https://example.com/schema.gif"}';
     document.body.appendChild(script);
 
+    // Add a JSON-LD script block with an escaped image URL
+    const escapedScript = document.createElement('script');
+    escapedScript.setAttribute('type', 'application/ld+json');
+    escapedScript.textContent = '{"image": "https:\\/\\/example.com\\/escaped.gif"}';
+    document.body.appendChild(escapedScript);
+
     // Add a normal script block containing an image URL (should be rejected)
     const badScript = document.createElement('script');
     badScript.textContent = 'const img = "https://example.com/bad.png";';
@@ -61,6 +67,7 @@ describe('Content script ReDoS fallback (TreeWalker)', () => {
     expect(imageUrls.has('https://example.com/hidden.jpg')).toBe(true);
     expect(imageUrls.has('https://example.com/data.png')).toBe(true);
     expect(imageUrls.has('https://example.com/schema.gif')).toBe(true);
+    expect(imageUrls.has('https://example.com/escaped.gif')).toBe(true);
     expect(imageUrls.has('https://example.com/bad.png')).toBe(false);
     expect(imageUrls.has('https://example.com/style.png')).toBe(false);
   });
