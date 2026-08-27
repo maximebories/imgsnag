@@ -36,3 +36,7 @@
 ## 2024-07-25 - Hidden Item Affordance
 **Learning:** When silent background processes (like visual deduplication) mutate list visibility, always provide explicit, localized UI feedback (e.g., a 'hidden items' count banner) to maintain clear system status.
 **Action:** Always add localized visual feedback elements for dynamically hidden items.
+
+## 2024-05-24 - Global Keyboard Shortcuts for Actions
+**Learning:** Bottom-anchored action bars in dynamic grids become unreachable for keyboard users, requiring O(N) tabs to bypass hundreds of items. Global keyboard shortcuts with localized tooltip hints are necessary to maintain operability without a mouse.
+**Action:** Implement global `keydown` listeners (e.g. `Ctrl+Enter`) for primary actions and provide localized hints in button tooltips using `$MODIFIER$` placeholder to adapt to macOS and Windows.
