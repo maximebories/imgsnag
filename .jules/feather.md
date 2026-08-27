@@ -22,3 +22,6 @@
 ## 2026-08-15 - Inline-style fast path before getComputedStyle (discovery only)
 **Learning:** Elements with an inline `background-image` (common in lazy-load galleries) can be read via `el.style.backgroundImage` without forcing a computed-style resolution. Orchestrator review restricted this to the discovery paths: on the Alt+Click download path, inline style can diverge from the rendered image (stylesheet `!important` overrides), so display-accurate paths keep `getComputedStyle`.
 **Action:** Prefer `el.style.backgroundImage` with a `getComputedStyle` fallback in discovery loops; never substitute it where the user downloads what they see.
+## 2026-08-27 - Regex fast-path logic fix
+**Learning:** Applying a fast path like `.includes('http') || regex.test(str)` fails to bypass the regex for non-matching strings because the `||` operator falls through to the regex when the first condition is false (which is true for most DOM nodes). This actually degrades performance by adding overhead before running the regex anyway.
+**Action:** When implementing a fast-path pre-check, ensure it returns `false` to short-circuit the execution, such as `(str.includes('http') || str.includes('HTTP')) && regex.test(str)`. This successfully bypasses the regex engine entirely for non-matching strings.
