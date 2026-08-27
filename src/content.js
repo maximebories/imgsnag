@@ -242,9 +242,10 @@
       }
     });
 
-    // <video poster> (still an image)
-    document.querySelectorAll('video[poster]').forEach((video) => {
-      trackImage(video.getAttribute('poster'));
+    // <video poster> and lazy loaded variants (still an image)
+    document.querySelectorAll('video[poster], video[data-poster]').forEach((video) => {
+      const poster = video.getAttribute('poster') || video.getAttribute('data-poster');
+      if (poster) trackImage(poster);
     });
 
     // <object>/<embed>/<iframe> whose source is an image file
@@ -327,12 +328,15 @@
   }
 
   function collectVideos(trackVideo) {
-    // <video src> and <video><source src>
-    document.querySelectorAll('video[src]').forEach((video) => {
-      trackVideo(video.src);
+    // <video src> and lazy loaded variants
+    document.querySelectorAll('video[src], video[data-src], video[data-lazy-src], video[data-original]').forEach((video) => {
+      const src = video.getAttribute('src') || video.getAttribute('data-src') || video.getAttribute('data-lazy-src') || video.getAttribute('data-original');
+      if (src) trackVideo(src);
     });
-    document.querySelectorAll('video source[src]').forEach((source) => {
-      trackVideo(source.src);
+    // <video><source src> and lazy loaded variants
+    document.querySelectorAll('video source[src], video source[data-src], video source[data-lazy-src], video source[data-original]').forEach((source) => {
+      const src = source.getAttribute('src') || source.getAttribute('data-src') || source.getAttribute('data-lazy-src') || source.getAttribute('data-original');
+      if (src) trackVideo(src);
     });
   }
 
@@ -538,12 +542,14 @@
 
   function handleVideo(el, imageSet, videoSet) {
     if (el.tagName === 'VIDEO') {
-      if (el.src) {
-        const url = resolveUrl(el.src);
+      const src = el.getAttribute('src') || el.getAttribute('data-src') || el.getAttribute('data-lazy-src') || el.getAttribute('data-original');
+      if (src) {
+        const url = resolveUrl(src);
         if (url && !url.startsWith('data:')) videoSet.add(url);
       }
-      if (el.hasAttribute('poster')) {
-        const url = resolveUrl(el.getAttribute('poster'));
+      const poster = el.getAttribute('poster') || el.getAttribute('data-poster');
+      if (poster) {
+        const url = resolveUrl(poster);
         if (url && !url.startsWith('data:')) imageSet.add(url);
       }
     }
@@ -552,8 +558,11 @@
   function handleSource(el, imageSet, videoSet) {
     if (el.tagName === 'SOURCE') {
       if (el.parentElement?.tagName === 'VIDEO') {
-        const url = resolveUrl(el.src);
-        if (url && !url.startsWith('data:')) videoSet.add(url);
+        const src = el.getAttribute('src') || el.getAttribute('data-src') || el.getAttribute('data-lazy-src') || el.getAttribute('data-original');
+        if (src) {
+          const url = resolveUrl(src);
+          if (url && !url.startsWith('data:')) videoSet.add(url);
+        }
       } else if (el.parentElement?.tagName === 'PICTURE') {
         // Handled per-picture in extractUrlsFromElement
       }
