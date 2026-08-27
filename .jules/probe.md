@@ -25,3 +25,7 @@
 ## 2026-08-24 - Missing CSS.escape mock in jsdom
 **Learning:** Verified that testing DOM scanning logic like `MutationObserver` triggers `CSS.escape`, which is not available in standard `jsdom` environments, throwing a `ReferenceError: CSS is not defined`.
 **Action:** Added a simple `global.CSS = { escape: (str) => str }` mock to `tests/setup.js` to avoid the `ReferenceError` when running DOM-dependent content tests.
+
+## 2026-08-26 - handlePicture regression test
+**Learning:** Scout's per-picture selection (one URL per <picture>, preferring img.currentSrc) had no regression test — it is the guard that keeps the grid from showing one cell per format variant.
+**Action:** Added handlePicture tests in tests/content.test.js pinning currentSrc priority and the first-usable-source fallback. jsdom does not resolve currentSrc, so define it with Object.defineProperty.
