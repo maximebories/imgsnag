@@ -80,6 +80,54 @@ describe('Background Script', () => {
     expect(downloads[0].url).toBe('https://example.com/image.jpg');
   });
 
+  test('rejects popup-only actions from content script', async () => {
+    const actions = ['download_images_bulk', 'download_svg', 'cancel_downloads'];
+    const sender = { tab: { id: 1 } }; // Content script has sender.tab
+
+    for (const action of actions) {
+      const response = await messageListener({ action, url: 'http://test' }, sender);
+      expect(response).toEqual({ success: false, error: 'Unauthorized sender' });
+    }
+  });
+
+  test('accepts download_image from content script', async () => {
+    const sender = { tab: { id: 1 } };
+    const response = await messageListener({
+      action: 'download_image',
+      url: 'https://example.com/image.jpg'
+    }, sender);
+    expect(response).toEqual({ success: true });
+  });
+
+
+  test('download_image: normalizes URL to prevent parser differentials', async () => {
+    const response = await messageListener({
+      action: 'download_image',
+      url: '  https://example.com/path/../image.jpg  '
+    }, {});
+
+    expect(response).toEqual({ success: true });
+    expect(downloads).toHaveLength(1);
+    expect(downloads[0].url).toBe('https://example.com/image.jpg');
+  });
+
+  test('download_images_bulk: normalizes URLs to prevent parser differentials', async () => {
+    const response = await messageListener({
+      action: 'download_images_bulk',
+      urls: [
+        '  https://example.com/path/../1.jpg  ',
+        'https://example.com/2.jpg\n'
+      ]
+    }, {});
+
+    expect(response).toEqual({ started: true, completed: true });
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    expect(downloads).toHaveLength(2);
+    expect(downloads[0].url).toBe('https://example.com/1.jpg');
+    expect(downloads[1].url).toBe('https://example.com/2.jpg');
+  });
+
   test('download_image: invalid URL', async () => {
     const response = await messageListener({
       action: 'download_image',
@@ -152,6 +200,28 @@ describe('Background Script', () => {
     expect(badgeText).toBe(''); // Should be reset at the end
   });
 
+  test('download_svg: valid markup downloads with a generated filename', async () => {
+    const response = await messageListener({
+      action: 'download_svg',
+      markup: '<svg xmlns="http://www.w3.org/2000/svg"><rect width="10" height="10"/></svg>'
+    }, {});
+
+    expect(response).toEqual({ success: true });
+    expect(downloads).toHaveLength(1);
+    // jsdom has no URL.createObjectURL, so the data: fallback path is exercised
+    expect(downloads[0].url.startsWith('data:image/svg+xml')).toBe(true);
+    expect(downloads[0].filename).toBe('imgsnag-inline.svg');
+    expect(global.mockStorage).toHaveProperty('dl_1');
+  });
+
+  test('download_svg: rejects payloads that are not SVG markup', async () => {
+    for (const markup of ['<script>alert(1)</script>', '', 'hello', 42, null, '<svg'.padEnd(2 * 1024 * 1024 + 5, 'a')]) {
+      const response = await messageListener({ action: 'download_svg', markup }, {});
+      expect(response).toEqual({ success: false, error: 'Invalid SVG payload' });
+    }
+    expect(downloads).toHaveLength(0);
+  });
+
   test('cancel_downloads: cancels all active downloads', async () => {
     // Start some downloads
     await messageListener({
@@ -170,6 +240,36 @@ describe('Background Script', () => {
     // Verify cancellation
     expect(downloads[0].cancelled).toBe(true);
     expect(downloads[1].cancelled).toBe(true);
+  });
+
+  test('download_images_bulk: badge-clear parity falls back to empty string if null throws', async () => {
+    // Override the mock for this specific test to simulate Chrome's behavior where null throws
+    const originalSetBadgeText = global.browser.action.setBadgeText;
+    const setBadgeCalls = [];
+    global.browser.action.setBadgeText = async (details) => {
+      setBadgeCalls.push(details.text);
+      if (details.text === null) {
+        throw new TypeError('Simulated Chrome TypeError for null badge text');
+      }
+      return originalSetBadgeText(details);
+    };
+
+    const response = await messageListener({
+      action: 'download_images_bulk',
+      urls: ['https://example.com/1.jpg']
+    }, {});
+
+    expect(response).toEqual({ started: true, completed: true });
+
+    // Wait for the async operations to settle
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    // Verify it attempted null, failed, and fell back to empty string
+    expect(setBadgeCalls).toContain(null);
+    expect(badgeText).toBe('');
+
+    // Restore mock
+    global.browser.action.setBadgeText = originalSetBadgeText;
   });
 
   test('onChanged listener removes finished downloads', async () => {
@@ -192,5 +292,30 @@ describe('Background Script', () => {
     await new Promise(resolve => setTimeout(resolve, 0));
 
     expect(global.mockStorage).not.toHaveProperty('dl_1');
+  });
+
+  test('storage-backed download tracking pins active downloads to storage.local', async () => {
+    // 1. Verify storage is initially empty
+    expect(global.mockStorage).toEqual({});
+
+    // 2. Start bulk download
+    await messageListener({
+      action: 'download_images_bulk',
+      urls: ['https://example.com/a.jpg', 'https://example.com/b.jpg']
+    }, {});
+
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    // 3. Verify storage has dl_1 and dl_2
+    expect(global.mockStorage).toHaveProperty('dl_1', true);
+    expect(global.mockStorage).toHaveProperty('dl_2', true);
+
+    // 4. Cancel downloads
+    await messageListener({ action: 'cancel_downloads' }, {});
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    // 5. Verify storage is cleared
+    expect(global.mockStorage).not.toHaveProperty('dl_1');
+    expect(global.mockStorage).not.toHaveProperty('dl_2');
   });
 });

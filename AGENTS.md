@@ -28,10 +28,11 @@ Three extension contexts, one shared source tree (`src/`), packaged twice by `bu
    - `discoveredMedia` (a `Map`) persists found media across DOM node recycling (infinite scroll).
    - Size filter: images must be ≥ 200×200 (`MIN_IMAGE_SIZE`); SVGs and videos are exempt. Sizes come from a one-pass `document.images` cache; network probing via `new Image()` is deferred into `pendingNetworkFilter` until the popup connects.
    - Direct download paths: Alt+Click (`elementsFromPoint`, downloads the stack under the cursor) and drag-to-save (toggleable via the `disableDrag` sync-storage setting).
+   - Inline-SVG capture (RFC #118): `collectInlineSvgs()` runs **only when the popup connects** (never ambiently), serializing top-level `<svg>` elements ≥ 200×200 *rendered* size (no `<use>` refs, stage 1) into `data:image/svg+xml` items flagged `derived: true`.
 
 2. **`src/popup.js`** — opens a port named `imgsnag-popup` to the active tab's content script; receives `init` (current store) then `new_images` (live updates); renders image/video grids of clickable cells (click = download, checkbox = select for bulk).
 
-3. **`src/background.js`** — the **only** caller of `browser.downloads.download`. Handles runtime messages `download_image`, `download_images_bulk` (badge shows `completed/total` progress), and `cancel_downloads`. Tracks in-flight download ids in `storage.local` under `dl_<id>` keys so cancellation survives service-worker suspension; `downloads.onChanged` cleans them up.
+3. **`src/background.js`** — the **only** caller of `browser.downloads.download`. Handles runtime messages `download_image`, `download_images_bulk` (badge shows `completed/total` progress), `download_svg` (raw serialized markup in, validated fail-closed, URL constructed **by the background** — blob where `createObjectURL` exists i.e. Firefox event pages, `data:` fallback in Chrome's service worker; blob URLs revoked via `downloads.onChanged`), and `cancel_downloads`. Tracks in-flight download ids in `storage.local` under `dl_<id>` keys so cancellation survives service-worker suspension; `downloads.onChanged` cleans them up.
 
 ### Cross-browser parity
 
@@ -67,6 +68,7 @@ Each persona has a fixed territory:
 | `lingo.md` | i18n |
 | `twin.md` | Chrome/Firefox parity |
 | `probe.md` | test coverage & regression guards |
+| `prospector.md` | R&D on new capture channels — deliverable is an RFC issue, never a patch |
 | `bolt.md` | generic perf template — **do not schedule** (Feather covers this repo) |
 | `palette.md`, `sentinel.md` | generic UX/security templates — **do not schedule** (Pixel/Warden cover this repo) |
 
@@ -81,8 +83,9 @@ Historically, agents re-fixed already-landed issues (a dozen branches once exist
 3. **Duplicate check — mandatory before writing any patch:**
    - `git log --oneline -30` — has the finding already been fixed on `main`?
    - `git branch -r` — does a branch (often from a previous run of *you*) already address it?
+   - Check **open pull requests** for the same finding — a previous run of you (or a sibling persona) may already have one open. Three identical "semantic buttons" PRs were once open simultaneously because runs skipped this.
    - Confirm the flaw exists in the **current** source by reading it — not in a stale description of it.
-   - If it's already fixed or in flight: conclude **without** a patch. A no-op run is a success, not a failure.
+   - If it's already fixed or in flight: conclude **without** a patch, a branch, **or a PR**. Never open a PR to report a no-op — a clean conclusion message is the deliverable.
 4. **One branch per session, one focused change.** Never publish multiple branches for one finding.
 5. **Before publishing:** `npm test` green, `bash build.sh` clean — but **commit only source files and your journal, never `dist/`**. Running `build.sh` dirties `dist/` in the working tree; discard those changes (`git reset` the stage, `git add` only your files, commit, then `git checkout -- dist/`). Never use `git rm --cached dist/` — dist is tracked and that commits its deletion. The orchestrator rebuilds and commits `dist/` after merging.
 6. **Journal only genuinely new learnings** — check that your journal doesn't already record the same lesson.

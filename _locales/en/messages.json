@@ -44,9 +44,31 @@
     "message": "Reload the page and try again"
   },
   "popupMediaFallback": {
-    "message": "media"
+    "message": "media",
+    "description": "Fallback name for an image/video when the URL has no filename."
   },
   "optionsTitle": {
     "message": "Options"
+  },
+  "popupDerivedBadge": {
+    "message": "Generated SVG"
+  },
+  "popupDerivedBadgeText": {
+    "message": "SVG"
+  },
+  "popupEmptyHint": {
+    "message": "Tip: Alt+Click or drag images to save directly"
+  },
+  "popupInlineSvg": {
+    "message": "imgsnag-inline.svg",
+    "description": "Filename shown in the cell label for a captured inline SVG. Must match the real download filename in background.js — do not translate."
+  },
+  "popupHiddenCount": {
+    "message": "$COUNT$ variants hidden",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
   }
 }

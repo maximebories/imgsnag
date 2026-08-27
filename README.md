@@ -6,6 +6,12 @@
 
 <p align="center">Browser extension to download images from web pages.</p>
 
+<p align="center">
+  <a href="https://addons.mozilla.org/en-US/firefox/addon/imgsnag/">
+    <img src="https://blog.mozilla.org/addons/files/2020/04/get-the-addon-fx-apr-2020.svg" alt="Get imgsnag for Firefox" height="60" />
+  </a>
+</p>
+
 ## Features
 
 - **Bulk download** — click the toolbar button to download all images from the current page

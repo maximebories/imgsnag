@@ -31,6 +31,13 @@
         display: flex;
       }
 
+      #empty .hint {
+        font-size: 11px;
+        color: #777;
+        text-align: center;
+        max-width: 80%;
+      }
+
       .spinner {
         width: 24px;
         height: 24px;
@@ -44,9 +51,14 @@
       /* Image grid */
       #grid, #video-grid {
         display: none;
-        grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
-        gap: 4px;
+        list-style: none;
+        margin: 0;
         padding: 4px;
+        grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+        /* Explicit row height: aspect-ratio rows collapse when the scroll
+           container is height-constrained and cells have overflow:hidden */
+        grid-auto-rows: 110px;
+        gap: 4px;
         overflow-y: auto;
         max-height: 430px;
       }
@@ -54,11 +66,9 @@
 
       .cell {
         position: relative;
-        aspect-ratio: 1;
         overflow: hidden;
         border-radius: 4px;
         background: #e0e0e0;
-        cursor: pointer;
       }
       .cell img {
         width: 100%;
@@ -68,8 +78,19 @@
         transition: opacity 0.15s;
       }
       .cell:hover img { opacity: 0.85; }
+      .cell[hidden] { display: none; } /* visual-dedup hides smaller variants */
 
-      .cell:focus-visible {
+      .cell-action {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 1;
+        background: transparent;
+        border: none;
+        cursor: pointer;
+      }
+      .cell-action:focus-visible {
         outline: 3px solid #2563eb;
         outline-offset: -3px;
       }
@@ -80,6 +101,8 @@
         right: 4px;
         width: 22px;
         height: 22px;
+        padding: 0;
+        z-index: 2;
         border: 2px solid rgba(255,255,255,0.9);
         border-radius: 4px;
         background: rgba(0,0,0,0.3);
@@ -111,9 +134,25 @@
         transform: rotate(-45deg) translateY(-1px);
       }
 
+      .badge-derived {
+        position: absolute;
+        top: 4px;
+        left: 4px;
+        z-index: 2;
+        background: #2563eb;
+        color: #fff;
+        font-size: 10px;
+        font-weight: 600;
+        border-radius: 4px;
+        padding: 2px 4px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+        pointer-events: none;
+      }
+
       .cell .flash {
         position: absolute;
         inset: 0;
+        z-index: 3;
         background: rgba(34, 197, 94, 0.4);
         display: none;
         align-items: center;
@@ -175,6 +214,18 @@
       }
       .group-header.visible { display: block; }
 
+      #hidden-count {
+        display: none;
+        padding: 4px 8px;
+        font-size: 11px;
+        color: #666;
+        background: #e5e7eb;
+        text-align: center;
+        border-top: 1px solid #e0e0e0;
+        flex-shrink: 0;
+      }
+      #hidden-count.visible { display: block; }
+
       /* Bottom bar */
       #bar {
         display: none;
@@ -233,11 +284,13 @@
         :root { color-scheme: light dark; }
         body { background: #1a1a1a; color: #f5f5f5; }
         #bar { background: #1a1a1a; border-top-color: #333; }
+        #hidden-count { background: #1a1a1a; color: #888; border-top-color: #333; }
         #counter { color: #a3a3a3; }
         .cell { background: #333; }
         .group-header { color: #a3a3a3; }
         #btn-all { background: #374151; color: #f9fafb; }
         #btn-all:hover { background: #4b5563; }
+        #empty .hint { color: #888; }
       }
 
       @media (prefers-reduced-motion: reduce) {
@@ -265,19 +318,21 @@
 
     <div id="empty" role="status" aria-live="polite">
       <span id="empty-text"></span>
+      <span id="empty-hint" class="hint"></span>
     </div>
 
     <div id="error" role="alert" aria-live="assertive">
       <span id="error-text"></span>
     </div>
 
-    <div id="grid"></div>
+    <ul id="grid" role="list"></ul>
 
     <div id="video-header" class="group-header">
       <span id="video-header-text"></span>
     </div>
-    <div id="video-grid"></div>
+    <ul id="video-grid" role="list"></ul>
 
+    <div id="hidden-count" aria-live="polite"></div>
     <div id="bar">
       <span id="counter" aria-live="polite" aria-atomic="true"></span>
       <div class="actions">

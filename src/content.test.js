@@ -17,7 +17,7 @@ global.browser = {
 };
 
 // Require the content script which executes the IIFE
-const { isVideoUrl, isImageUrl, isSvgUrl } = require('./content');
+const { isVideoUrl, isImageUrl, isSvgUrl, collectInlineSvgs } = require('./content');
 
 describe('isVideoUrl', () => {
   describe('valid video URLs', () => {
@@ -213,5 +213,98 @@ describe('isSvgUrl', () => {
     it('should return false for empty string', () => {
       expect(isSvgUrl('')).toBe(false);
     });
+  });
+});
+
+describe('collectInlineSvgs', () => {
+  const SVG_NS = 'http://www.w3.org/2000/svg';
+
+  function addSvg({ width = 300, height = 300, withUse = false } = {}) {
+    const svg = document.createElementNS(SVG_NS, 'svg');
+    svg.getBoundingClientRect = () => ({ width, height });
+    const rect = document.createElementNS(SVG_NS, 'rect');
+    svg.appendChild(rect);
+    if (withUse) svg.appendChild(document.createElementNS(SVG_NS, 'use'));
+    document.body.appendChild(svg);
+    return svg;
+  }
+
+  afterEach(() => {
+    document.body.innerHTML = '';
+  });
+
+  it('captures a large inline SVG as a derived data: URL item', () => {
+    addSvg({ width: 320, height: 250 });
+    const items = collectInlineSvgs();
+    expect(items).toHaveLength(1);
+    expect(items[0].url.startsWith('data:image/svg+xml;charset=utf-8,')).toBe(true);
+    expect(items[0].derived).toBe(true);
+    expect(items[0].type).toBe('image');
+    expect(items[0].width).toBe(320);
+    expect(items[0].height).toBe(250);
+    const markup = decodeURIComponent(items[0].url.split(',').slice(1).join(','));
+    expect(markup).toContain('<svg');
+    expect(markup).toContain('rect');
+  });
+
+  it('skips SVGs rendered below the minimum size', () => {
+    addSvg({ width: 24, height: 24 });
+    addSvg({ width: 300, height: 100 });
+    expect(collectInlineSvgs()).toHaveLength(0);
+  });
+
+  it('skips SVGs containing <use> references (stage 1)', () => {
+    addSvg({ withUse: true });
+    expect(collectInlineSvgs()).toHaveLength(0);
+  });
+});
+
+describe('handleEmbed', () => {
+  const { handleEmbed } = require('./content');
+
+  function el(tag, attrs = {}) {
+    const e = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+    return e;
+  }
+
+  it('captures object[data] pointing at an image file', () => {
+    const set = new Set();
+    handleEmbed(el('object', { data: 'https://example.com/logo.svg' }), set);
+    expect([...set]).toEqual(['https://example.com/logo.svg']);
+  });
+
+  it('captures embed[src] and iframe[src] image URLs', () => {
+    const set = new Set();
+    handleEmbed(el('embed', { src: 'https://example.com/pic.png' }), set);
+    handleEmbed(el('iframe', { src: 'https://example.com/photo.jpg' }), set);
+    expect(set.size).toBe(2);
+  });
+
+  it('ignores iframes pointing at pages and non-embed tags', () => {
+    const set = new Set();
+    handleEmbed(el('iframe', { src: 'https://example.com/page.html' }), set);
+    handleEmbed(el('div', { src: 'https://example.com/pic.png' }), set);
+    handleEmbed(el('object', {}), set);
+    expect(set.size).toBe(0);
+  });
+});
+
+describe('passesSizeFilter', () => {
+  const { passesSizeFilter } = require('./content');
+
+  it('rejects missing sizes (failed loads)', () => {
+    expect(passesSizeFilter(null)).toBe(false);
+    expect(passesSizeFilter(undefined)).toBe(false);
+  });
+
+  it('exempts 0×0 (extension-less SVG without intrinsic size)', () => {
+    expect(passesSizeFilter({ width: 0, height: 0 })).toBe(true);
+  });
+
+  it('applies the minimum size to real bitmaps', () => {
+    expect(passesSizeFilter({ width: 199, height: 300 })).toBe(false);
+    expect(passesSizeFilter({ width: 300, height: 100 })).toBe(false);
+    expect(passesSizeFilter({ width: 200, height: 200 })).toBe(true);
   });
 });

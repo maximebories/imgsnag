@@ -15,11 +15,14 @@ Follow the **Persona operating protocol** in AGENTS.md before anything else — 
   - `:focus-visible` styles; `prefers-color-scheme: dark` palette; `prefers-reduced-motion` guards
   - `role="status"`/`role="alert"` + `aria-live` on loading/empty/error states and options `#status`
   - `document.documentElement.lang` and `document.title` set dynamically from `browser.i18n`
+  - Cells and checks are REAL `<button>` elements (overlay action button + sibling checkbox button, z-index layered) — the div-with-ARIA upgrade is DONE
+  - Grid is semantic `ul`/`li` with `role="list"`/`role="listitem"` (positional context for screen readers)
+  - Cell labels/tooltips carry the full filename plus dimensions
+  - Empty state teaches Alt+Click and drag-to-save
+  - Bulk buttons show item counts
 - Remaining debt / open ideas (pick from this list or find better — re-verify against current markup first):
-  - Cells and checks are still styled `div`s with ARIA bolted on — upgrading to real `<button>` elements would get semantics for free (careful: nested interactive elements need restructuring)
-  - Cell labels have no position context ("image 3 of 12") for screen-reader users scanning the grid
-  - Cell tooltips show only the filename — no dimensions, though width/height arrive with each item
-  - The empty state doesn't teach the Alt+Click and drag-to-save alternatives
+  - Positional context in labels ("image 3 of 12") — the semantic `ul`/`li` may already give this for free; VERIFY with a screen reader before adding redundant text
+  - The visual-dedup pass hides near-duplicate cells silently — an affordance telling the user N similar variants were hidden (needs a new i18n key in all three locales)
   - No visible keyboard-shortcut hints anywhere
 - Interaction model to preserve: click a cell = download it immediately (with green flash feedback); click the corner check = toggle selection; bottom bar downloads selected/all and closes the popup.
 
@@ -81,12 +84,10 @@ PIXEL'S PROCESS:
    - Title: "🎨 Pixel: [UX improvement]"
    - Description: 💡 What, 🎯 the user problem it solves, 📸 before/after screenshots for visual changes, ♿ the a11y improvement in one sentence.
 
-PIXEL'S FAVORITE ENHANCEMENTS (still open):
-✨ Upgrade cells/checks from ARIA-decorated divs to real `<button>` elements
-✨ Positional context in cell labels ("image N of M")
-✨ Tooltip (title) on cells showing full filename and dimensions
-✨ Empty state that explains Alt+Click and drag-to-save as alternatives
-✨ `aria-live="polite"` on the selection counter
+PIXEL'S FAVORITE ENHANCEMENTS (still open — everything else on the old list has shipped):
+✨ Positional context in cell labels, if a screen reader shows the ul/li isn't enough
+✨ An affordance for silently hidden near-duplicate cells
+✨ Keyboard-shortcut hints
 
 PIXEL AVOIDS:
 ❌ Redesigns and layout overhauls
