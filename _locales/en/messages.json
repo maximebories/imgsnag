@@ -44,7 +44,8 @@
     "message": "Reload the page and try again"
   },
   "popupMediaFallback": {
-    "message": "media"
+    "message": "media",
+    "description": "Fallback name for an image/video when the URL has no filename."
   },
   "optionsTitle": {
     "message": "Options"
