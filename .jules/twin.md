@@ -7,3 +7,6 @@
 ## 2024-08-08 - [Clearing Badge Text in Chrome vs Firefox]
 **Learning:** To clear the extension badge text across both Chrome and Firefox MV3 when using webextension-polyfill, Firefox requires `null` to avoid leaving a colored square, while Chrome throws a TypeError for `null` and requires `''`. A standard try/catch block fails because the polyfill converts Chrome's synchronous TypeError into a rejected Promise.
 **Action:** Always attempt `browser.action.setBadgeText({ text: null })` and chain `.catch(() => browser.action.setBadgeText({ text: '' }))` as a fallback.
+## 2026-08-27 - [Locale Key Parity Across Supported Languages]
+**Learning:** `_locales` keys referenced via `__MSG_*__` in the manifest and `browser.i18n.getMessage` in code must exist identically across all supported languages (e.g., `en`, `es`, `fr`). Counting the exact number of keys is brittle as features are added; instead, always verify that the set of keys in all localized `messages.json` files perfectly matches each other and the references in the source.
+**Action:** Before releasing or after adding new i18n strings, audit `_locales/*/messages.json` to guarantee all language files maintain a 1:1 parity in their key sets, preventing silent missing translations in specific locales.
