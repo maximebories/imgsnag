@@ -24,8 +24,25 @@ export PATH="/opt/homebrew/bin:/usr/local/bin:$HOME/.local/bin:$HOME/.bun/bin:$P
   OPEN_PRS=$(gh pr list --state open --json number --jq length 2>/dev/null || echo "?")
   echo "open PRs: $OPEN_PRS"
 
+  # Least privilege, not bypassPermissions. This job reads ATTACKER-CONTROLLED
+  # text (PR titles/bodies/diffs on a public repo, Jules session messages), so
+  # an unrestricted agent would be one prompt injection away from arbitrary
+  # execution with this user's Keychain and gh credentials. The allowlist below
+  # covers exactly what triage needs; anything else (curl|sh, chmod, ssh,
+  # security find-generic-password beyond the Jules key, package installs)
+  # is simply not runnable. Extend it deliberately, never with a wildcard.
   "$CLAUDE" --print \
-    --permission-mode bypassPermissions \
+    --permission-mode dontAsk \
+    --allowedTools \
+      "Bash(git:*)" "Bash(gh:*)" "Bash(npm test)" "Bash(npm ci)" \
+      "Bash(node:*)" "Bash(bash build.sh)" "Bash(python3:*)" \
+      "Bash(jq:*)" "Bash(sed:*)" "Bash(grep:*)" "Bash(head:*)" "Bash(tail:*)" \
+      "Bash(cat:*)" "Bash(ls:*)" "Bash(wc:*)" "Bash(mkdir:*)" "Bash(printf:*)" \
+      "Bash(curl -sS https://jules.googleapis.com/*)" \
+      "Bash(curl -sS -o /dev/null*)" \
+      "Bash(security find-generic-password -s jules-api-key -w)" \
+      "Read" "Edit" "Write" "Grep" "Glob" \
+    --disallowedTools "WebFetch" "WebSearch" \
     --model opus \
     "$(cat "$REPO/tools/nightly-triage-prompt.md")"
 
