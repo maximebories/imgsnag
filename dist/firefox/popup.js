@@ -185,6 +185,7 @@
     const n = selectedUrls.size;
     const total = allUrls.size;
     const hiddenCount = imageEntries.filter(e => e.cell.hidden).length;
+    const mod = navigator.platform.includes('Mac') ? 'Cmd' : 'Ctrl';
 
     counterEl.textContent = n > 0
       ? `${n} ${browser.i18n.getMessage('popupSelected')}`
@@ -192,6 +193,15 @@
     btnSelected.disabled = n === 0;
     btnSelected.textContent = `${browser.i18n.getMessage('popupDownloadSelected')} (${n})`;
     btnAll.textContent = `${browser.i18n.getMessage('popupDownloadAll')} (${total})`;
+    // Ctrl/Cmd+Enter activates exactly one of these two buttons, so only that
+    // one advertises the shortcut — otherwise the idle button's tooltip
+    // promises a bulk download the shortcut will not actually perform.
+    btnSelected.title = n > 0
+      ? browser.i18n.getMessage('popupShortcutHint', [btnSelected.textContent, mod])
+      : '';
+    btnAll.title = n > 0
+      ? ''
+      : browser.i18n.getMessage('popupShortcutHint', [btnAll.textContent, mod]);
 
     if (hiddenCount > 0) {
       hiddenCountEl.textContent = browser.i18n.getMessage('popupHiddenCount', [hiddenCount.toString()]);
@@ -387,6 +397,17 @@
 
   btnAll.addEventListener('click', () => {
     downloadAndClose([...allUrls]);
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      if (!btnSelected.disabled) {
+        btnSelected.click();
+      } else {
+        btnAll.click();
+      }
+    }
   });
 
   // Connect to content script via port for live updates

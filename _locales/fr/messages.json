@@ -8,19 +8,23 @@
     "description": "Extension button tooltip."
   },
   "disableDragLabel": {
-    "message": "Désactiver le glisser pour enregistrer"
+    "message": "Désactiver le glisser pour enregistrer",
+    "description": "Label for the checkbox to turn off drag-to-save."
   },
   "optionsSave": {
-    "message": "Enregistrer"
+    "message": "Enregistrer",
+    "description": "Button text for saving options."
   },
   "optionsStatus": {
     "message": "Enregistré"
   },
   "popupSelect": {
-    "message": "Sélectionner"
+    "message": "Sélectionner",
+    "description": "Button label for toggling a checkbox on an image cell."
   },
   "popupDownload": {
-    "message": "Télécharger"
+    "message": "Télécharger",
+    "description": "Action button tooltip for downloading a specific image."
   },
   "popupLoading": {
     "message": "Analyse de la page..."
@@ -38,22 +42,26 @@
     "message": "Tout télécharger"
   },
   "popupSelected": {
-    "message": "sélectionnée(s)"
+    "message": "sélectionnée(s)",
+    "description": "Noun following the count of selected images (e.g., '3 selected')."
   },
   "popupReload": {
     "message": "Rechargez la page et réessayez"
   },
   "popupMediaFallback": {
-    "message": "média"
+    "message": "média",
+    "description": "Fallback name for an image/video when the URL has no filename."
   },
   "optionsTitle": {
     "message": "Options"
   },
   "popupDerivedBadge": {
-    "message": "SVG généré"
+    "message": "SVG généré",
+    "description": "Badge aria-label indicating an image was generated from an inline SVG."
   },
   "popupDerivedBadgeText": {
-    "message": "SVG"
+    "message": "SVG",
+    "description": "Short visible badge text indicating an image is an SVG."
   },
   "popupEmptyHint": {
     "message": "Astuce : Alt+Clic ou glissez des images pour enregistrer"
@@ -64,9 +72,22 @@
   },
   "popupHiddenCount": {
     "message": "$COUNT$ variantes masquées",
+    "description": "Message showing the number of smaller duplicate images collapsed from the UI.",
     "placeholders": {
       "count": {
         "content": "$1"
+      }
+    }
+  },
+  "popupShortcutHint": {
+    "message": "$ACTION$ ($MODIFIER$+Entrée)",
+    "description": "Instructions on keyboard shortcuts shown in button tooltips.",
+    "placeholders": {
+      "action": {
+        "content": "$1"
+      },
+      "modifier": {
+        "content": "$2"
       }
     }
   }

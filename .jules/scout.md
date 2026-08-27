@@ -46,3 +46,7 @@
 ## 2026-08-25 - Extracted URLs in JSON-LD with escaped slashes
 **Learning:** Image URLs inside JSON-LD (`application/ld+json`) blocks or `data-*` attributes containing JSON often escape forward slashes as `\/`. The strict `IMAGE_URL_RE` regex missed these URLs because they contained `\\`. Replacing `//` with `(?:\\?\/){2}` and stripping the slashes allows detecting them safely without causing false positives.
 **Action:** Relaxed `IMAGE_URL_RE` to allow escaped slashes `\\/` and implemented backslash stripping for any matches extracted during the TreeWalker scan.
+
+## 2026-08-27 - Missed Lazy Loaded Videos and Video Posters
+**Learning:** Like images, `<video>` tags and `<video><source>` tags often use `data-src`, `data-lazy-src`, and `data-original` for their sources, and `data-poster` for their posters. These were previously missed by the video discovery queries and handlers.
+**Action:** Explicitly query `video[data-src]`, `video[data-lazy-src]`, `video[data-original]`, `video source[data-src]`, `video source[data-lazy-src]`, `video source[data-original]`, and `video[data-poster]` in DOM scanning functions (`collectImages`, `collectVideos`) and handle these attributes in the MutationObserver path (`handleVideo`, `handleSource`).

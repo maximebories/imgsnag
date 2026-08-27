@@ -44,7 +44,8 @@
     "message": "Rechargez la page et réessayez"
   },
   "popupMediaFallback": {
-    "message": "média"
+    "message": "média",
+    "description": "Fallback name for an image/video when the URL has no filename."
   },
   "optionsTitle": {
     "message": "Options"
@@ -67,6 +68,17 @@
     "placeholders": {
       "count": {
         "content": "$1"
+      }
+    }
+  },
+  "popupShortcutHint": {
+    "message": "$ACTION$ ($MODIFIER$+Entrée)",
+    "placeholders": {
+      "action": {
+        "content": "$1"
+      },
+      "modifier": {
+        "content": "$2"
       }
     }
   }
