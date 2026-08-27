@@ -24,12 +24,26 @@ export PATH="/opt/homebrew/bin:/usr/local/bin:$HOME/.local/bin:$HOME/.bun/bin:$P
   OPEN_PRS=$(gh pr list --state open --json number --jq length 2>/dev/null || echo "?")
   echo "open PRs: $OPEN_PRS"
 
-  # Files the agent must never rewrite: they either re-enter this loop with
-  # elevated reach (its own prompt, this runner, the API helper) or run as
-  # code outside it (build.sh, CI workflows). Deny rules below cover them;
-  # this hash check is the belt to that suspenders, because a deny pattern
-  # that silently fails to match fails OPEN and we would never know.
-  SELF_FILES=(tools/nightly-triage.sh tools/nightly-triage-prompt.md tools/jules.py build.sh)
+  # Every path that an allowlisted Bash entry EXECUTES must also be one the
+  # agent cannot write, or the allowlist entry is just a slower way to run
+  # arbitrary code: `bash build.sh` -> build.sh, `node tools/e2e-smoke.mjs`
+  # -> that file, `python3 tools/jules.py` -> that file, and `npm test` /
+  # `npm ci` -> package.json's scripts, package-lock.json's lifecycle hooks
+  # and jest.config.js. Add to BOTH lists whenever a new runner entry lands.
+  #
+  # KNOWN FLOOR, do not mistake this for a sandbox. Two holes are inherent,
+  # not oversights: (1) triage must merge test files and then run `npm test`,
+  # so writable-and-executed code is the job description; (2) the Edit/Write
+  # denies cover the *tools*, not the *content*: `git checkout other --
+  # build.sh` or a cherry-pick that touches it replaces a protected file
+  # without an Edit call, and only the hash check below would notice, after
+  # the fact. Real containment needs sandbox-exec or a container. What
+  # follows raises the cost of a compromise and guarantees an audit trail.
+  #
+  # The hash check is the belt to the deny rules' suspenders, because a deny
+  # pattern that silently fails to match fails OPEN and we would never know.
+  SELF_FILES=(tools/nightly-triage.sh tools/nightly-triage-prompt.md tools/jules.py \
+              tools/e2e-smoke.mjs build.sh package.json package-lock.json jest.config.js)
   SELF_BEFORE=$(git hash-object "${SELF_FILES[@]}" 2>/dev/null)
 
   # Least privilege, not bypassPermissions. This job reads ATTACKER-CONTROLLED
@@ -72,7 +86,11 @@ export PATH="/opt/homebrew/bin:/usr/local/bin:$HOME/.local/bin:$HOME/.bun/bin:$P
       "Edit(tools/nightly-triage.sh)" "Write(tools/nightly-triage.sh)" \
       "Edit(tools/nightly-triage-prompt.md)" "Write(tools/nightly-triage-prompt.md)" \
       "Edit(tools/jules.py)" "Write(tools/jules.py)" \
+      "Edit(tools/e2e-smoke.mjs)" "Write(tools/e2e-smoke.mjs)" \
       "Edit(build.sh)" "Write(build.sh)" \
+      "Edit(package.json)" "Write(package.json)" \
+      "Edit(package-lock.json)" "Write(package-lock.json)" \
+      "Edit(jest.config.js)" "Write(jest.config.js)" \
       "Edit(.github/**)" "Write(.github/**)" \
       "Edit(.claude/**)" "Write(.claude/**)" \
     --model opus \
