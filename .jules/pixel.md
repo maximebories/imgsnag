@@ -36,3 +36,11 @@
 ## 2024-07-25 - Hidden Item Affordance
 **Learning:** When silent background processes (like visual deduplication) mutate list visibility, always provide explicit, localized UI feedback (e.g., a 'hidden items' count banner) to maintain clear system status.
 **Action:** Always add localized visual feedback elements for dynamically hidden items.
+
+## 2026-08-27 - Global Keyboard Shortcuts for Actions
+**Learning:** Bottom-anchored action bars in dynamic grids become unreachable for keyboard users, requiring O(N) tabs to bypass hundreds of items. Global keyboard shortcuts with localized tooltip hints are necessary to maintain operability without a mouse.
+**Action:** Implement global `keydown` listeners (e.g. `Ctrl+Enter`) for primary actions and provide localized hints in button tooltips using `$MODIFIER$` placeholder to adapt to macOS and Windows.
+
+## 2026-08-27 - A shortcut hint belongs only on the button the shortcut fires
+**Learning:** Orchestrator review of the Ctrl+Enter work: the hint was written to BOTH action buttons, but one keystroke can only activate one of them (selected-if-any, else all). With a selection active, the "Download all" tooltip advertised a shortcut that would in fact download just the selection — a bulk action mislabelled by a factor of hundreds.
+**Action:** Bind the hint to the button the handler actually dispatches to, and clear the other one's `title` in the same update pass. Never advertise a shortcut on a control it does not activate.

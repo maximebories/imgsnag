@@ -69,5 +69,16 @@
         "content": "$1"
       }
     }
+  },
+  "popupShortcutHint": {
+    "message": "$ACTION$ ($MODIFIER$+Intro)",
+    "placeholders": {
+      "action": {
+        "content": "$1"
+      },
+      "modifier": {
+        "content": "$2"
+      }
+    }
   }
 }
