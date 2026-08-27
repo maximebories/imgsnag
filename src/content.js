@@ -924,6 +924,6 @@
   syncDragPreference();
   browser.storage.onChanged.addListener(() => syncDragPreference());
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { extractBgImageUrls, resolveUrl, isVideoUrl, isImageUrl, isSvgUrl, parseSrcset, pickBestFromSrcset, collectInlineSvgs, handleEmbed, passesSizeFilter, handleMeta, collectMediaUrls, handleSource, handlePicture };
+    module.exports = { getCssMediaUrls, extractBgImageUrls, resolveUrl, isVideoUrl, isImageUrl, isSvgUrl, parseSrcset, pickBestFromSrcset, collectInlineSvgs, handleEmbed, passesSizeFilter, handleMeta, collectMediaUrls, handleSource, handlePicture };
   }
 })();

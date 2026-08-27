@@ -29,3 +29,7 @@
 ## 2026-08-26 - handlePicture regression test
 **Learning:** Scout's per-picture selection (one URL per <picture>, preferring img.currentSrc) had no regression test — it is the guard that keeps the grid from showing one cell per format variant.
 **Action:** Added handlePicture tests in tests/content.test.js pinning currentSrc priority and the first-usable-source fallback. jsdom does not resolve currentSrc, so define it with Object.defineProperty.
+
+## 2026-08-27 - CSS Masks and Pseudo-elements regression test
+**Learning:** Verified that the Scout persona's fix for extracting media URLs from CSS pseudo-elements (like `::before` and `::after`) and modern mask properties (`mask-image`, `-webkit-mask-image`) lacked a regression test. Additionally, `getComputedStyle` throws 'Not implemented' for pseudo-elements in jsdom if not mocked or handled correctly. The function `getCssMediaUrls` also recently added an inline fast path when `useDisplayAccurate` is false.
+**Action:** Added a regression test for `getCssMediaUrls` in `tests/content.test.js` to ensure the correct extraction of URLs from these extended CSS properties and pseudo-elements (mocking `getComputedStyle` appropriately), while also pinning the behavior of the `useDisplayAccurate` fast path.
