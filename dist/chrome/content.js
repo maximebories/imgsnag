@@ -12,7 +12,7 @@
 
   // Catches image URLs embedded in inline scripts or JSON-LD that DOM queries miss
   const IMAGE_URL_RE =
-    /https?:\/\/[^\s"'<>]+\.(?:jpe?g|gif|png|webp|svg|avif)(?:\?[^\s"'<>]*)?/gi;
+    /https?:(?:\\?\/){2}[^\s"'<>]+\.(?:jpe?g|gif|png|webp|svg|avif)(?:\?[^\s"'<>]*)?/gi;
 
   // Cheap pre-check before the expensive URL sweep. Case-insensitive because
   // IMAGE_URL_RE is: a literal includes('http') check would miss "HtTp://".
@@ -111,19 +111,38 @@
     return urls;
   }
 
-  function getCssMediaUrls(el) {
+  function getCssMediaUrls(el, useDisplayAccurate = false) {
     const urls = [];
     try {
-      const styles = [
-        getComputedStyle(el)
-      ];
-      try { styles.push(getComputedStyle(el, '::before')); } catch {}
-      try { styles.push(getComputedStyle(el, '::after')); } catch {}
+      const rawStyle = el.getAttribute('style') || '';
+      const hasExternalStyling = el.className || el.id;
+      const hasInlineMaskOrContent = rawStyle.includes('mask') || rawStyle.includes('content');
 
+      const canSkipComputed = !useDisplayAccurate && !hasExternalStyling && !hasInlineMaskOrContent;
+
+      const styles = [];
+      if (canSkipComputed) {
+        styles.push(el.style);
+      } else {
+        styles.push(getComputedStyle(el));
+        try { styles.push(getComputedStyle(el, '::before')); } catch {}
+        try { styles.push(getComputedStyle(el, '::after')); } catch {}
+      }
+
+      let isMainElement = true;
       for (const style of styles) {
         if (!style) continue;
+
+        let bgImage = style.backgroundImage;
+        if (isMainElement && !useDisplayAccurate && !canSkipComputed && el.style && el.style.backgroundImage) {
+          const inlineBg = el.style.backgroundImage;
+          if (inlineBg && inlineBg !== 'none' && inlineBg !== 'normal') {
+             bgImage = inlineBg;
+          }
+        }
+
         const props = [
-          style.backgroundImage,
+          bgImage,
           style.maskImage || style.getPropertyValue('mask-image'),
           style.webkitMaskImage || style.getPropertyValue('-webkit-mask-image'),
           style.content
@@ -131,10 +150,11 @@
         for (const bg of props) {
           if (bg && bg !== 'none' && bg !== 'normal') {
             for (const raw of extractBgImageUrls(bg)) {
-              urls.push(raw);
+              if (!urls.includes(raw)) urls.push(raw);
             }
           }
         }
+        isMainElement = false;
       }
     } catch {
       // Element may not be connected to DOM yet
@@ -281,7 +301,9 @@
         if (node.nodeValue && HTTP_HINT_RE.test(node.nodeValue)) {
           let match;
           while ((match = IMAGE_URL_RE.exec(node.nodeValue)) !== null) {
-            trackImage(match[0]);
+            let url = match[0];
+            if (url.includes('\\')) url = url.replace(/\\/g, '');
+            trackImage(url);
           }
         }
       } else if (node.nodeType === Node.ELEMENT_NODE) {
@@ -294,7 +316,9 @@
           if (val && HTTP_HINT_RE.test(val)) {
             let match;
             while ((match = IMAGE_URL_RE.exec(val)) !== null) {
-              trackImage(match[0]);
+              let url = match[0];
+              if (url.includes('\\')) url = url.replace(/\\/g, '');
+              trackImage(url);
             }
           }
         }
