@@ -33,3 +33,6 @@
 ## 2026-08-27 - CSS Masks and Pseudo-elements regression test
 **Learning:** Verified that the Scout persona's fix for extracting media URLs from CSS pseudo-elements (like `::before` and `::after`) and modern mask properties (`mask-image`, `-webkit-mask-image`) lacked a regression test. Additionally, `getComputedStyle` throws 'Not implemented' for pseudo-elements in jsdom if not mocked or handled correctly. The function `getCssMediaUrls` also recently added an inline fast path when `useDisplayAccurate` is false.
 **Action:** Added a regression test for `getCssMediaUrls` in `tests/content.test.js` to ensure the correct extraction of URLs from these extended CSS properties and pseudo-elements (mocking `getComputedStyle` appropriately), while also pinning the behavior of the `useDisplayAccurate` fast path.
+## 2026-08-25 - SVG <image> embed capture test
+**Learning:** Verified that the Scout persona's fix for extracting media URLs from embedded SVG images (`<image href="...">` and `<image xlink:href="...">`) using `handleSvgImage` lacked a regression test.
+**Action:** Added a regression test for `handleSvgImage` in `src/content.test.js` to ensure the correct extraction of URLs from both `href` and `xlink:href` attributes.

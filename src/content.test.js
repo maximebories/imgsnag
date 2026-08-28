@@ -308,3 +308,19 @@ describe('passesSizeFilter', () => {
     expect(passesSizeFilter({ width: 200, height: 200 })).toBe(true);
   });
 });
+
+describe('handleSvgImage', () => {
+  const { handleSvgImage } = require('./content');
+  it('extracts urls from href and xlink:href in image tags', () => {
+    const imageSet = new Set();
+    const el = document.createElement('image');
+    el.setAttribute('href', 'https://example.com/svg_href.jpg');
+    handleSvgImage(el, imageSet);
+    expect(imageSet.has('https://example.com/svg_href.jpg')).toBe(true);
+
+    const el2 = document.createElement('image');
+    el2.setAttribute('xlink:href', 'https://example.com/svg_xlink.jpg');
+    handleSvgImage(el2, imageSet);
+    expect(imageSet.has('https://example.com/svg_xlink.jpg')).toBe(true);
+  });
+});
