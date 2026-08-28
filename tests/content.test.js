@@ -351,3 +351,31 @@ describe('getCssMediaUrls', () => {
     expect(urls).toEqual(['https://example.com/bg.jpg']);
   });
 });
+
+describe('handleDataBg', () => {
+  const { handleDataBg } = require('../src/content.js');
+
+  function el(tag, attrs = {}) {
+    const e = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+    return e;
+  }
+
+  it('extracts direct URLs from data-bg attributes', () => {
+    const set = new Set();
+    handleDataBg(el('div', { 'data-bg': 'https://example.com/direct.jpg' }), set);
+    expect([...set]).toEqual(['https://example.com/direct.jpg']);
+  });
+
+  it('extracts css wrapped URLs from data-bg attributes', () => {
+    const set = new Set();
+    handleDataBg(el('div', { 'data-background-image': "url('https://example.com/css.png')" }), set);
+    expect([...set]).toEqual(['https://example.com/css.png']);
+  });
+
+  it('ignores invalid direct URLs', () => {
+    const set = new Set();
+    handleDataBg(el('div', { 'data-bg-src': 'not_an_image' }), set);
+    expect(set.size).toBe(0);
+  });
+});
