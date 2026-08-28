@@ -13,3 +13,6 @@
 ## 2026-08-27 - Action bar layout slack is under 9px at 400px
 **Learning:** The `es`/`fr` action-bar strings were verified to fit at 400px on 2026-08-27; the bar has under 9px of slack, so future string growth in that row needs re-measuring. See issue #163 for details.
 **Action:** Do not arbitrarily shorten idiomatic UI text without rendering and measuring first.
+## 2026-08-28 - Descriptions for ambiguous translations
+**Learning:** Keys whose message is a single ambiguous noun or contain placeholders whose meaning isn't self-evident often lead to mistranslations because translators have no UI context.
+**Action:** When adding new keys that are short ambiguous words or contain `$1`/`$2` placeholders, always include a `description` field for context.
