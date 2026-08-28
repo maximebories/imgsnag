@@ -217,11 +217,29 @@
 
     // srcset attributes (img, source, etc.) — best candidate only.
     // <picture> sources are handled per-picture below (format alternatives).
-    document.querySelectorAll('[srcset], [data-srcset]').forEach((el) => {
+    document.querySelectorAll('[srcset], [data-srcset], [data-bgset]').forEach((el) => {
       if (el.tagName === 'SOURCE' && el.parentElement?.tagName === 'PICTURE') return;
       const best = pickBestFromSrcset(el.getAttribute('srcset')) ||
-                   pickBestFromSrcset(el.getAttribute('data-srcset'));
+                   pickBestFromSrcset(el.getAttribute('data-srcset')) ||
+                   pickBestFromSrcset(el.getAttribute('data-bgset'));
       if (best) trackImage(best);
+    });
+
+    document.querySelectorAll('[data-bg], [data-bg-src], [data-background], [data-background-image]').forEach((el) => {
+      const attrs = ['data-bg', 'data-bg-src', 'data-background', 'data-background-image'];
+      for (const attr of attrs) {
+        if (el.hasAttribute(attr)) {
+          const bg = el.getAttribute(attr);
+          if (bg) {
+            if (bg.includes('url(') || bg.includes('image-set(')) {
+              for (const raw of extractBgImageUrls(bg)) trackImage(raw);
+            } else {
+              const url = resolveUrl(bg.trim());
+              if (isImageUrl(url)) trackImage(bg.trim());
+            }
+          }
+        }
+      }
     });
 
     // <picture>: every <source> is the SAME image in another format/breakpoint.
@@ -532,7 +550,8 @@
       // Picture sources are format alternatives handled by handleSource
       if (el.tagName === 'SOURCE' && el.parentElement?.tagName === 'PICTURE') return;
       const raw = pickBestFromSrcset(el.getAttribute('srcset')) ||
-                  pickBestFromSrcset(el.getAttribute('data-srcset'));
+                  pickBestFromSrcset(el.getAttribute('data-srcset')) ||
+                  pickBestFromSrcset(el.getAttribute('data-bgset'));
       if (raw) {
         const url = resolveUrl(raw);
         if (url && !url.startsWith('data:')) imageSet.add(url);
@@ -665,12 +684,35 @@
     }
   }
 
+  function handleDataBg(el, imageSet) {
+    if (el.hasAttribute) {
+      const attrs = ['data-bg', 'data-bg-src', 'data-background', 'data-background-image'];
+      for (const attr of attrs) {
+        if (el.hasAttribute(attr)) {
+          const bg = el.getAttribute(attr);
+          if (bg) {
+            if (bg.includes('url(') || bg.includes('image-set(')) {
+              for (const raw of extractBgImageUrls(bg)) {
+                const url = resolveUrl(raw);
+                if (url && !url.startsWith('data:')) imageSet.add(url);
+              }
+            } else {
+              const url = resolveUrl(bg.trim());
+              if (isImageUrl(url) && !url.startsWith('data:')) imageSet.add(url);
+            }
+          }
+        }
+      }
+    }
+  }
+
   function extractUrlsFromElement(el, imageSet, videoSet) {
     handleImg(el, imageSet);
     handleSrcset(el, imageSet);
     handleVideo(el, imageSet, videoSet);
     handleSource(el, imageSet, videoSet);
     handleBackgroundImage(el, imageSet);
+    handleDataBg(el, imageSet);
     handleMeta(el, imageSet);
     handleEmbed(el, imageSet);
     handlePicture(el, imageSet);
@@ -698,7 +740,7 @@
                 tag === 'HEADER' || tag === 'FOOTER' || tag === 'A' || tag === 'LI' ||
                 tag === 'FIGURE' || tag === 'I' || tag === 'META' || tag === 'LINK' ||
                 tag === 'OBJECT' || tag === 'EMBED' || tag === 'IFRAME' || tag === 'image' || tag === 'IMAGE' ||
-                (el.hasAttribute && (el.hasAttribute('srcset') || el.hasAttribute('data-srcset') || el.hasAttribute('data-src') || el.hasAttribute('data-lazy-src') || el.hasAttribute('data-original'))) ||
+                (el.hasAttribute && (el.hasAttribute('srcset') || el.hasAttribute('data-srcset') || el.hasAttribute('data-bgset') || el.hasAttribute('data-src') || el.hasAttribute('data-lazy-src') || el.hasAttribute('data-original') || el.hasAttribute('data-bg') || el.hasAttribute('data-bg-src') || el.hasAttribute('data-background') || el.hasAttribute('data-background-image'))) ||
                 (el.hasAttribute && el.hasAttribute('style') && el.style && el.style.backgroundImage)
               ) {
                 extractUrlsFromElement(el, imageUrls, videoUrls);
@@ -933,6 +975,6 @@
   syncDragPreference();
   browser.storage.onChanged.addListener(() => syncDragPreference());
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { getCssMediaUrls, extractBgImageUrls, resolveUrl, isVideoUrl, isImageUrl, isSvgUrl, parseSrcset, pickBestFromSrcset, collectInlineSvgs, handleEmbed, passesSizeFilter, handleMeta, collectMediaUrls, handleSource, handlePicture };
+    module.exports = { getCssMediaUrls, extractBgImageUrls, resolveUrl, isVideoUrl, isImageUrl, isSvgUrl, parseSrcset, pickBestFromSrcset, collectInlineSvgs, handleEmbed, passesSizeFilter, handleMeta, collectMediaUrls, handleSource, handlePicture, handleSvgImage, handleDataBg };
   }
 })();
