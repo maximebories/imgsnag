@@ -197,148 +197,9 @@
 
   // Media discovery — scans the DOM for downloadable image and video URLs
 
-  function collectImages(trackImage) {
-    // <meta> Open Graph / Twitter and <link rel="preload"> hints
-    document.querySelectorAll('meta[property="og:image"], meta[name="twitter:image"], link[rel="preload"][as="image"]').forEach((el) => {
-      const url = el.getAttribute('content') || el.getAttribute('href');
-      if (url) trackImage(url);
-    });
 
-    // <img src> and lazy loaded variants. When the element carries a srcset
-    // (or data-srcset), src is just one more variant of the same image — the
-    // srcset best-pick below covers it, so skip src to avoid duplicates.
-    document.querySelectorAll('img[src], img[data-src], img[data-lazy-src], img[data-original]').forEach((img) => {
-      const hasSet = img.hasAttribute('srcset') || img.hasAttribute('data-srcset') || img.parentElement?.tagName === 'PICTURE';
-      if (img.src && !hasSet) trackImage(img.src);
-      if (img.hasAttribute('data-src')) trackImage(img.getAttribute('data-src'));
-      if (img.hasAttribute('data-lazy-src')) trackImage(img.getAttribute('data-lazy-src'));
-      if (img.hasAttribute('data-original')) trackImage(img.getAttribute('data-original'));
-    });
 
-    // srcset attributes (img, source, etc.) — best candidate only.
-    // <picture> sources are handled per-picture below (format alternatives).
-    document.querySelectorAll('[srcset], [data-srcset]').forEach((el) => {
-      if (el.tagName === 'SOURCE' && el.parentElement?.tagName === 'PICTURE') return;
-      const best = pickBestFromSrcset(el.getAttribute('srcset')) ||
-                   pickBestFromSrcset(el.getAttribute('data-srcset'));
-      if (best) trackImage(best);
-    });
 
-    // <picture>: every <source> is the SAME image in another format/breakpoint.
-    // Prefer the variant the browser actually rendered; otherwise take the
-    // best candidate of the first usable source.
-    document.querySelectorAll('picture').forEach((pic) => {
-      const img = pic.querySelector('img');
-      if (img && img.currentSrc) {
-        trackImage(img.currentSrc);
-        return;
-      }
-      for (const source of pic.querySelectorAll('source')) {
-        const best = pickBestFromSrcset(source.getAttribute('srcset')) ||
-                     pickBestFromSrcset(source.getAttribute('data-srcset')) ||
-                     source.getAttribute('src') || source.getAttribute('data-src') ||
-                     source.getAttribute('data-lazy-src') || source.getAttribute('data-original');
-        if (best) { trackImage(best); return; }
-      }
-    });
-
-    // <video poster> and lazy loaded variants (still an image)
-    document.querySelectorAll('video[poster], video[data-poster]').forEach((video) => {
-      const poster = video.getAttribute('poster') || video.getAttribute('data-poster');
-      if (poster) trackImage(poster);
-    });
-
-    // <object>/<embed>/<iframe> whose source is an image file
-    document.querySelectorAll('object[data], embed[src], iframe[src]').forEach((el) => {
-      const raw = el.tagName === 'OBJECT' ? el.getAttribute('data') : el.getAttribute('src');
-      if (isImageUrl(resolveUrl(raw))) trackImage(raw);
-    });
-
-    // <svg image> embedded images
-    document.querySelectorAll('svg image, image').forEach((el) => {
-      const raw = el.getAttribute('href') || el.getAttribute('xlink:href');
-      if (raw) trackImage(raw);
-    });
-
-    // CSS background-image on likely container elements
-    document.querySelectorAll(BG_IMAGE_SELECTORS).forEach((el) => {
-      // Fast path: skip elements with no styling hints to avoid expensive getComputedStyle calls
-      if (!el.className && !el.id && !el.getAttribute('style')) return;
-
-      pendingBackgroundCheckQueue.push(el);
-      if (!isBgCheckScheduled) {
-        isBgCheckScheduled = true;
-        if (typeof requestIdleCallback !== 'undefined') {
-          requestIdleCallback(processBgImageQueue);
-        } else {
-          setTimeout(processBgImageQueue, 1);
-        }
-      }
-    });
-
-    // Fallback — scan text and attributes to catch JSON-LD or data attributes that DOM queries miss
-    const walker = document.createTreeWalker(
-      document.body,
-      NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT,
-      {
-        acceptNode(node) {
-          if (node.nodeType === Node.ELEMENT_NODE) {
-            if (node.tagName === 'STYLE') return NodeFilter.FILTER_REJECT;
-            if (node.tagName === 'SCRIPT') {
-              if (node.getAttribute('type') === 'application/ld+json') {
-                return NodeFilter.FILTER_ACCEPT;
-              }
-              return NodeFilter.FILTER_REJECT;
-            }
-          }
-          return NodeFilter.FILTER_ACCEPT;
-        }
-      }
-    );
-
-    let node;
-    while ((node = walker.nextNode())) {
-      if (node.nodeType === Node.TEXT_NODE) {
-        if (node.nodeValue && HTTP_HINT_RE.test(node.nodeValue)) {
-          let match;
-          while ((match = IMAGE_URL_RE.exec(node.nodeValue)) !== null) {
-            let url = match[0];
-            if (url.includes('\\')) url = url.replace(/\\/g, '');
-            trackImage(url);
-          }
-        }
-      } else if (node.nodeType === Node.ELEMENT_NODE) {
-        const attrs = node.attributes;
-        for (let i = 0, len = attrs.length; i < len; i++) {
-          // srcset-family attributes hold many variants of one image; the
-          // structural scan already tracked the best candidate
-          if (attrs[i].name.includes('srcset')) continue;
-          const val = attrs[i].value;
-          if (val && HTTP_HINT_RE.test(val)) {
-            let match;
-            while ((match = IMAGE_URL_RE.exec(val)) !== null) {
-              let url = match[0];
-              if (url.includes('\\')) url = url.replace(/\\/g, '');
-              trackImage(url);
-            }
-          }
-        }
-      }
-    }
-  }
-
-  function collectVideos(trackVideo) {
-    // <video src> and lazy loaded variants
-    document.querySelectorAll('video[src], video[data-src], video[data-lazy-src], video[data-original]').forEach((video) => {
-      const src = video.getAttribute('src') || video.getAttribute('data-src') || video.getAttribute('data-lazy-src') || video.getAttribute('data-original');
-      if (src) trackVideo(src);
-    });
-    // <video><source src> and lazy loaded variants
-    document.querySelectorAll('video source[src], video source[data-src], video source[data-lazy-src], video source[data-original]').forEach((source) => {
-      const src = source.getAttribute('src') || source.getAttribute('data-src') || source.getAttribute('data-lazy-src') || source.getAttribute('data-original');
-      if (src) trackVideo(src);
-    });
-  }
 
   // Inline <svg> elements have no URL — serialize them into data: URLs on
   // demand. Only runs when the popup connects (never during ambient
@@ -368,26 +229,77 @@
     return items;
   }
 
-  function collectMediaUrls() {
+
+
+    function collectMediaUrls() {
     const imageUrls = new Set();
     const videoUrls = new Set();
 
-    function trackImage(url) {
-      const resolved = resolveUrl(url);
-      if (resolved && !resolved.startsWith('data:') && !imageUrls.has(resolved)) {
-        imageUrls.add(resolved);
+    const walker = document.createTreeWalker(
+      document.body,
+      NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT,
+      {
+        acceptNode(node) {
+          if (node.nodeType === Node.ELEMENT_NODE) {
+            if (node.tagName === 'STYLE') return NodeFilter.FILTER_REJECT;
+            if (node.tagName === 'SCRIPT') {
+              if (node.getAttribute('type') === 'application/ld+json') {
+                return NodeFilter.FILTER_ACCEPT;
+              }
+              return NodeFilter.FILTER_REJECT;
+            }
+          }
+          return NodeFilter.FILTER_ACCEPT;
+        }
+      }
+    );
+
+    let node;
+    while ((node = walker.nextNode())) {
+      if (node.nodeType === Node.TEXT_NODE) {
+        if (node.nodeValue && HTTP_HINT_RE.test(node.nodeValue)) {
+          let match;
+          while ((match = IMAGE_URL_RE.exec(node.nodeValue)) !== null) {
+            let url = match[0];
+            if (url.includes('\\')) url = url.replace(/\\/g, '');
+            const resolved = resolveUrl(url);
+            if (resolved && !resolved.startsWith('data:') && !imageUrls.has(resolved)) {
+              imageUrls.add(resolved);
+            }
+          }
+        }
+      } else if (node.nodeType === Node.ELEMENT_NODE) {
+        const tag = node.tagName;
+        if (
+          tag === 'IMG' || tag === 'VIDEO' || tag === 'SOURCE' || tag === 'PICTURE' ||
+          tag === 'DIV' || tag === 'SPAN' || tag === 'SECTION' || tag === 'ARTICLE' ||
+          tag === 'HEADER' || tag === 'FOOTER' || tag === 'A' || tag === 'LI' ||
+          tag === 'FIGURE' || tag === 'I' || tag === 'META' || tag === 'LINK' ||
+          tag === 'OBJECT' || tag === 'EMBED' || tag === 'IFRAME' || tag === 'image' || tag === 'IMAGE' ||
+          (node.hasAttribute && (node.hasAttribute('srcset') || node.hasAttribute('data-srcset') || node.hasAttribute('data-src') || node.hasAttribute('data-lazy-src') || node.hasAttribute('data-original'))) ||
+          (node.hasAttribute && node.hasAttribute('style') && node.style && node.style.backgroundImage)
+        ) {
+          extractUrlsFromElement(node, imageUrls, videoUrls);
+        }
+
+        const attrs = node.attributes;
+        for (let i = 0, len = attrs.length; i < len; i++) {
+          if (attrs[i].name.includes('srcset')) continue;
+          const val = attrs[i].value;
+          if (val && HTTP_HINT_RE.test(val)) {
+            let match;
+            while ((match = IMAGE_URL_RE.exec(val)) !== null) {
+              let url = match[0];
+              if (url.includes('\\')) url = url.replace(/\\/g, '');
+              const resolved = resolveUrl(url);
+              if (resolved && !resolved.startsWith('data:') && !imageUrls.has(resolved)) {
+                imageUrls.add(resolved);
+              }
+            }
+          }
+        }
       }
     }
-
-    function trackVideo(url) {
-      const resolved = resolveUrl(url);
-      if (resolved && !resolved.startsWith('data:') && !videoUrls.has(resolved)) {
-        videoUrls.add(resolved);
-      }
-    }
-
-    collectImages(trackImage);
-    collectVideos(trackVideo);
 
     return { imageUrls, videoUrls };
   }
