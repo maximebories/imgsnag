@@ -7,3 +7,6 @@
 ## 2026-08-22 - CSS content/mask-image RFC (filed #138 by orchestrator)
 **Learning:** CSS `content: url()` and `mask-image` are viable capture channels but sit on the getComputedStyle hot path; pseudo-elements triple the style-resolution cost per element. The session sandbox has no gh auth — RFC issues must be filed by the orchestrator from the journal/message when a run cannot reach GitHub.
 **Action:** Any implementation must ride the existing idle-time queue and the styling-hint fast path; element styles first, pseudo-elements only with real-page evidence.
+## 2026-08-28 - blob: URLs / canvas.toBlob() extraction RFC
+**Learning:** `canvas.toBlob()` is another derived-file channel. It can capture images rendered on `<canvas>` (e.g., WebGL, custom image viewers). However, `<canvas>` elements are prone to being "tainted" by cross-origin data, leading to `SecurityError` when calling `toBlob()`. Furthermore, enumerating and serializing every canvas ambiently is extremely expensive. Like inline SVG, it must be strictly on-demand (e.g., triggered by popup open or Alt+Click).
+**Action:** Verdict GO, staged. Keep derived-file channels on-demand only (Alt+Click / popup open); never enumerate during ambient discovery.
