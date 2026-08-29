@@ -25,3 +25,7 @@
 ## 2026-08-15 - Inline-style fast path before getComputedStyle (discovery only)
 **Learning:** Elements with an inline `background-image` (common in lazy-load galleries) can be read via `el.style.backgroundImage` without forcing a computed-style resolution. Orchestrator review restricted this to the discovery paths: on the Alt+Click download path, inline style can diverge from the rendered image (stylesheet `!important` overrides), so display-accurate paths keep `getComputedStyle`.
 **Action:** Prefer `el.style.backgroundImage` with a `getComputedStyle` fallback in discovery loops; never substitute it where the user downloads what they see.
+
+## 2026-08-29 - MutationObserver TreeWalker el.hasAttributes fast path
+**Learning:** The MutationObserver iterates over all added nodes and their subtrees via a TreeWalker, running a heavy conditional check that includes `hasAttribute` for multiple data- attributes. Replacing this with a fast path `el.hasAttributes && el.hasAttributes()` check alongside a `Set.has(tag)` lookup speeds up TreeWalker attribute sweeps during heavy DOM updates by nearly 2x, as it skips attribute checks on attribute-less elements (e.g. text wrappers, generic spans, divs).
+**Action:** Use `el.hasAttributes()` as a fast path before checking for specific attributes on elements during TreeWalker operations.

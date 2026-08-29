@@ -22,6 +22,8 @@
     'div, span, section, article, header, footer, a, li, figure, i, [style*="background"]';
 
   const MIN_IMAGE_SIZE = 200;
+  const TAG_SET = new Set(['IMG', 'VIDEO', 'SOURCE', 'PICTURE', 'DIV', 'SPAN', 'SECTION', 'ARTICLE', 'HEADER', 'FOOTER', 'A', 'LI', 'FIGURE', 'I', 'META', 'LINK', 'OBJECT', 'EMBED', 'IFRAME', 'image', 'IMAGE']);
+
 
   // Inline-SVG capture (derived files, RFC #118 stage 1)
   const SVG_DATA_PREFIX = 'data:image/svg+xml;charset=utf-8,';
@@ -735,13 +737,14 @@
             while ((el = walker.nextNode())) {
               const tag = el.tagName;
               if (
-                tag === 'IMG' || tag === 'VIDEO' || tag === 'SOURCE' || tag === 'PICTURE' ||
-                tag === 'DIV' || tag === 'SPAN' || tag === 'SECTION' || tag === 'ARTICLE' ||
-                tag === 'HEADER' || tag === 'FOOTER' || tag === 'A' || tag === 'LI' ||
-                tag === 'FIGURE' || tag === 'I' || tag === 'META' || tag === 'LINK' ||
-                tag === 'OBJECT' || tag === 'EMBED' || tag === 'IFRAME' || tag === 'image' || tag === 'IMAGE' ||
-                (el.hasAttribute && (el.hasAttribute('srcset') || el.hasAttribute('data-srcset') || el.hasAttribute('data-bgset') || el.hasAttribute('data-src') || el.hasAttribute('data-lazy-src') || el.hasAttribute('data-original') || el.hasAttribute('data-bg') || el.hasAttribute('data-bg-src') || el.hasAttribute('data-background') || el.hasAttribute('data-background-image'))) ||
-                (el.hasAttribute && el.hasAttribute('style') && el.style && el.style.backgroundImage)
+                TAG_SET.has(tag) ||
+                (el.hasAttributes && el.hasAttributes() && (
+                  el.hasAttribute('srcset') || el.hasAttribute('data-srcset') || el.hasAttribute('data-bgset') ||
+                  el.hasAttribute('data-src') || el.hasAttribute('data-lazy-src') || el.hasAttribute('data-original') ||
+                  el.hasAttribute('data-bg') || el.hasAttribute('data-bg-src') || el.hasAttribute('data-background') ||
+                  el.hasAttribute('data-background-image') ||
+                  (el.hasAttribute('style') && el.style && el.style.backgroundImage)
+                ))
               ) {
                 extractUrlsFromElement(el, imageUrls, videoUrls);
               }
