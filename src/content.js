@@ -425,6 +425,7 @@
   }
 
   function getDomImageSize(url) {
+    // Warden: Trust boundary - CSS.escape mitigates selector injection from page-controlled URLs
     const el = document.querySelector(`img[src="${CSS.escape(url)}"]`);
     if (el && el.naturalWidth > 0 && el.naturalHeight > 0) {
       // Responsive images render their srcset-chosen candidate; only trust the

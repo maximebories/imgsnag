@@ -417,6 +417,7 @@
       const port = browser.tabs.connect(tab.id, { name: 'imgsnag-popup' });
 
       port.onMessage.addListener((message) => {
+        // Warden: Trust boundary - popup rendering pipeline uses safe DOM methods (createElement) instead of innerHTML
         if (message.action === 'init') {
           hide(loadingEl);
           if (message.images.length === 0) {

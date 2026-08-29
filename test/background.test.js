@@ -134,7 +134,7 @@ describe('Background Script', () => {
       url: 'not-a-url'
     }, {});
 
-    expect(response).toEqual({ success: false, error: 'Invalid URL' });
+    expect(response).toEqual({ success: false, error: 'Invalid URL or protocol' });
     expect(downloads).toHaveLength(0);
   });
 
@@ -144,7 +144,7 @@ describe('Background Script', () => {
       url: 'ftp://example.com/image.jpg'
     }, {});
 
-    expect(response).toEqual({ success: false, error: 'Invalid URL protocol' });
+    expect(response).toEqual({ success: false, error: 'Invalid URL or protocol' });
     expect(downloads).toHaveLength(0);
   });
 
