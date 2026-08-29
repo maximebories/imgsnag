@@ -1,0 +1,21 @@
+version: 2
+updates:
+  # Dev-only toolchain (jest + jsdom environment); runtime code is dependency-free.
+  # The vendored src/lib/browser-polyfill.min.js is NOT covered here — Warden
+  # checks its staleness against upstream releases.
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+
+  # CI and release workflows (.github/workflows/ci.yml, release.yml)
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
