@@ -11,10 +11,6 @@
     "message": "Desactivar arrastrar para guardar",
     "description": "Label for the checkbox to turn off drag-to-save."
   },
-  "optionsSave": {
-    "message": "Guardar",
-    "description": "Button text for saving options."
-  },
   "optionsStatus": {
     "message": "Guardado"
   },

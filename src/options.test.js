@@ -12,9 +12,6 @@ describe('Options Page', () => {
         </label>
       </div>
       <div id="status"></div>
-      <div>
-        <button id="save"></button>
-      </div>
     `;
 
     global.browser = {
@@ -23,7 +20,6 @@ describe('Options Page', () => {
         getMessage: jest.fn((key) => {
           const messages = {
             disableDragLabel: 'Disable Drag to Save',
-            optionsSave: 'Save',
             optionsStatus: 'Options saved.',
             optionsTitle: 'Options',
           };
@@ -55,9 +51,7 @@ describe('Options Page', () => {
     document.dispatchEvent(new Event('DOMContentLoaded'));
 
     expect(global.browser.i18n.getMessage).toHaveBeenCalledWith('disableDragLabel');
-    expect(global.browser.i18n.getMessage).toHaveBeenCalledWith('optionsSave');
     expect(document.getElementById('disable_drag_label').textContent).toBe('Disable Drag to Save');
-    expect(document.getElementById('save').textContent).toBe('Save');
 
     expect(global.browser.storage.sync.get).toHaveBeenCalledWith({ disableDrag: false });
 
@@ -66,10 +60,10 @@ describe('Options Page', () => {
     expect(document.getElementById('disable_drag').checked).toBe(true);
   });
 
-  test('saves options and shows/hides status message on save click', async () => {
+  test('saves options and shows/hides status message on change', async () => {
     document.getElementById('disable_drag').checked = false;
 
-    document.getElementById('save').dispatchEvent(new Event('click'));
+    document.getElementById('disable_drag').dispatchEvent(new Event('change'));
 
     expect(global.browser.storage.sync.set).toHaveBeenCalledWith({ disableDrag: false });
 

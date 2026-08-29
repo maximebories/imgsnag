@@ -19,8 +19,6 @@ function restoreOptions() {
 
   document.getElementById('disable_drag_label').textContent =
     browser.i18n.getMessage('disableDragLabel');
-  document.getElementById('save').textContent =
-    browser.i18n.getMessage('optionsSave');
 
   browser.storage.sync.get({ disableDrag: false }).then((items) => {
     document.getElementById('disable_drag').checked = items.disableDrag;
@@ -28,4 +26,4 @@ function restoreOptions() {
 }
 
 document.addEventListener('DOMContentLoaded', restoreOptions);
-document.getElementById('save').addEventListener('click', saveOptions);
+document.getElementById('disable_drag').addEventListener('change', saveOptions);
