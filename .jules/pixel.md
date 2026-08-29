@@ -44,3 +44,6 @@
 ## 2026-08-27 - A shortcut hint belongs only on the button the shortcut fires
 **Learning:** Orchestrator review of the Ctrl+Enter work: the hint was written to BOTH action buttons, but one keystroke can only activate one of them (selected-if-any, else all). With a selection active, the "Download all" tooltip advertised a shortcut that would in fact download just the selection — a bulk action mislabelled by a factor of hundreds.
 **Action:** Bind the hint to the button the handler actually dispatches to, and clear the other one's `title` in the same update pass. Never advertise a shortcut on a control it does not activate.
+## 2026-08-29 - Auto-save single-option settings pages
+**Learning:** For a single-option settings page (like a single checkbox for dragging), having a separate "Save" button adds unnecessary friction. Auto-saving on `change` provides immediate feedback. In addition, checkboxes hidden inside labels require explicit pointer cursors to signal interactability.
+**Action:** Remove standalone save buttons on single-option preference pages in favor of auto-save on `change`, and ensure label wrappers have `cursor: pointer`.
