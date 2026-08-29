@@ -303,7 +303,8 @@
           if (node.nodeType === Node.ELEMENT_NODE) {
             if (node.tagName === 'STYLE') return NodeFilter.FILTER_REJECT;
             if (node.tagName === 'SCRIPT') {
-              if (node.getAttribute('type') === 'application/ld+json') {
+              const type = node.getAttribute('type');
+              if (type === 'application/ld+json' || type === 'application/json') {
                 return NodeFilter.FILTER_ACCEPT;
               }
               return NodeFilter.FILTER_REJECT;
