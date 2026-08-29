@@ -22,6 +22,8 @@
     'div, span, section, article, header, footer, a, li, figure, i, [style*="background"]';
 
   const MIN_IMAGE_SIZE = 200;
+  // Tags worth an attribute sweep when they turn up in a MutationObserver batch
+  const TAG_SET = new Set(['IMG', 'VIDEO', 'SOURCE', 'PICTURE', 'DIV', 'SPAN', 'SECTION', 'ARTICLE', 'HEADER', 'FOOTER', 'A', 'LI', 'FIGURE', 'I', 'META', 'LINK', 'OBJECT', 'EMBED', 'IFRAME', 'image', 'IMAGE']);
 
   // Inline-SVG capture (derived files, RFC #118 stage 1)
   const SVG_DATA_PREFIX = 'data:image/svg+xml;charset=utf-8,';
@@ -303,7 +305,8 @@
           if (node.nodeType === Node.ELEMENT_NODE) {
             if (node.tagName === 'STYLE') return NodeFilter.FILTER_REJECT;
             if (node.tagName === 'SCRIPT') {
-              if (node.getAttribute('type') === 'application/ld+json') {
+              const type = node.getAttribute('type');
+              if (type === 'application/ld+json' || type === 'application/json') {
                 return NodeFilter.FILTER_ACCEPT;
               }
               return NodeFilter.FILTER_REJECT;
@@ -422,6 +425,7 @@
   }
 
   function getDomImageSize(url) {
+    // Warden: Trust boundary - CSS.escape mitigates selector injection from page-controlled URLs
     const el = document.querySelector(`img[src="${CSS.escape(url)}"]`);
     if (el && el.naturalWidth > 0 && el.naturalHeight > 0) {
       // Responsive images render their srcset-chosen candidate; only trust the
@@ -735,13 +739,14 @@
             while ((el = walker.nextNode())) {
               const tag = el.tagName;
               if (
-                tag === 'IMG' || tag === 'VIDEO' || tag === 'SOURCE' || tag === 'PICTURE' ||
-                tag === 'DIV' || tag === 'SPAN' || tag === 'SECTION' || tag === 'ARTICLE' ||
-                tag === 'HEADER' || tag === 'FOOTER' || tag === 'A' || tag === 'LI' ||
-                tag === 'FIGURE' || tag === 'I' || tag === 'META' || tag === 'LINK' ||
-                tag === 'OBJECT' || tag === 'EMBED' || tag === 'IFRAME' || tag === 'image' || tag === 'IMAGE' ||
-                (el.hasAttribute && (el.hasAttribute('srcset') || el.hasAttribute('data-srcset') || el.hasAttribute('data-bgset') || el.hasAttribute('data-src') || el.hasAttribute('data-lazy-src') || el.hasAttribute('data-original') || el.hasAttribute('data-bg') || el.hasAttribute('data-bg-src') || el.hasAttribute('data-background') || el.hasAttribute('data-background-image'))) ||
-                (el.hasAttribute && el.hasAttribute('style') && el.style && el.style.backgroundImage)
+                TAG_SET.has(tag) ||
+                (el.hasAttributes && el.hasAttributes() && (
+                  el.hasAttribute('srcset') || el.hasAttribute('data-srcset') || el.hasAttribute('data-bgset') ||
+                  el.hasAttribute('data-src') || el.hasAttribute('data-lazy-src') || el.hasAttribute('data-original') ||
+                  el.hasAttribute('data-bg') || el.hasAttribute('data-bg-src') || el.hasAttribute('data-background') ||
+                  el.hasAttribute('data-background-image') ||
+                  (el.hasAttribute('style') && el.style && el.style.backgroundImage)
+                ))
               ) {
                 extractUrlsFromElement(el, imageUrls, videoUrls);
               }

@@ -11,10 +11,6 @@
     "message": "Disable drag-to-save",
     "description": "Label for the checkbox to turn off drag-to-save."
   },
-  "optionsSave": {
-    "message": "Save",
-    "description": "Button text for saving options."
-  },
   "optionsStatus": {
     "message": "Saved"
   },

@@ -11,10 +11,6 @@
     "message": "Désactiver le glisser pour enregistrer",
     "description": "Label for the checkbox to turn off drag-to-save."
   },
-  "optionsSave": {
-    "message": "Enregistrer",
-    "description": "Button text for saving options."
-  },
   "optionsStatus": {
     "message": "Enregistré"
   },
