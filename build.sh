@@ -28,7 +28,7 @@ for target in chrome firefox; do
   cp "$ROOT/manifest.${target}.json" "$OUT/manifest.json"
 
   # Package as zip
-  (cd "$OUT" && zip -r "$DIST/imgsnag-${target}.zip" . -x '*.DS_Store')
+  (cd "$OUT" && zip -r "$DIST/imgsnag-${target}.zip" . -x '*.DS_Store' -x '*/.*' -x '.*')
 
   echo "Built: dist/imgsnag-${target}.zip"
 done

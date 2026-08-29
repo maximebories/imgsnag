@@ -35,6 +35,18 @@ async function clearActiveDownloadIds() {
   }
 }
 
+
+// Warden: Trust boundary - single choke point for background HTTP/HTTPS validation
+function getSafeDownloadUrl(urlStr) {
+  try {
+    const urlObj = new URL(urlStr);
+    if (urlObj.protocol === 'http:' || urlObj.protocol === 'https:') {
+      return urlObj.href;
+    }
+  } catch (e) {}
+  return null;
+}
+
 // Messages from popup and content script
 browser.runtime.onMessage.addListener((message, sender) => {
   // Warden: Trust boundary - prevent content scripts from triggering popup-only actions
@@ -43,16 +55,10 @@ browser.runtime.onMessage.addListener((message, sender) => {
   }
 
   if (message.action === 'download_image') {
-    try {
-      const urlObj = new URL(message.url);
-      if (urlObj.protocol !== 'http:' && urlObj.protocol !== 'https:') {
-        return Promise.resolve({ success: false, error: 'Invalid URL protocol' });
-      }
-    } catch (e) {
-      return Promise.resolve({ success: false, error: 'Invalid URL' });
+    const safeUrl = getSafeDownloadUrl(message.url);
+    if (!safeUrl) {
+      return Promise.resolve({ success: false, error: 'Invalid URL or protocol' });
     }
-
-    const safeUrl = new URL(message.url).href;
     return browser.downloads
       .download({ url: safeUrl })
       .then(async (downloadId) => {
@@ -67,17 +73,7 @@ browser.runtime.onMessage.addListener((message, sender) => {
 
   if (message.action === 'download_images_bulk') {
     const urls = message.urls;
-    const validUrls = [];
-    for (const u of urls) {
-      try {
-        const urlObj = new URL(u);
-        if (urlObj.protocol === 'http:' || urlObj.protocol === 'https:') {
-          validUrls.push(urlObj.href);
-        }
-      } catch (e) {
-        // ignore invalid urls
-      }
-    }
+    const validUrls = urls.map(getSafeDownloadUrl).filter(Boolean);
 
     const total = validUrls.length;
 
