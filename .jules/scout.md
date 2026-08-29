@@ -53,3 +53,6 @@
 ## 2026-08-28 - Lazy-loaded CSS backgrounds using data attributes
 **Learning:** Many sites use `data-bg`, `data-bg-src`, `data-background`, `data-background-image`, or `data-bgset` for lazy-loading CSS backgrounds. These are missed by standard structural queries and the MutationObserver which only check `data-src` on images, and they are missed by the text/attribute regex sweep if they wrap the URL in `url(...)` because the sweep regex looks for bare URLs ending in extensions.
 **Action:** Explicitly extract from `data-bg`, `data-bg-src`, `data-background`, and `data-background-image` in `collectImages()` and `extractUrlsFromElement()` by testing for CSS function wrappers vs. bare URLs. Also check `data-bgset` in `pickBestFromSrcset` logic.
+## 2026-08-29 - application/json data in Script tags
+**Learning:** Next.js and other frameworks embed application state, including image URLs, inside <script type="application/json"> elements (like id="__NEXT_DATA__"). The initial text/attribute sweep TreeWalker previously only extracted from application/ld+json scripts.
+**Action:** Added application/json to the TreeWalker script type filter so embedded URLs are properly found.
