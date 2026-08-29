@@ -19,3 +19,8 @@
 **Vulnerability:** None. It might appear that the `activeTab` permission (`manifest.chrome.json:42`, `manifest.firefox.json:46`) is redundant since the extension also requests `<all_urls>` host permissions. However, removing it is not a permissions creep fix.
 **Learning:** If users restrict the extension's site access to "On click" in their browser, the `<all_urls>` grant is withheld. In that state, `activeTab` is the only mechanism that temporarily re-grants host access to the active tab when the toolbar action is clicked. Removing it silently breaks the extension for these users without changing the store warning. Furthermore, `activeTab` expands the attack surface by exactly zero when `<all_urls>` is already held.
 **Prevention:** Do not remove the `activeTab` permission. Consider permissions that are strict subsets of held permissions as informational at most, not HIGH severity findings. Always evaluate how users might manually restrict permissions before considering a manifest permission "redundant."
+
+## 2026-08-29 - Defense-in-depth: Centralized URL Validation and ZIP Hardening
+**Vulnerability:** None (Enhancement). The sweep came back clean.
+**Action:** Added threat-model comments at trust boundaries and centralized the `http:`/`https:` protocol allowlist in `src/background.js` into a `getSafeDownloadUrl` helper for maintainability.
+**Prevention:** The `build.sh` zip exclusions modification was deferred as the current script produces no dotfiles and modifying build tooling falls outside the triage runner's immediate scope.
