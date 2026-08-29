@@ -37,3 +37,6 @@
 ## 2026-08-28 - SVG <image> embed capture test
 **Learning:** Verified that the Scout persona's fix for extracting media URLs from embedded SVG images (`<image href="...">` and `<image xlink:href="...">`) using `handleSvgImage` lacked a regression test.
 **Action:** Added a regression test for `handleSvgImage` in `src/content.test.js` to ensure the correct extraction of URLs from both `href` and `xlink:href` attributes.
+## 2026-08-29 - getDomImageSize Tracking Pixel Guard Regression Test
+**Learning:** Verified that the Scout persona's fix for rejecting 1x1 tracking pixels passing the size filter via `srcset` lacked a dedicated regression test. The fix in `getDomImageSize` guards against assigning a rendered `srcset` candidate's large natural dimensions to a sibling tracking pixel by checking `activeUrl === url`.
+**Action:** Added a regression test for `getDomImageSize` in `src/content.test.js` pinning the behavior that it only returns natural dimensions if the queried URL matches the actively rendered URL (`currentSrc`), guarding against silent regressions that would bloat the grid with tracking pixels.

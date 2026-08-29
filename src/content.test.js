@@ -324,3 +324,52 @@ describe('handleSvgImage', () => {
     expect(imageSet.has('https://example.com/svg_xlink.jpg')).toBe(true);
   });
 });
+
+describe('getDomImageSize', () => {
+  const { getDomImageSize } = require('./content');
+
+  function el(tag, attrs = {}) {
+    const e = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+    return e;
+  }
+
+  afterEach(() => {
+    document.body.innerHTML = '';
+  });
+
+  it('rejects sizes when queried URL does not match actively rendered currentSrc', () => {
+    const img = el('img', { src: 'https://example.com/tracking-pixel.gif' });
+    Object.defineProperty(img, 'naturalWidth', { value: 1200 });
+    Object.defineProperty(img, 'naturalHeight', { value: 800 });
+    // Simulate srcset fallback making the active URL different from the queried src
+    Object.defineProperty(img, 'currentSrc', { value: 'https://example.com/large-image.jpg' });
+
+    document.body.appendChild(img);
+
+    expect(getDomImageSize('https://example.com/tracking-pixel.gif')).toBeNull();
+  });
+
+  it('returns natural dimensions when queried URL matches actively rendered currentSrc', () => {
+    const img = el('img', { src: 'https://example.com/large-image.jpg' });
+    Object.defineProperty(img, 'naturalWidth', { value: 1200 });
+    Object.defineProperty(img, 'naturalHeight', { value: 800 });
+    Object.defineProperty(img, 'currentSrc', { value: 'https://example.com/large-image.jpg' });
+
+    document.body.appendChild(img);
+
+    expect(getDomImageSize('https://example.com/large-image.jpg')).toEqual({ width: 1200, height: 800 });
+  });
+
+  it('returns natural dimensions when queried URL matches src and currentSrc is empty', () => {
+    const img = el('img', { src: 'https://example.com/large-image.jpg' });
+    Object.defineProperty(img, 'naturalWidth', { value: 1200 });
+    Object.defineProperty(img, 'naturalHeight', { value: 800 });
+    // In many basic cases without srcset, currentSrc might be empty string or equal to src
+    Object.defineProperty(img, 'currentSrc', { value: '' });
+
+    document.body.appendChild(img);
+
+    expect(getDomImageSize('https://example.com/large-image.jpg')).toEqual({ width: 1200, height: 800 });
+  });
+});
