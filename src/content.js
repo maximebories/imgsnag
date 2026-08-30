@@ -179,16 +179,42 @@
     if (!srcset) return null;
     let bestUrl = null;
     let bestScore = -1;
-    for (const entry of srcset.split(',')) {
-      const parts = entry.trim().split(/\s+/);
-      const url = parts[0];
-      if (!url) continue;
-      let score = 1;
-      const d = parts[1];
-      if (d) {
-        const n = parseFloat(d);
-        if (!Number.isNaN(n)) score = /w$/i.test(d) ? n : n * 1000;
+
+    let pos = 0;
+    while (pos < srcset.length) {
+      while (pos < srcset.length && /\s/.test(srcset[pos])) pos++;
+      if (pos >= srcset.length) break;
+
+      let url = "";
+      while (pos < srcset.length && !/\s/.test(srcset[pos])) {
+        url += srcset[pos];
+        pos++;
       }
+
+      let descriptor = "";
+      if (url.endsWith(',')) {
+        url = url.slice(0, -1);
+      } else {
+        while (pos < srcset.length && /\s/.test(srcset[pos])) pos++;
+        while (pos < srcset.length && srcset[pos] !== ',') {
+          descriptor += srcset[pos];
+          pos++;
+        }
+        if (pos < srcset.length && srcset[pos] === ',') pos++;
+      }
+
+      if (!url) continue;
+
+      let score = 1;
+      descriptor = descriptor.trim();
+      if (descriptor) {
+        const parts = descriptor.split(/\s+/);
+        for (const d of parts) {
+          const n = parseFloat(d);
+          if (!Number.isNaN(n)) score = /w$/i.test(d) ? n : n * 1000;
+        }
+      }
+
       if (score > bestScore) {
         bestScore = score;
         bestUrl = url;

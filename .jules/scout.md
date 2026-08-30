@@ -56,3 +56,7 @@
 ## 2026-08-29 - application/json data in Script tags
 **Learning:** Next.js and other frameworks embed application state, including image URLs, inside <script type="application/json"> elements (like id="__NEXT_DATA__"). The initial text/attribute sweep TreeWalker previously only extracted from application/ld+json scripts.
 **Action:** Added application/json to the TreeWalker script type filter so embedded URLs are properly found.
+
+## 2026-08-30 - False positives from commas inside srcset URLs
+**Learning:** `pickBestFromSrcset` naively split on `,`, breaking on image URLs with commas (like CDN query parameters `?crop=10,20`). The second half of the query string would parse as an invalid URL fragment and bypass filters, flooding the UI with broken entries.
+**Action:** Replace naive `split(',')` with a standard-compliant character scanner that parses URLs and descriptors separately, respecting commas inside URLs as long as they are not followed by a space and a valid descriptor.
