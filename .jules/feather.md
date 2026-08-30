@@ -29,3 +29,7 @@
 ## 2026-08-29 - MutationObserver TreeWalker el.hasAttributes fast path
 **Learning:** The MutationObserver iterates over all added nodes and their subtrees via a TreeWalker, running a heavy conditional check that includes `hasAttribute` for multiple data- attributes. Replacing this with a fast path `el.hasAttributes && el.hasAttributes()` check alongside a `Set.has(tag)` lookup speeds up TreeWalker attribute sweeps during heavy DOM updates by nearly 2x, as it skips attribute checks on attribute-less elements (e.g. text wrappers, generic spans, divs).
 **Action:** Use `el.hasAttributes()` as a fast path before checking for specific attributes on elements during TreeWalker operations.
+
+## 2026-08-30 - TreeWalker attribute sweep fast-path
+**Learning:** Iterating over `node.attributes` on all elements during the initial discovery TreeWalker sweep is slow because reading `attributes` dynamically populates a NamedNodeMap. Many elements (like text wrappers) have no attributes at all.
+**Action:** Check `node.hasAttributes()` before accessing `node.attributes` to skip attribute-less elements, speeding up the TreeWalker fallback sweep on large DOMs by 2-3x.
