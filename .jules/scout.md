@@ -60,3 +60,7 @@
 ## 2026-08-30 - False positives from commas inside srcset URLs
 **Learning:** `pickBestFromSrcset` naively split on `,`, breaking on image URLs with commas (like CDN query parameters `?crop=10,20`). The second half of the query string would parse as an invalid URL fragment and bypass filters, flooding the UI with broken entries.
 **Action:** Replace naive `split(',')` with a standard-compliant character scanner that parses URLs and descriptors separately, respecting commas inside URLs as long as they are not followed by a space and a valid descriptor.
+
+## 2026-08-31 - Missed Site Icons and Secure OG Images
+**Learning:** The `collectImages` and `handleMeta` handlers only targeted `og:image`, `twitter:image`, and `preload` hints. Site logos (`link[rel="icon"]`, `link[rel="apple-touch-icon"]`, `link[rel="shortcut icon"]`), as well as `og:image:secure_url` and `image_src`, were systematically ignored, omitting these frequently downloaded images from the grid.
+**Action:** Expanded the initial DOM queries in `collectImages` and the MutationObserver tags in `handleMeta` to explicitly capture these additional metadata URLs. Note the `≥ 200×200` size filter still applies, so 16/32px favicons are probed and dropped; the win is large PWA icons (`512×512`) and `apple-touch-icon`s that survive it.

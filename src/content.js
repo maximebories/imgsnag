@@ -226,8 +226,8 @@
   // Media discovery — scans the DOM for downloadable image and video URLs
 
   function collectImages(trackImage) {
-    // <meta> Open Graph / Twitter and <link rel="preload"> hints
-    document.querySelectorAll('meta[property="og:image"], meta[name="twitter:image"], link[rel="preload"][as="image"]').forEach((el) => {
+    // <meta> Open Graph / Twitter, <link rel="preload"> hints, and icons
+    document.querySelectorAll('meta[property="og:image"], meta[property="og:image:secure_url"], meta[name="twitter:image"], link[rel="preload"][as="image"], link[rel="icon"], link[rel="apple-touch-icon"], link[rel="shortcut icon"], link[rel="image_src"]').forEach((el) => {
       const url = el.getAttribute('content') || el.getAttribute('href');
       if (url) trackImage(url);
     });
@@ -652,13 +652,17 @@
     if (el.tagName === 'META') {
       const prop = el.getAttribute('property');
       const name = el.getAttribute('name');
-      if (prop === 'og:image' || name === 'twitter:image') {
+      if (prop === 'og:image' || prop === 'og:image:secure_url' || name === 'twitter:image') {
         const url = resolveUrl(el.getAttribute('content'));
         if (url && !url.startsWith('data:')) imageSet.add(url);
       }
-    } else if (el.tagName === 'LINK' && el.getAttribute('rel') === 'preload' && el.getAttribute('as') === 'image') {
-      const url = resolveUrl(el.getAttribute('href'));
-      if (url && !url.startsWith('data:')) imageSet.add(url);
+    } else if (el.tagName === 'LINK') {
+      const rel = el.getAttribute('rel');
+      const asAttr = el.getAttribute('as');
+      if ((rel === 'preload' && asAttr === 'image') || rel === 'icon' || rel === 'apple-touch-icon' || rel === 'shortcut icon' || rel === 'image_src') {
+        const url = resolveUrl(el.getAttribute('href'));
+        if (url && !url.startsWith('data:')) imageSet.add(url);
+      }
     }
   }
 
