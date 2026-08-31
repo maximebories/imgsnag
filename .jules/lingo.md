@@ -16,3 +16,6 @@
 ## 2026-08-28 - Descriptions for ambiguous translations
 **Learning:** Keys whose message is a single ambiguous noun or contain placeholders whose meaning isn't self-evident often lead to mistranslations because translators have no UI context.
 **Action:** When adding new keys that are short ambiguous words or contain `$1`/`$2` placeholders, always include a `description` field for context.
+## 2026-08-31 - Hardcoded textContent for error placeholder removed
+**Learning:** Error placeholders for images sometimes display hardcoded empty strings or missing paths. They should use the same fallback logic as their `aria-label` equivalents using `popupMediaFallback`.
+**Action:** Always wrap dynamically generated placeholders with a locale-aware fallback (`popupMediaFallback`) instead of relying solely on raw `filenameFromUrl`.
