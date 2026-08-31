@@ -56,3 +56,7 @@
 ## 2026-08-29 - application/json data in Script tags
 **Learning:** Next.js and other frameworks embed application state, including image URLs, inside <script type="application/json"> elements (like id="__NEXT_DATA__"). The initial text/attribute sweep TreeWalker previously only extracted from application/ld+json scripts.
 **Action:** Added application/json to the TreeWalker script type filter so embedded URLs are properly found.
+
+## 2026-08-31 - Missed Site Icons and Secure OG Images
+**Learning:** The `collectImages` and `handleMeta` handlers only targeted `og:image`, `twitter:image`, and `preload` hints. Site logos (`link[rel="icon"]`, `link[rel="apple-touch-icon"]`, `link[rel="shortcut icon"]`), as well as `og:image:secure_url` and `image_src`, were systematically ignored, omitting these frequently downloaded images from the grid.
+**Action:** Expanded the initial DOM queries in `collectImages` and the MutationObserver tags in `handleMeta` to explicitly capture these additional metadata URLs.
