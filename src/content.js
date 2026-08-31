@@ -329,6 +329,7 @@
           }
         }
       } else if (node.nodeType === Node.ELEMENT_NODE) {
+        if (!node.hasAttributes()) continue;
         const attrs = node.attributes;
         for (let i = 0, len = attrs.length; i < len; i++) {
           // srcset-family attributes hold many variants of one image; the
