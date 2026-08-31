@@ -37,3 +37,7 @@
 ## 2026-08-28 - SVG <image> embed capture test
 **Learning:** Verified that the Scout persona's fix for extracting media URLs from embedded SVG images (`<image href="...">` and `<image xlink:href="...">`) using `handleSvgImage` lacked a regression test.
 **Action:** Added a regression test for `handleSvgImage` in `src/content.test.js` to ensure the correct extraction of URLs from both `href` and `xlink:href` attributes.
+
+## 2026-08-31 - application/json data in Script tags regression test
+**Learning:** Verified that the Scout persona's fix for extracting media URLs from embedded `<script type="application/json">` elements lacked a regression test.
+**Action:** Added a regression test for `application/json` extraction in `tests/redos_fallback.test.js` to ensure embedded application state URLs (like Next.js data) are properly found.
