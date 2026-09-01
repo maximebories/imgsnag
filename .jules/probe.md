@@ -37,3 +37,7 @@
 ## 2026-08-28 - SVG <image> embed capture test
 **Learning:** Verified that the Scout persona's fix for extracting media URLs from embedded SVG images (`<image href="...">` and `<image xlink:href="...">`) using `handleSvgImage` lacked a regression test.
 **Action:** Added a regression test for `handleSvgImage` in `src/content.test.js` to ensure the correct extraction of URLs from both `href` and `xlink:href` attributes.
+
+## 2026-09-01 - application/json test regression guard
+**Learning:** Verified that the Scout persona's fix for extracting application/json data inside script tags lacked a regression test.
+**Action:** Added a regression test for application/json script extraction in `tests/redos_fallback.test.js` to pin the ability to extract data embedded via Next.js or other frameworks and ensure the TreeWalker handles application/json correctly without regression.

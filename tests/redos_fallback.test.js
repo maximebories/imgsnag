@@ -57,6 +57,12 @@ describe('Content script ReDoS fallback (TreeWalker)', () => {
     badScript.textContent = 'const img = "https://example.com/bad.png";';
     document.body.appendChild(badScript);
 
+    // Add application/json script block containing an image URL (e.g. Next.js __NEXT_DATA__)
+    const appJsonScript = document.createElement('script');
+    appJsonScript.setAttribute('type', 'application/json');
+    appJsonScript.textContent = '{"props":{"pageProps":{"imageUrl":"https://example.com/next.jpg"}}}';
+    document.body.appendChild(appJsonScript);
+
     // Add a style block containing an image URL (should be rejected)
     const style = document.createElement('style');
     style.textContent = '.bg { background-image: url("https://example.com/style.png"); }';
@@ -70,5 +76,6 @@ describe('Content script ReDoS fallback (TreeWalker)', () => {
     expect(imageUrls.has('https://example.com/escaped.gif')).toBe(true);
     expect(imageUrls.has('https://example.com/bad.png')).toBe(false);
     expect(imageUrls.has('https://example.com/style.png')).toBe(false);
+    expect(imageUrls.has('https://example.com/next.jpg')).toBe(true);
   });
 });
