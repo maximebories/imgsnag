@@ -24,3 +24,7 @@
 **Vulnerability:** None (Enhancement). The sweep came back clean.
 **Action:** Added threat-model comments at trust boundaries and centralized the `http:`/`https:` protocol allowlist in `src/background.js` into a single `getSafeDownloadUrl` helper, which returns the normalized `urlObj.href` (never the raw input) or `null`. Both `download_image` and `download_images_bulk` now validate through that one choke point.
 **Prevention:** The proposed `build.sh` zip-exclusion tightening (`-x '*/.*' -x '.*'`) was NOT landed here: the orchestrator may not modify build tooling, and no dotfile is currently produced under `dist/{chrome,firefox}/`, so it is hardening against a hypothetical. Route build-script changes to the maintainer.
+
+## 2026-09-01 - Unbounded Growth & Memory DoS
+**Vulnerability:** The extension caches parsed media data into `discoveredMedia`, `pendingNetworkFilter` and `pendingBackgroundCheckQueue` in `content.js` and keeps a persistent storage block for tracking in `activeDownloadIds` in `background.js`. While this allows persistent discovery of elements, unbounded growth on heavily dynamic infinite-scroll pages (such as social media feeds) can cause browser tab hangs, extreme memory usage, or out-of-storage limits in the extension's local store.
+**Fix:** Introduced `MAX_MEDIA_ENTRIES` and `MAX_ACTIVE_DOWNLOADS` limits (5000), implementing a circular queue-style drop of the oldest elements when limits are reached, guarding against memory DoS.

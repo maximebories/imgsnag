@@ -28,6 +28,7 @@
   // Inline-SVG capture (derived files, RFC #118 stage 1)
   const SVG_DATA_PREFIX = 'data:image/svg+xml;charset=utf-8,';
   const MAX_INLINE_SVG_CHARS = 2 * 1024 * 1024;
+  const MAX_MEDIA_ENTRIES = 5000;
 
   // Persistent media store — survives DOM removal (infinite scroll recycling)
   const discoveredMedia = new Map();
@@ -285,6 +286,9 @@
       // Fast path: skip elements with no styling hints to avoid expensive getComputedStyle calls
       if (!el.className && !el.id && !el.getAttribute('style')) return;
 
+      if (pendingBackgroundCheckQueue.length >= MAX_MEDIA_ENTRIES) {
+        pendingBackgroundCheckQueue.shift();
+      }
       pendingBackgroundCheckQueue.push(el);
       if (!isBgCheckScheduled) {
         isBgCheckScheduled = true;
@@ -472,6 +476,10 @@
 
         // Lazy network fetch: if popup is closed, delay the expensive new Image() call
         if (!popupPort) {
+          if (pendingNetworkFilter.size >= MAX_MEDIA_ENTRIES) {
+            const firstKey = pendingNetworkFilter.keys().next().value;
+            pendingNetworkFilter.delete(firstKey);
+          }
           pendingNetworkFilter.add(url);
           return null;
         }
@@ -523,6 +531,10 @@
     const added = [];
     for (const item of items) {
       if (!discoveredMedia.has(item.url)) {
+        if (discoveredMedia.size >= MAX_MEDIA_ENTRIES) {
+          const firstKey = discoveredMedia.keys().next().value;
+          discoveredMedia.delete(firstKey);
+        }
         discoveredMedia.set(item.url, item);
         added.push(item);
       }
@@ -646,6 +658,9 @@
   function handleBackgroundImage(el, imageSet) {
     // Fast path: skip elements with no styling hints to avoid expensive getComputedStyle calls
     if (el.className || el.id || el.getAttribute('style')) {
+      if (pendingBackgroundCheckQueue.length >= MAX_MEDIA_ENTRIES) {
+        pendingBackgroundCheckQueue.shift();
+      }
       pendingBackgroundCheckQueue.push(el);
       if (!isBgCheckScheduled) {
         isBgCheckScheduled = true;
@@ -809,7 +824,13 @@
 
       // Capture inline SVGs now so they ride along in the init payload
       for (const item of collectInlineSvgs()) {
-        if (!discoveredMedia.has(item.url)) discoveredMedia.set(item.url, item);
+        if (!discoveredMedia.has(item.url)) {
+          if (discoveredMedia.size >= MAX_MEDIA_ENTRIES) {
+            const firstKey = discoveredMedia.keys().next().value;
+            discoveredMedia.delete(firstKey);
+          }
+          discoveredMedia.set(item.url, item);
+        }
       }
 
       port.postMessage({ action: 'init', images: [...discoveredMedia.values()] });

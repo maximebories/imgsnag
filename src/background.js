@@ -11,6 +11,7 @@ const PREFIX = 'dl_';
 // so persisting this map across suspension would be useless anyway.
 const blobUrlsByDownloadId = new Map();
 const MAX_INLINE_SVG_CHARS = 2 * 1024 * 1024;
+const MAX_ACTIVE_DOWNLOADS = 5000;
 
 async function getActiveDownloadIds() {
   const data = await browser.storage.local.get();
@@ -20,6 +21,12 @@ async function getActiveDownloadIds() {
 }
 
 async function addActiveDownloadId(id) {
+  const ids = await getActiveDownloadIds();
+  if (ids.length >= MAX_ACTIVE_DOWNLOADS) {
+    // Remove the oldest ID (assuming smaller IDs are older)
+    ids.sort((a, b) => a - b);
+    await removeActiveDownloadId(ids[0]);
+  }
   await browser.storage.local.set({ [`${PREFIX}${id}`]: true });
 }
 
