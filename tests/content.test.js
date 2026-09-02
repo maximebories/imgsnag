@@ -169,6 +169,20 @@ describe('pickBestFromSrcset', () => {
   it('survives malformed entries', () => {
     expect(pickBestFromSrcset(' , a.jpg 800w, , b.jpg oops')).toBe('a.jpg');
   });
+
+  // Regression: a naive split(',') shreds CDN transform URLs (Cloudinary/imgix
+  // style `w_800,h_800`) into fragments that then flood the grid as broken
+  // entries. The comma only separates candidates when it is not inside the URL.
+  it('keeps commas that are inside the URL rather than separating candidates', () => {
+    expect(pickBestFromSrcset('https://cdn.test/w_100,h_100/a.jpg 400w, https://cdn.test/w_800,h_800/b.jpg 1200w'))
+      .toBe('https://cdn.test/w_800,h_800/b.jpg');
+    expect(pickBestFromSrcset('https://cdn.test/a,b.jpg')).toBe('https://cdn.test/a,b.jpg');
+  });
+
+  it('splits on a comma glued to the URL with no following space', () => {
+    expect(pickBestFromSrcset('a.jpg 1x,b.jpg 2x')).toBe('b.jpg');
+    expect(pickBestFromSrcset('a.jpg, b.jpg 2x')).toBe('b.jpg');
+  });
 });
 
 describe('handleSource', () => {
