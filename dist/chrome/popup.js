@@ -259,7 +259,7 @@
       media.remove();
       const ph = document.createElement('div');
       ph.className = 'placeholder';
-      ph.textContent = filenameFromUrl(item.url);
+      ph.textContent = item.url.startsWith(SVG_DATA_PREFIX) ? browser.i18n.getMessage('popupInlineSvg') : (filenameFromUrl(item.url) || browser.i18n.getMessage('popupMediaFallback'));
       cell.prepend(ph);
     };
 

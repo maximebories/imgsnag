@@ -179,16 +179,42 @@
     if (!srcset) return null;
     let bestUrl = null;
     let bestScore = -1;
-    for (const entry of srcset.split(',')) {
-      const parts = entry.trim().split(/\s+/);
-      const url = parts[0];
-      if (!url) continue;
-      let score = 1;
-      const d = parts[1];
-      if (d) {
-        const n = parseFloat(d);
-        if (!Number.isNaN(n)) score = /w$/i.test(d) ? n : n * 1000;
+
+    let pos = 0;
+    while (pos < srcset.length) {
+      while (pos < srcset.length && /\s/.test(srcset[pos])) pos++;
+      if (pos >= srcset.length) break;
+
+      let url = "";
+      while (pos < srcset.length && !/\s/.test(srcset[pos])) {
+        url += srcset[pos];
+        pos++;
       }
+
+      let descriptor = "";
+      if (url.endsWith(',')) {
+        url = url.slice(0, -1);
+      } else {
+        while (pos < srcset.length && /\s/.test(srcset[pos])) pos++;
+        while (pos < srcset.length && srcset[pos] !== ',') {
+          descriptor += srcset[pos];
+          pos++;
+        }
+        if (pos < srcset.length && srcset[pos] === ',') pos++;
+      }
+
+      if (!url) continue;
+
+      let score = 1;
+      descriptor = descriptor.trim();
+      if (descriptor) {
+        const parts = descriptor.split(/\s+/);
+        for (const d of parts) {
+          const n = parseFloat(d);
+          if (!Number.isNaN(n)) score = /w$/i.test(d) ? n : n * 1000;
+        }
+      }
+
       if (score > bestScore) {
         bestScore = score;
         bestUrl = url;
@@ -200,8 +226,8 @@
   // Media discovery — scans the DOM for downloadable image and video URLs
 
   function collectImages(trackImage) {
-    // <meta> Open Graph / Twitter and <link rel="preload"> hints
-    document.querySelectorAll('meta[property="og:image"], meta[name="twitter:image"], link[rel="preload"][as="image"]').forEach((el) => {
+    // <meta> Open Graph / Twitter, <link rel="preload"> hints, and icons
+    document.querySelectorAll('meta[property="og:image"], meta[property="og:image:secure_url"], meta[name="twitter:image"], link[rel="preload"][as="image"], link[rel="icon"], link[rel="apple-touch-icon"], link[rel="shortcut icon"], link[rel="image_src"]').forEach((el) => {
       const url = el.getAttribute('content') || el.getAttribute('href');
       if (url) trackImage(url);
     });
@@ -329,6 +355,7 @@
           }
         }
       } else if (node.nodeType === Node.ELEMENT_NODE) {
+        if (!node.hasAttributes()) continue;
         const attrs = node.attributes;
         for (let i = 0, len = attrs.length; i < len; i++) {
           // srcset-family attributes hold many variants of one image; the
@@ -625,13 +652,17 @@
     if (el.tagName === 'META') {
       const prop = el.getAttribute('property');
       const name = el.getAttribute('name');
-      if (prop === 'og:image' || name === 'twitter:image') {
+      if (prop === 'og:image' || prop === 'og:image:secure_url' || name === 'twitter:image') {
         const url = resolveUrl(el.getAttribute('content'));
         if (url && !url.startsWith('data:')) imageSet.add(url);
       }
-    } else if (el.tagName === 'LINK' && el.getAttribute('rel') === 'preload' && el.getAttribute('as') === 'image') {
-      const url = resolveUrl(el.getAttribute('href'));
-      if (url && !url.startsWith('data:')) imageSet.add(url);
+    } else if (el.tagName === 'LINK') {
+      const rel = el.getAttribute('rel');
+      const asAttr = el.getAttribute('as');
+      if ((rel === 'preload' && asAttr === 'image') || rel === 'icon' || rel === 'apple-touch-icon' || rel === 'shortcut icon' || rel === 'image_src') {
+        const url = resolveUrl(el.getAttribute('href'));
+        if (url && !url.startsWith('data:')) imageSet.add(url);
+      }
     }
   }
 
@@ -980,6 +1011,6 @@
   syncDragPreference();
   browser.storage.onChanged.addListener(() => syncDragPreference());
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { getCssMediaUrls, extractBgImageUrls, resolveUrl, isVideoUrl, isImageUrl, isSvgUrl, parseSrcset, pickBestFromSrcset, collectInlineSvgs, handleEmbed, passesSizeFilter, handleMeta, collectMediaUrls, handleSource, handlePicture, handleSvgImage, handleDataBg };
+    module.exports = { getDomImageSize, getCssMediaUrls, extractBgImageUrls, resolveUrl, isVideoUrl, isImageUrl, isSvgUrl, parseSrcset, pickBestFromSrcset, collectInlineSvgs, handleEmbed, passesSizeFilter, handleMeta, collectMediaUrls, handleSource, handlePicture, handleSvgImage, handleDataBg };
   }
 })();
