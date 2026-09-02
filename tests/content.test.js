@@ -124,6 +124,18 @@ describe('handleMeta', () => {
     expect([...set]).toEqual(['https://example.com/preload.png']);
   });
 
+  it('captures link icons and og:image:secure_url', () => {
+    const set = new Set();
+    handleMeta(el('meta', { property: 'og:image:secure_url', content: 'https://example.com/secure.jpg' }), set);
+    handleMeta(el('link', { rel: 'apple-touch-icon', href: 'https://example.com/apple.png' }), set);
+    handleMeta(el('link', { rel: 'icon', href: 'https://example.com/icon.png' }), set);
+    expect([...set]).toEqual([
+      'https://example.com/secure.jpg',
+      'https://example.com/apple.png',
+      'https://example.com/icon.png'
+    ]);
+  });
+
   it('ignores other meta and link tags', () => {
     const set = new Set();
     handleMeta(el('meta', { name: 'description', content: 'hello' }), set);
