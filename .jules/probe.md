@@ -37,3 +37,7 @@
 ## 2026-08-28 - SVG <image> embed capture test
 **Learning:** Verified that the Scout persona's fix for extracting media URLs from embedded SVG images (`<image href="...">` and `<image xlink:href="...">`) using `handleSvgImage` lacked a regression test.
 **Action:** Added a regression test for `handleSvgImage` in `src/content.test.js` to ensure the correct extraction of URLs from both `href` and `xlink:href` attributes.
+
+## 2026-09-03 - Centralized download URL validation regression test
+**Learning:** Found a journal-documented security enhancement from the Warden persona (Centralized download URL validation) that lacked regression tests. The extension normalizes URLs to avoid parser differentials and rejects non-allowlisted protocols before triggering downloads.
+**Action:** Always verify that security fixes related to centralized URL validation are pinned with regression tests that explicitly assert the final download API receives the normalized `urlObj.href` string (not the raw input) and rejects un-allowlisted protocols (`javascript:`, `file:`, `data:`, `blob:`), even if `content.js` allows them for its own logic. Also pinned the behavior that bulk download badge counts only track valid URLs post-filtering.
