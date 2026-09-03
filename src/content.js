@@ -623,8 +623,9 @@
     const imageUrls = new Set();
     const timeRemaining = deadline ? () => deadline.timeRemaining() : () => 50;
 
-    while (pendingBackgroundCheckQueue.length > 0 && timeRemaining() > 0) {
-      const el = pendingBackgroundCheckQueue.shift();
+    let processed = 0;
+    while (processed < pendingBackgroundCheckQueue.length && timeRemaining() > 0) {
+      const el = pendingBackgroundCheckQueue[processed++];
       try {
         for (const raw of getCssMediaUrls(el)) {
           const url = resolveUrl(raw);
@@ -633,6 +634,9 @@
       } catch {
         // Element may not be connected to DOM yet
       }
+    }
+    if (processed > 0) {
+      pendingBackgroundCheckQueue.splice(0, processed);
     }
 
     if (imageUrls.size > 0) addNewUrls(imageUrls, 'image');
@@ -848,8 +852,9 @@
       // Flush the background image check queue synchronously so the grid is complete
       if (pendingBackgroundCheckQueue.length > 0) {
         const imageUrls = new Set();
-        while (pendingBackgroundCheckQueue.length > 0) {
-          const el = pendingBackgroundCheckQueue.shift();
+        let processed = 0;
+        while (processed < pendingBackgroundCheckQueue.length) {
+          const el = pendingBackgroundCheckQueue[processed++];
           try {
             for (const raw of getCssMediaUrls(el)) {
               const url = resolveUrl(raw);
@@ -858,6 +863,9 @@
           } catch {
             // Element may not be connected to DOM yet
           }
+        }
+        if (processed > 0) {
+          pendingBackgroundCheckQueue.splice(0, processed);
         }
         if (imageUrls.size > 0) addNewUrls(imageUrls, 'image');
       }
