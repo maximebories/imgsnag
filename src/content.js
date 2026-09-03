@@ -324,7 +324,7 @@
 
     // Fallback — scan text and attributes to catch JSON-LD or data attributes that DOM queries miss
     const walker = document.createTreeWalker(
-      document.body,
+      document.documentElement,
       NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT,
       {
         acceptNode(node) {
