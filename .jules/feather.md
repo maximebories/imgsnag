@@ -34,3 +34,7 @@
 **Learning:** Iterating over `node.attributes` on all elements during the initial discovery TreeWalker sweep is slow because reading `attributes` dynamically populates a NamedNodeMap. Many elements (like text wrappers) have no attributes at all.
 **Action:** Check `node.hasAttributes()` before accessing `node.attributes` to skip attribute-less elements. Note this is the *initial discovery* sweep, distinct from the MutationObserver sweep covered on 2026-08-29.
 **Measurement:** None. The PR claimed "2-3x" but this repo has no perf harness, so no speedup figure is substantiated — the change was accepted on semantic equivalence and plausibility (avoiding NamedNodeMap materialization), not on a measured win. Do not quote a multiplier in this journal again without a reproducible benchmark.
+
+## 2026-09-03 - Array.shift() fast-path in heavy queues
+**Learning:** Using `Array.shift()` to process and empty a queue array (like `pendingBackgroundCheckQueue`) in a loop is an $O(N^2)$ operation, as `shift()` reindexes the remaining elements every time. On heavy pages with many thousands of elements (e.g. 10k items), this blocks the main thread severely (proven by local jsdom benchmarks).
+**Action:** Use an index variable to iterate over the array elements, and then use `Array.splice(0, processed_count)` after the loop to remove the processed elements in a single $O(N)$ operation.
