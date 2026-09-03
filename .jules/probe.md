@@ -45,3 +45,7 @@
 ## 2026-08-30 - application/json data in Script tags regression test
 **Learning:** Verified that the Scout persona's fix to extract image URLs from `<script type="application/json">` elements (like Next.js state blocks) using the TreeWalker lacked a regression test.
 **Action:** Added a regression test in `tests/redos_fallback.test.js` to pin the TreeWalker's extraction of URLs from `application/json` script blocks, ensuring they are not filtered out.
+
+## 2026-09-03 - Shortcut Hint UI State Test
+**Learning:** Verified that the Pixel persona's fix for correctly applying the shortcut hint (`Ctrl+Enter`/`Cmd+Enter`) only to the active button in the popup (either 'Download Selected' or 'Download All') lacked a regression test.
+**Action:** Added a regression test `tests/popup_shortcut.test.js` to pin the UI state updates in `updateCounter`, ensuring the tooltip hint dynamically moves to the correct active button based on selection state, and exposed internal states (`updateCounter`, `allUrls`, `selectedUrls`) via `module.exports` for testability.
