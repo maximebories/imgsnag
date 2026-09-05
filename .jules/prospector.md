@@ -14,3 +14,6 @@
 ## 2026-09-01 - Same-origin iframe descent RFC
 **Learning:** Content script misses media in iframes because all_frames is false. Same-origin iframes can be trivially accessed via iframe.contentDocument within the existing script, avoiding the heavy all_frames: true tax.
 **Action:** Verdict GO, staged. Traverse same-origin contentDocument with try/catch guards.
+## 2026-09-05 - Service-worker Cache Storage inspection RFC
+**Learning:** Service-worker Cache Storage (`window.caches`) cannot be safely or synchronously enumerated in a content script without causing extreme performance degradation. Enumerating cache keys requires waking up the service worker (or blocking via async calls) and returning opaque Request/Response objects, which then have to be fully read as blobs to inspect them, destroying page memory. Furthermore, `imgsnag` currently identifies media via URLs, but Cache Storage assets may not have valid, currently reachable remote URLs.
+**Action:** Verdict NO-GO. Service-worker Cache Storage is fundamentally incompatible with the extension's lightweight synchronous DOM extraction pipeline and URL-based delivery mechanism.
