@@ -345,30 +345,34 @@
 
     let node;
     while ((node = walker.nextNode())) {
-      if (node.nodeType === Node.TEXT_NODE) {
-        if (node.nodeValue && HTTP_HINT_RE.test(node.nodeValue)) {
+      extractRegexUrls(node, trackImage);
+    }
+  }
+
+  function extractRegexUrls(node, trackImage) {
+    if (node.nodeType === Node.TEXT_NODE) {
+      if (node.nodeValue && HTTP_HINT_RE.test(node.nodeValue)) {
+        let match;
+        IMAGE_URL_RE.lastIndex = 0;
+        while ((match = IMAGE_URL_RE.exec(node.nodeValue)) !== null) {
+          let url = match[0];
+          if (url.includes('\\')) url = url.replace(/\\/g, '');
+          trackImage(url);
+        }
+      }
+    } else if (node.nodeType === Node.ELEMENT_NODE) {
+      if (!node.hasAttributes()) return;
+      const attrs = node.attributes;
+      for (let i = 0, len = attrs.length; i < len; i++) {
+        if (attrs[i].name.includes('srcset')) continue;
+        const val = attrs[i].value;
+        if (val && HTTP_HINT_RE.test(val)) {
           let match;
-          while ((match = IMAGE_URL_RE.exec(node.nodeValue)) !== null) {
+          IMAGE_URL_RE.lastIndex = 0;
+          while ((match = IMAGE_URL_RE.exec(val)) !== null) {
             let url = match[0];
             if (url.includes('\\')) url = url.replace(/\\/g, '');
             trackImage(url);
-          }
-        }
-      } else if (node.nodeType === Node.ELEMENT_NODE) {
-        if (!node.hasAttributes()) continue;
-        const attrs = node.attributes;
-        for (let i = 0, len = attrs.length; i < len; i++) {
-          // srcset-family attributes hold many variants of one image; the
-          // structural scan already tracked the best candidate
-          if (attrs[i].name.includes('srcset')) continue;
-          const val = attrs[i].value;
-          if (val && HTTP_HINT_RE.test(val)) {
-            let match;
-            while ((match = IMAGE_URL_RE.exec(val)) !== null) {
-              let url = match[0];
-              if (url.includes('\\')) url = url.replace(/\\/g, '');
-              trackImage(url);
-            }
           }
         }
       }
@@ -766,12 +770,45 @@
       const videoUrls = new Set();
       for (const mutation of mutations) {
         for (const node of mutation.addedNodes) {
-          if (node.nodeType !== Node.ELEMENT_NODE) continue;
-          extractUrlsFromElement(node, imageUrls, videoUrls);
-          if (node.getElementsByTagName) {
-            const walker = document.createTreeWalker(node, NodeFilter.SHOW_ELEMENT, null, false);
+          if (node.nodeType === Node.ELEMENT_NODE) {
+            extractUrlsFromElement(node, imageUrls, videoUrls);
+          }
+
+          if (node.nodeType === Node.ELEMENT_NODE || node.nodeType === Node.TEXT_NODE) {
+            extractRegexUrls(node, (url) => {
+              const resolved = resolveUrl(url);
+              if (resolved && !resolved.startsWith('data:')) imageUrls.add(resolved);
+            });
+          }
+
+          if (node.nodeType === Node.ELEMENT_NODE) {
+            const walker = document.createTreeWalker(
+              node,
+              NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT,
+              {
+                acceptNode(n) {
+                  if (n.nodeType === Node.ELEMENT_NODE) {
+                    if (n.tagName === 'STYLE') return NodeFilter.FILTER_REJECT;
+                    if (n.tagName === 'SCRIPT') {
+                      const type = n.getAttribute('type');
+                      if (type === 'application/ld+json' || type === 'application/json') {
+                        return NodeFilter.FILTER_ACCEPT;
+                      }
+                      return NodeFilter.FILTER_REJECT;
+                    }
+                  }
+                  return NodeFilter.FILTER_ACCEPT;
+                }
+              }
+            );
+
             let el;
             while ((el = walker.nextNode())) {
+              extractRegexUrls(el, (url) => {
+                const resolved = resolveUrl(url);
+                if (resolved && !resolved.startsWith('data:')) imageUrls.add(resolved);
+              });
+              if (el.nodeType !== Node.ELEMENT_NODE) continue;
               const tag = el.tagName;
               if (
                 TAG_SET.has(tag) ||
