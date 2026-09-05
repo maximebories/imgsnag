@@ -18,6 +18,25 @@
   // IMAGE_URL_RE is: a literal includes('http') check would miss "HtTp://".
   const HTTP_HINT_RE = /http/i;
 
+  // Stateless, so the initial sweep and the MutationObserver share one instance
+  // rather than rebuilding it per added subtree. <style> never holds image URLs
+  // the CSS scan misses; <script> is only worth sweeping when it carries JSON.
+  const REGEX_SWEEP_FILTER = {
+    acceptNode(node) {
+      if (node.nodeType === Node.ELEMENT_NODE) {
+        if (node.tagName === 'STYLE') return NodeFilter.FILTER_REJECT;
+        if (node.tagName === 'SCRIPT') {
+          const type = node.getAttribute('type');
+          if (type === 'application/ld+json' || type === 'application/json') {
+            return NodeFilter.FILTER_ACCEPT;
+          }
+          return NodeFilter.FILTER_REJECT;
+        }
+      }
+      return NodeFilter.FILTER_ACCEPT;
+    }
+  };
+
   const BG_IMAGE_SELECTORS =
     'div, span, section, article, header, footer, a, li, figure, i, [style*="background"]';
 
@@ -326,21 +345,7 @@
     const walker = document.createTreeWalker(
       document.documentElement,
       NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT,
-      {
-        acceptNode(node) {
-          if (node.nodeType === Node.ELEMENT_NODE) {
-            if (node.tagName === 'STYLE') return NodeFilter.FILTER_REJECT;
-            if (node.tagName === 'SCRIPT') {
-              const type = node.getAttribute('type');
-              if (type === 'application/ld+json' || type === 'application/json') {
-                return NodeFilter.FILTER_ACCEPT;
-              }
-              return NodeFilter.FILTER_REJECT;
-            }
-          }
-          return NodeFilter.FILTER_ACCEPT;
-        }
-      }
+      REGEX_SWEEP_FILTER
     );
 
     let node;
@@ -349,6 +354,8 @@
     }
   }
 
+  // Shared by the initial sweep and the MutationObserver: pulls image URLs out
+  // of a single node's text content or attribute values.
   function extractRegexUrls(node, trackImage) {
     if (node.nodeType === Node.TEXT_NODE) {
       if (node.nodeValue && HTTP_HINT_RE.test(node.nodeValue)) {
@@ -364,6 +371,8 @@
       if (!node.hasAttributes()) return;
       const attrs = node.attributes;
       for (let i = 0, len = attrs.length; i < len; i++) {
+        // srcset-family attributes hold many variants of one image; the
+        // structural scan already tracked the best candidate
         if (attrs[i].name.includes('srcset')) continue;
         const val = attrs[i].value;
         if (val && HTTP_HINT_RE.test(val)) {
@@ -768,6 +777,11 @@
     const observer = new MutationObserver((mutations) => {
       const imageUrls = new Set();
       const videoUrls = new Set();
+      // Hoisted out of the node loops: one closure per batch, not per node
+      const trackSweptImage = (url) => {
+        const resolved = resolveUrl(url);
+        if (resolved && !resolved.startsWith('data:')) imageUrls.add(resolved);
+      };
       for (const mutation of mutations) {
         for (const node of mutation.addedNodes) {
           if (node.nodeType === Node.ELEMENT_NODE) {
@@ -775,39 +789,19 @@
           }
 
           if (node.nodeType === Node.ELEMENT_NODE || node.nodeType === Node.TEXT_NODE) {
-            extractRegexUrls(node, (url) => {
-              const resolved = resolveUrl(url);
-              if (resolved && !resolved.startsWith('data:')) imageUrls.add(resolved);
-            });
+            extractRegexUrls(node, trackSweptImage);
           }
 
           if (node.nodeType === Node.ELEMENT_NODE) {
             const walker = document.createTreeWalker(
               node,
               NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT,
-              {
-                acceptNode(n) {
-                  if (n.nodeType === Node.ELEMENT_NODE) {
-                    if (n.tagName === 'STYLE') return NodeFilter.FILTER_REJECT;
-                    if (n.tagName === 'SCRIPT') {
-                      const type = n.getAttribute('type');
-                      if (type === 'application/ld+json' || type === 'application/json') {
-                        return NodeFilter.FILTER_ACCEPT;
-                      }
-                      return NodeFilter.FILTER_REJECT;
-                    }
-                  }
-                  return NodeFilter.FILTER_ACCEPT;
-                }
-              }
+              REGEX_SWEEP_FILTER
             );
 
             let el;
             while ((el = walker.nextNode())) {
-              extractRegexUrls(el, (url) => {
-                const resolved = resolveUrl(url);
-                if (resolved && !resolved.startsWith('data:')) imageUrls.add(resolved);
-              });
+              extractRegexUrls(el, trackSweptImage);
               if (el.nodeType !== Node.ELEMENT_NODE) continue;
               const tag = el.tagName;
               if (
@@ -1056,6 +1050,6 @@
   syncDragPreference();
   browser.storage.onChanged.addListener(() => syncDragPreference());
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { getDomImageSize, getCssMediaUrls, extractBgImageUrls, resolveUrl, isVideoUrl, isImageUrl, isSvgUrl, parseSrcset, pickBestFromSrcset, collectInlineSvgs, handleEmbed, passesSizeFilter, handleMeta, collectMediaUrls, handleSource, handlePicture, handleSvgImage, handleDataBg };
+    module.exports = { getDomImageSize, getCssMediaUrls, extractBgImageUrls, resolveUrl, isVideoUrl, isImageUrl, isSvgUrl, parseSrcset, pickBestFromSrcset, collectInlineSvgs, handleEmbed, passesSizeFilter, handleMeta, collectMediaUrls, handleSource, handlePicture, handleSvgImage, handleDataBg, extractRegexUrls };
   }
 })();
