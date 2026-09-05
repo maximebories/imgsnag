@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Benchmark BG Selectors</title>
+</head>
+<body>
+<script>
+  // Create a DOM simulating a heavy infinite scroll page
+  const nodeCount = 50000;
+  for (let i = 0; i < nodeCount; i++) {
+    const el = document.createElement(i % 2 === 0 ? "div" : "span");
+    if (i % 3 === 0) el.className = "gallery-item";
+    if (i % 4 === 0) el.id = "item-" + i;
+    if (i % 5 === 0) el.setAttribute("style", "background-image: url('http://example.com')");
+    if (i % 7 === 0) el.setAttribute("style", "display: none");
+    document.body.appendChild(el);
+  }
+
+  // Add some non-matching elements to simulate a mixed DOM
+  for (let i = 0; i < 20000; i++) {
+    const el = document.createElement("p");
+    document.body.appendChild(el);
+  }
+  for (let i = 0; i < 10000; i++) {
+    const el = document.createElement("img");
+    document.body.appendChild(el);
+  }
+
+  const BG_IMAGE_SELECTORS = 'div, span, section, article, header, footer, a, li, figure, i, [style*="background"]';
+  const TAG_SET = new Set(['DIV', 'SPAN', 'SECTION', 'ARTICLE', 'HEADER', 'FOOTER', 'A', 'LI', 'FIGURE', 'I']);
+
+  function testQSA() {
+    const start = performance.now();
+    let count = 0;
+    for (let j = 0; j < 100; j++) {
+      document.querySelectorAll(BG_IMAGE_SELECTORS).forEach((el) => {
+        if (!el.className && !el.id && !el.getAttribute('style')) return;
+        count++;
+      });
+    }
+    const time = performance.now() - start;
+    console.log(`querySelectorAll: ${time.toFixed(2)}ms (found ${count})`);
+  }
+
+  function testTreeWalker() {
+    const start = performance.now();
+    let count = 0;
+    for (let j = 0; j < 100; j++) {
+      const walker = document.createTreeWalker(document.documentElement, NodeFilter.SHOW_ELEMENT, null, false);
+      let el;
+      while ((el = walker.nextNode())) {
+        let match = false;
+        if (TAG_SET.has(el.tagName)) {
+          match = true;
+        } else if (el.hasAttributes && el.hasAttributes()) {
+          const style = el.getAttribute('style');
+          if (style && style.includes('background')) {
+             match = true;
+          }
+        }
+        if (match) {
+           if (!el.className && !el.id && !el.getAttribute('style')) continue;
+           count++;
+        }
+      }
+    }
+    const time = performance.now() - start;
+    console.log(`TreeWalker: ${time.toFixed(2)}ms (found ${count})`);
+  }
+
+  console.log('Running querySelectorAll test...');
+  testQSA();
+  console.log('Running TreeWalker test...');
+  testTreeWalker();
+  console.log('Done.');
+</script>
+</body>
+</html>
+<!--
+NodeCount: 80,000 nodes
+Machine: Node.js v22
+Results (100 iterations):
+querySelectorAll: 50856.99ms (found 3285800)
+TreeWalker: 8467.40ms (found 3285800)
+Speedup: ~6x
+-->
