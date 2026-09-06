@@ -481,3 +481,47 @@ describe('handleVideo', () => {
     expect(imageSet.size).toBe(0);
   });
 });
+
+describe('trackImageUrl', () => {
+  const { trackImageUrl } = require('../src/content.js');
+
+  it('adds original URL and synthesizes original for WordPress downscaled images', () => {
+    const set = new Set();
+    trackImageUrl('https://example.com/photo-150x150.jpg', set);
+    expect([...set]).toEqual([
+      'https://example.com/photo-150x150.jpg',
+      'https://example.com/photo.jpg'
+    ]);
+  });
+
+  it('leaves standard URLs unaffected', () => {
+    const set = new Set();
+    trackImageUrl('https://example.com/photo.jpg', set);
+    expect([...set]).toEqual(['https://example.com/photo.jpg']);
+  });
+
+  it('deduplicates if the synthesized URL is already present', () => {
+    const set = new Set();
+    set.add('https://example.com/photo.jpg');
+    trackImageUrl('https://example.com/photo-150x150.jpg', set);
+    expect([...set]).toEqual([
+      'https://example.com/photo.jpg',
+      'https://example.com/photo-150x150.jpg'
+    ]);
+  });
+
+  // A synthesized URL that 404s is culled by the popup's new Image() probe — but
+  // filterImagesBySize exempts .svg from probing entirely, so an unverifiable SVG
+  // would survive to the grid. Synthesis must stay off SVG.
+  it('does not synthesize an original for SVG variants', () => {
+    const set = new Set();
+    trackImageUrl('https://example.com/logo-150x150.svg', set);
+    expect([...set]).toEqual(['https://example.com/logo-150x150.svg']);
+  });
+
+  it('does not synthesize from a dimension-like segment outside the filename suffix', () => {
+    const set = new Set();
+    trackImageUrl('https://example.com/1920x1080/photo.jpg', set);
+    expect([...set]).toEqual(['https://example.com/1920x1080/photo.jpg']);
+  });
+});

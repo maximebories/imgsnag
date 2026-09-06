@@ -8,6 +8,10 @@
   const IMAGE_EXT_RE = /\.(?:jpe?g|gif|png|webp|svg|avif)(?:[?#]|$)/i;
   const VIDEO_EXT_RE = /\.(?:mp4|webm|ogv|mov|m4v|avi)(?:[?#]|$)/i;
   const BG_URL_RE = /url\(["']?(.*?)["']?\)/gi;
+  // RFC #223 stage 1: cheap gate before any URL construction, then the strict
+  // CMS "-WxH" variant suffix it synthesizes an original from.
+  const WP_SUFFIX_FAST_RE = /-\d+x\d+\./;
+  const WP_SUFFIX_RE = /-\d+x\d+(\.(?:jpe?g|png|webp|gif|avif))$/i;
 
   // Catches image URLs embedded in inline scripts or JSON-LD that DOM queries miss
   const IMAGE_URL_RE =
@@ -60,6 +64,23 @@
 
   function sendToBackground(message) {
     browser.runtime.sendMessage(message).catch(() => {});
+  }
+
+
+  function trackImageUrl(raw, urlSet) {
+    const url = resolveUrl(raw);
+    if (!url || url.startsWith('data:')) return;
+    urlSet.add(url);
+    if (WP_SUFFIX_FAST_RE.test(url)) {
+      try {
+        const parsed = new URL(url);
+        if (WP_SUFFIX_RE.test(parsed.pathname)) {
+          parsed.pathname = parsed.pathname.replace(WP_SUFFIX_RE, '$1');
+          const synth = resolveUrl(parsed.href);
+          if (synth && !synth.startsWith('data:')) urlSet.add(synth);
+        }
+      } catch {}
+    }
   }
 
   function resolveUrl(url) {
@@ -440,10 +461,7 @@
     const videoUrls = new Set();
 
     function trackImage(url) {
-      const resolved = resolveUrl(url);
-      if (resolved && !resolved.startsWith('data:') && !imageUrls.has(resolved)) {
-        imageUrls.add(resolved);
-      }
+      trackImageUrl(url, imageUrls);
     }
 
     function trackVideo(url) {
@@ -588,8 +606,7 @@
         if (attr === 'src') val = hasSet ? null : el.src;
         else val = el.hasAttribute(attr) ? el.getAttribute(attr) : null;
         if (val) {
-          const url = resolveUrl(val);
-          if (url && !url.startsWith('data:')) imageSet.add(url);
+          trackImageUrl(val, imageSet);
         }
       }
     }
@@ -603,8 +620,7 @@
                   pickBestFromSrcset(el.getAttribute('data-srcset')) ||
                   pickBestFromSrcset(el.getAttribute('data-bgset'));
       if (raw) {
-        const url = resolveUrl(raw);
-        if (url && !url.startsWith('data:')) imageSet.add(url);
+        trackImageUrl(raw, imageSet);
       }
     }
   }
@@ -618,8 +634,7 @@
       }
       const poster = el.getAttribute('poster') || el.getAttribute('data-poster');
       if (poster) {
-        const url = resolveUrl(poster);
-        if (url && !url.startsWith('data:')) imageSet.add(url);
+        trackImageUrl(poster, imageSet);
       }
     }
   }
@@ -677,16 +692,14 @@
       const name = el.getAttribute('name');
       const itemprop = el.getAttribute('itemprop');
       if (prop === 'og:image' || prop === 'og:image:secure_url' || name === 'twitter:image' || itemprop === 'image') {
-        const url = resolveUrl(el.getAttribute('content'));
-        if (url && !url.startsWith('data:')) imageSet.add(url);
+        trackImageUrl(el.getAttribute('content'), imageSet);
       }
     } else if (el.tagName === 'LINK') {
       const rel = el.getAttribute('rel');
       const asAttr = el.getAttribute('as');
       const itemprop = el.getAttribute('itemprop');
       if ((rel === 'preload' && asAttr === 'image') || rel === 'icon' || rel === 'apple-touch-icon' || rel === 'shortcut icon' || rel === 'image_src' || rel === 'mask-icon' || itemprop === 'image') {
-        const url = resolveUrl(el.getAttribute('href'));
-        if (url && !url.startsWith('data:')) imageSet.add(url);
+        trackImageUrl(el.getAttribute('href'), imageSet);
       }
     }
   }
@@ -696,7 +709,7 @@
     if (tag !== 'OBJECT' && tag !== 'EMBED' && tag !== 'IFRAME') return;
     const raw = tag === 'OBJECT' ? el.getAttribute('data') : el.getAttribute('src');
     const url = resolveUrl(raw);
-    if (url && isImageUrl(url) && !url.startsWith('data:')) imageSet.add(url);
+    if (url && isImageUrl(url) && !url.startsWith('data:')) trackImageUrl(url, imageSet);
   }
 
   function handleBackgroundImage(el, imageSet) {
@@ -718,8 +731,7 @@
     if (el.tagName === 'PICTURE') {
       const img = el.querySelector('img');
       if (img && img.currentSrc) {
-        const url = resolveUrl(img.currentSrc);
-        if (url && !url.startsWith('data:')) imageSet.add(url);
+        trackImageUrl(img.currentSrc, imageSet);
         return;
       }
       for (const source of el.querySelectorAll('source')) {
@@ -728,8 +740,7 @@
                      source.getAttribute('src') || source.getAttribute('data-src') ||
                      source.getAttribute('data-lazy-src') || source.getAttribute('data-original');
         if (best) {
-          const url = resolveUrl(best);
-          if (url && !url.startsWith('data:')) imageSet.add(url);
+          trackImageUrl(best, imageSet);
           return;
         }
       }
@@ -739,8 +750,7 @@
   function handleSvgImage(el, imageSet) {
     if (el.tagName === 'image' || el.tagName === 'IMAGE') {
       const raw = el.getAttribute('href') || el.getAttribute('xlink:href');
-      const url = resolveUrl(raw);
-      if (url && !url.startsWith('data:')) imageSet.add(url);
+      trackImageUrl(raw, imageSet);
     }
   }
 
@@ -753,8 +763,7 @@
           if (bg) {
             if (bg.includes('url(') || bg.includes('image-set(')) {
               for (const raw of extractBgImageUrls(bg)) {
-                const url = resolveUrl(raw);
-                if (url && !url.startsWith('data:')) imageSet.add(url);
+                trackImageUrl(raw, imageSet);
               }
             } else {
               const url = resolveUrl(bg.trim());
@@ -787,8 +796,7 @@
       const videoUrls = new Set();
       // Hoisted out of the node loops: one closure per batch, not per node
       const trackSweptImage = (url) => {
-        const resolved = resolveUrl(url);
-        if (resolved && !resolved.startsWith('data:')) imageUrls.add(resolved);
+        trackImageUrl(url, imageUrls);
       };
       for (const mutation of mutations) {
         for (const node of mutation.addedNodes) {
@@ -1058,6 +1066,6 @@
   syncDragPreference();
   browser.storage.onChanged.addListener(() => syncDragPreference());
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { getDomImageSize, getCssMediaUrls, extractBgImageUrls, resolveUrl, isVideoUrl, isImageUrl, isSvgUrl, parseSrcset, pickBestFromSrcset, collectInlineSvgs, handleEmbed, passesSizeFilter, handleMeta, collectMediaUrls, handleSource, handlePicture, handleSvgImage, handleDataBg, extractRegexUrls, handleVideo };
+    module.exports = { trackImageUrl, getDomImageSize, getCssMediaUrls, extractBgImageUrls, resolveUrl, isVideoUrl, isImageUrl, isSvgUrl, parseSrcset, pickBestFromSrcset, collectInlineSvgs, handleEmbed, passesSizeFilter, handleMeta, collectMediaUrls, handleSource, handlePicture, handleSvgImage, handleDataBg, extractRegexUrls, handleVideo };
   }
 })();
