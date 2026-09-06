@@ -103,7 +103,10 @@ browser.runtime.onMessage.addListener((message, sender) => {
             console.warn('[imgsnag] Download failed:', url, err.message);
           } finally {
             completed++;
-            browser.action.setBadgeText({ text: `${completed}/${total}` });
+            const badgeStep = total > 50 ? 10 : 1;
+            if (completed % badgeStep === 0 || completed === total) {
+              browser.action.setBadgeText({ text: `${completed}/${total}` });
+            }
           }
         })
       );
