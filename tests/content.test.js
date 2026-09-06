@@ -41,13 +41,13 @@ describe('extractBgImageUrls', () => {
   });
 
   it('should extract URLs from image-set() strings', () => {
-    const bgValue = 'image-set("img1.png" 1x, url("img2.png") 2x)';
-    expect(extractBgImageUrls(bgValue)).toEqual(['img2.png', 'img1.png']);
+    const bgValue = 'image-set(url("img1.png") 1x, "img2.png" 2x)';
+    expect(extractBgImageUrls(bgValue)).toEqual(['img1.png', 'img2.png']);
   });
 
   it('should extract URLs from -webkit-image-set() strings', () => {
-    const bgValue = '-webkit-image-set("img1.png" 1x, "img2.png" 2x)';
-    expect(extractBgImageUrls(bgValue)).toEqual(['img1.png', 'img2.png']);
+    const bgValue = '-webkit-image-set(url("img1.png") 1x, "img2.png" 2x, url("img3.png") 3x, "img4.png" 4x)';
+    expect(extractBgImageUrls(bgValue)).toEqual(['img1.png', 'img3.png', 'img2.png', 'img4.png']);
   });
 
   it('should extract URLs with extraneous spaces inside the parentheses (current regex behavior)', () => {
