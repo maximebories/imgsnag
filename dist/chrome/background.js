@@ -89,7 +89,9 @@ browser.runtime.onMessage.addListener((message, sender) => {
             console.warn('[imgsnag] Download failed:', url, err.message);
           } finally {
             completed++;
-            browser.action.setBadgeText({ text: `${completed}/${total}` });
+            if (completed % 10 === 0 || completed === total) {
+              browser.action.setBadgeText({ text: `${completed}/${total}` });
+            }
           }
         })
       );

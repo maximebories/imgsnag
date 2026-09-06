@@ -202,7 +202,8 @@ describe('Background Script', () => {
     expect(downloads[1].url).toBe('http://example.com/3.jpg');
 
     // Total should be 2 (the valid URLs), not 4 (the input length)
-    expect(setBadgeTextSpy).toHaveBeenCalledWith({ text: '1/2' });
+    // Badge text should only be updated every 10th item and on the final item
+    expect(setBadgeTextSpy).not.toHaveBeenCalledWith({ text: '1/2' });
     expect(setBadgeTextSpy).toHaveBeenCalledWith({ text: '2/2' });
 
     expect(badgeText).toBe(''); // Should be reset at the end
