@@ -427,3 +427,57 @@ describe('handleDataBg', () => {
     expect(set.size).toBe(0);
   });
 });
+
+describe('handleVideo', () => {
+  const { handleVideo } = require('../src/content.js');
+
+  function el(tag, attrs = {}) {
+    const e = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+    return e;
+  }
+
+  it('extracts src and poster from video elements', () => {
+    const imageSet = new Set();
+    const videoSet = new Set();
+
+    handleVideo(el('video', {
+      src: 'https://example.com/video.mp4',
+      poster: 'https://example.com/poster.jpg'
+    }), imageSet, videoSet);
+
+    expect([...videoSet]).toEqual(['https://example.com/video.mp4']);
+    expect([...imageSet]).toEqual(['https://example.com/poster.jpg']);
+  });
+
+  it('extracts lazy loaded attributes into correct sets', () => {
+    const attrs = ['data-src', 'data-lazy-src', 'data-original'];
+
+    for (const attr of attrs) {
+      const imageSet = new Set();
+      const videoSet = new Set();
+
+      const vEl = el('video');
+      vEl.setAttribute(attr, `https://example.com/${attr}.webm`);
+      vEl.setAttribute('data-poster', `https://example.com/${attr}_poster.webp`);
+
+      handleVideo(vEl, imageSet, videoSet);
+
+      expect([...videoSet]).toEqual([`https://example.com/${attr}.webm`]);
+      expect([...imageSet]).toEqual([`https://example.com/${attr}_poster.webp`]);
+    }
+  });
+
+  it('skips data: URLs for both video and poster', () => {
+    const imageSet = new Set();
+    const videoSet = new Set();
+
+    handleVideo(el('video', {
+      src: 'data:video/mp4;base64,123',
+      poster: 'data:image/jpeg;base64,456'
+    }), imageSet, videoSet);
+
+    expect(videoSet.size).toBe(0);
+    expect(imageSet.size).toBe(0);
+  });
+});
