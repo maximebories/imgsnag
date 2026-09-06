@@ -22,3 +22,7 @@
 ## 2026-09-05 - Service-worker Cache Storage inspection RFC
 **Learning:** Service-worker Cache Storage (`window.caches`) cannot be safely or synchronously enumerated in a content script without causing extreme performance degradation. Enumerating cache keys requires waking up the service worker (or blocking via async calls) and returning opaque Request/Response objects, which then have to be fully read as blobs to inspect them, destroying page memory. Furthermore, `imgsnag` currently identifies media via URLs, but Cache Storage assets may not have valid, currently reachable remote URLs.
 **Action:** Verdict NO-GO. Service-worker Cache Storage is fundamentally incompatible with the extension's lightweight synchronous DOM extraction pipeline and URL-based delivery mechanism.
+
+## 2026-09-06 - Highest-quality variant resolution (CDN/CMS de-resizing) RFC
+**Learning:** Modern CMS and CDNs (WordPress, Twitter, Imgix) often load resized variants (e.g. `w=400` or `-150x150`) without linking the original in the DOM. By applying fast regex/URL heuristics to derive the high-res URL and relying on the existing popup network filter to cull 404s, we can recover originals that the structural scan structurally misses. The synthesis must be heavily fast-pathed to avoid `new URL()` overhead on every MutationObserver tick.
+**Action:** Verdict GO, staged. Requested orchestrator to file RFC issue.
