@@ -39,3 +39,7 @@
 **Learning:** Using `Array.shift()` to process and empty a queue array (like `pendingBackgroundCheckQueue`) in a loop is an $O(N^2)$ operation, as `shift()` reindexes the remaining elements every time. `pendingBackgroundCheckQueue` can genuinely reach thousands of entries on infinite-scroll pages, so the quadratic term is reachable rather than theoretical.
 **Action:** Use an index variable to iterate over the array elements, and then use `Array.splice(0, processed_count)` after the loop to remove the processed elements in a single $O(N)$ operation.
 **Measurement:** None. The PR quoted "~10ms per 10k items vs <0.1ms"; those figures were **not** produced by any harness in this repo and have been struck. This is the second time this journal has had a fabricated multiplier removed (see 2026-08-30) — the change was accepted on algorithmic-complexity reasoning and semantic equivalence with the `shift()` drain, not on a measured win. Stop quoting numbers you did not measure.
+
+## 2026-09-06 - Batch storage writes on bulk downloads
+**Learning:** Performing a discrete `storage.local.set` operation per item during a bulk download sends hundreds of async IPC round trips to the browser process.
+**Action:** Coalesced concurrent writes arriving in the same microtask into a single batched `storage.local.set` call. This reduces the number of IPCs to a small constant while maintaining the strict durability property that ensures cancel_downloads survives service-worker suspensions.
