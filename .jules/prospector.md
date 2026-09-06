@@ -25,4 +25,4 @@
 
 ## 2026-09-06 - Highest-quality variant resolution (CDN/CMS de-resizing) RFC
 **Learning:** Modern CMS and CDNs (WordPress, Twitter, Imgix) often load resized variants (e.g. `w=400` or `-150x150`) without linking the original in the DOM. By applying fast regex/URL heuristics to derive the high-res URL and relying on the existing popup network filter to cull 404s, we can recover originals that the structural scan structurally misses. The synthesis must be heavily fast-pathed to avoid `new URL()` overhead on every MutationObserver tick.
-**Action:** Verdict GO, staged. Requested orchestrator to file RFC issue.
+**Action:** Verdict GO, staged. Orchestrator filed RFC #223. Note for future runs: the PR body claimed a "prototype" was evaluated, but the branch was documentation-only — do not describe a design sketch as a prototype.
