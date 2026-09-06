@@ -103,6 +103,17 @@ describe('Background Script', () => {
   test('download_image: normalizes URL to prevent parser differentials', async () => {
     const response = await messageListener({
       action: 'download_image',
+      url: 'HTTP://ExAmPlE.com:80/a/../b/image.jpg'
+    }, {});
+
+    expect(response).toEqual({ success: true });
+    expect(downloads).toHaveLength(1);
+    expect(downloads[0].url).toBe('http://example.com/b/image.jpg');
+  });
+
+  test('download_image: strips surrounding whitespace before normalizing', async () => {
+    const response = await messageListener({
+      action: 'download_image',
       url: '  https://example.com/path/../image.jpg  '
     }, {});
 
@@ -115,7 +126,7 @@ describe('Background Script', () => {
     const response = await messageListener({
       action: 'download_images_bulk',
       urls: [
-        '  https://example.com/path/../1.jpg  ',
+        'HTTP://ExAmPlE.com:80/a/../b/1.jpg',
         'https://example.com/2.jpg\n'
       ]
     }, {});
@@ -124,7 +135,7 @@ describe('Background Script', () => {
     await new Promise(resolve => setTimeout(resolve, 0));
 
     expect(downloads).toHaveLength(2);
-    expect(downloads[0].url).toBe('https://example.com/1.jpg');
+    expect(downloads[0].url).toBe('http://example.com/b/1.jpg');
     expect(downloads[1].url).toBe('https://example.com/2.jpg');
   });
 
@@ -139,12 +150,23 @@ describe('Background Script', () => {
   });
 
   test('download_image: invalid protocol', async () => {
-    const response = await messageListener({
-      action: 'download_image',
-      url: 'ftp://example.com/image.jpg'
-    }, {});
+    // Note: content.js intentionally allows blob: and data: for its own parsing,
+    // but the background allowlist rejects them before calling the download API.
+    const invalidUrls = [
+      'ftp://example.com/image.jpg',
+      'javascript:alert(1)',
+      'file:///etc/passwd',
+      'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
+      'blob:https://example.com/12345678-1234-1234-1234-1234567890ab'
+    ];
 
-    expect(response).toEqual({ success: false, error: 'Invalid URL or protocol' });
+    for (const url of invalidUrls) {
+      const response = await messageListener({
+        action: 'download_image',
+        url
+      }, {});
+      expect(response).toEqual({ success: false, error: 'Invalid URL or protocol' });
+    }
     expect(downloads).toHaveLength(0);
   });
 
@@ -158,6 +180,8 @@ describe('Background Script', () => {
   });
 
   test('download_images_bulk: valid and invalid URLs', async () => {
+    const setBadgeTextSpy = jest.spyOn(global.browser.action, 'setBadgeText');
+
     const response = await messageListener({
       action: 'download_images_bulk',
       urls: [
@@ -176,7 +200,13 @@ describe('Background Script', () => {
     expect(downloads).toHaveLength(2);
     expect(downloads[0].url).toBe('https://example.com/1.jpg');
     expect(downloads[1].url).toBe('http://example.com/3.jpg');
+
+    // Total should be 2 (the valid URLs), not 4 (the input length)
+    expect(setBadgeTextSpy).toHaveBeenCalledWith({ text: '1/2' });
+    expect(setBadgeTextSpy).toHaveBeenCalledWith({ text: '2/2' });
+
     expect(badgeText).toBe(''); // Should be reset at the end
+    setBadgeTextSpy.mockRestore();
   });
 
   test('download_images_bulk: with a download failure', async () => {

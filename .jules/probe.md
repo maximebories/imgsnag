@@ -49,3 +49,7 @@
 ## 2026-09-03 - Shortcut Hint UI State Test
 **Learning:** Verified that the Pixel persona's fix for correctly applying the shortcut hint (`Ctrl+Enter`/`Cmd+Enter`) only to the active button in the popup (either 'Download Selected' or 'Download All') lacked a regression test.
 **Action:** Added a regression test `tests/popup_shortcut.test.js` to pin the UI state updates in `updateCounter`, ensuring the tooltip hint dynamically moves to the correct active button based on selection state, and exposed internal states (`updateCounter`, `allUrls`, `selectedUrls`) via `module.exports` for testability.
+
+## 2026-09-03 - Centralized download URL validation regression test
+**Learning:** Found a journal-documented security enhancement from the Warden persona (Centralized download URL validation) that lacked regression tests. The extension normalizes URLs to avoid parser differentials and rejects non-allowlisted protocols before triggering downloads.
+**Action:** Always verify that security fixes related to centralized URL validation are pinned with regression tests that explicitly assert the final download API receives the normalized `urlObj.href` string (not the raw input) and rejects un-allowlisted protocols (`javascript:`, `file:`, `data:`, `blob:`), even if `content.js` allows them for its own logic. Also pinned the behavior that bulk download badge counts only track valid URLs post-filtering.

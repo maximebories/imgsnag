@@ -18,6 +18,25 @@
   // IMAGE_URL_RE is: a literal includes('http') check would miss "HtTp://".
   const HTTP_HINT_RE = /http/i;
 
+  // Stateless, so the initial sweep and the MutationObserver share one instance
+  // rather than rebuilding it per added subtree. <style> never holds image URLs
+  // the CSS scan misses; <script> is only worth sweeping when it carries JSON.
+  const REGEX_SWEEP_FILTER = {
+    acceptNode(node) {
+      if (node.nodeType === Node.ELEMENT_NODE) {
+        if (node.tagName === 'STYLE') return NodeFilter.FILTER_REJECT;
+        if (node.tagName === 'SCRIPT') {
+          const type = node.getAttribute('type');
+          if (type === 'application/ld+json' || type === 'application/json') {
+            return NodeFilter.FILTER_ACCEPT;
+          }
+          return NodeFilter.FILTER_REJECT;
+        }
+      }
+      return NodeFilter.FILTER_ACCEPT;
+    }
+  };
+
   const BG_IMAGE_SELECTORS =
     'div, span, section, article, header, footer, a, li, figure, i, [style*="background"]';
 
@@ -307,68 +326,74 @@
     });
 
     // CSS background-image on likely container elements
-    document.querySelectorAll(BG_IMAGE_SELECTORS).forEach((el) => {
-      // Fast path: skip elements with no styling hints to avoid expensive getComputedStyle calls
-      if (!el.className && !el.id && !el.getAttribute('style')) return;
-
-      pendingBackgroundCheckQueue.push(el);
-      if (!isBgCheckScheduled) {
-        isBgCheckScheduled = true;
-        if (typeof requestIdleCallback !== 'undefined') {
-          requestIdleCallback(processBgImageQueue);
-        } else {
-          setTimeout(processBgImageQueue, 1);
+    const bgTags = new Set(['DIV', 'SPAN', 'SECTION', 'ARTICLE', 'HEADER', 'FOOTER', 'A', 'LI', 'FIGURE', 'I']);
+    const bgWalker = document.createTreeWalker(document.documentElement, NodeFilter.SHOW_ELEMENT, null, false);
+    let el;
+    while ((el = bgWalker.nextNode())) {
+      let isBgMatch = bgTags.has(el.tagName);
+      if (!isBgMatch && el.hasAttributes && el.hasAttributes()) {
+        const style = el.getAttribute('style');
+        if (style && style.includes('background')) {
+          isBgMatch = true;
         }
       }
-    });
+      if (isBgMatch) {
+        // Fast path: skip elements with no styling hints to avoid expensive getComputedStyle calls
+        if (!el.className && !el.id && !el.getAttribute('style')) continue;
+
+        pendingBackgroundCheckQueue.push(el);
+        if (!isBgCheckScheduled) {
+          isBgCheckScheduled = true;
+          if (typeof requestIdleCallback !== 'undefined') {
+            requestIdleCallback(processBgImageQueue);
+          } else {
+            setTimeout(processBgImageQueue, 1);
+          }
+        }
+      }
+    }
 
     // Fallback — scan text and attributes to catch JSON-LD or data attributes that DOM queries miss
     const walker = document.createTreeWalker(
       document.documentElement,
       NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT,
-      {
-        acceptNode(node) {
-          if (node.nodeType === Node.ELEMENT_NODE) {
-            if (node.tagName === 'STYLE') return NodeFilter.FILTER_REJECT;
-            if (node.tagName === 'SCRIPT') {
-              const type = node.getAttribute('type');
-              if (type === 'application/ld+json' || type === 'application/json') {
-                return NodeFilter.FILTER_ACCEPT;
-              }
-              return NodeFilter.FILTER_REJECT;
-            }
-          }
-          return NodeFilter.FILTER_ACCEPT;
-        }
-      }
+      REGEX_SWEEP_FILTER
     );
 
     let node;
     while ((node = walker.nextNode())) {
-      if (node.nodeType === Node.TEXT_NODE) {
-        if (node.nodeValue && HTTP_HINT_RE.test(node.nodeValue)) {
+      extractRegexUrls(node, trackImage);
+    }
+  }
+
+  // Shared by the initial sweep and the MutationObserver: pulls image URLs out
+  // of a single node's text content or attribute values.
+  function extractRegexUrls(node, trackImage) {
+    if (node.nodeType === Node.TEXT_NODE) {
+      if (node.nodeValue && HTTP_HINT_RE.test(node.nodeValue)) {
+        let match;
+        IMAGE_URL_RE.lastIndex = 0;
+        while ((match = IMAGE_URL_RE.exec(node.nodeValue)) !== null) {
+          let url = match[0];
+          if (url.includes('\\')) url = url.replace(/\\/g, '');
+          trackImage(url);
+        }
+      }
+    } else if (node.nodeType === Node.ELEMENT_NODE) {
+      if (!node.hasAttributes()) return;
+      const attrs = node.attributes;
+      for (let i = 0, len = attrs.length; i < len; i++) {
+        // srcset-family attributes hold many variants of one image; the
+        // structural scan already tracked the best candidate
+        if (attrs[i].name.includes('srcset')) continue;
+        const val = attrs[i].value;
+        if (val && HTTP_HINT_RE.test(val)) {
           let match;
-          while ((match = IMAGE_URL_RE.exec(node.nodeValue)) !== null) {
+          IMAGE_URL_RE.lastIndex = 0;
+          while ((match = IMAGE_URL_RE.exec(val)) !== null) {
             let url = match[0];
             if (url.includes('\\')) url = url.replace(/\\/g, '');
             trackImage(url);
-          }
-        }
-      } else if (node.nodeType === Node.ELEMENT_NODE) {
-        if (!node.hasAttributes()) continue;
-        const attrs = node.attributes;
-        for (let i = 0, len = attrs.length; i < len; i++) {
-          // srcset-family attributes hold many variants of one image; the
-          // structural scan already tracked the best candidate
-          if (attrs[i].name.includes('srcset')) continue;
-          const val = attrs[i].value;
-          if (val && HTTP_HINT_RE.test(val)) {
-            let match;
-            while ((match = IMAGE_URL_RE.exec(val)) !== null) {
-              let url = match[0];
-              if (url.includes('\\')) url = url.replace(/\\/g, '');
-              trackImage(url);
-            }
           }
         }
       }
@@ -764,14 +789,32 @@
     const observer = new MutationObserver((mutations) => {
       const imageUrls = new Set();
       const videoUrls = new Set();
+      // Hoisted out of the node loops: one closure per batch, not per node
+      const trackSweptImage = (url) => {
+        const resolved = resolveUrl(url);
+        if (resolved && !resolved.startsWith('data:')) imageUrls.add(resolved);
+      };
       for (const mutation of mutations) {
         for (const node of mutation.addedNodes) {
-          if (node.nodeType !== Node.ELEMENT_NODE) continue;
-          extractUrlsFromElement(node, imageUrls, videoUrls);
-          if (node.getElementsByTagName) {
-            const walker = document.createTreeWalker(node, NodeFilter.SHOW_ELEMENT, null, false);
+          if (node.nodeType === Node.ELEMENT_NODE) {
+            extractUrlsFromElement(node, imageUrls, videoUrls);
+          }
+
+          if (node.nodeType === Node.ELEMENT_NODE || node.nodeType === Node.TEXT_NODE) {
+            extractRegexUrls(node, trackSweptImage);
+          }
+
+          if (node.nodeType === Node.ELEMENT_NODE) {
+            const walker = document.createTreeWalker(
+              node,
+              NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT,
+              REGEX_SWEEP_FILTER
+            );
+
             let el;
             while ((el = walker.nextNode())) {
+              extractRegexUrls(el, trackSweptImage);
+              if (el.nodeType !== Node.ELEMENT_NODE) continue;
               const tag = el.tagName;
               if (
                 TAG_SET.has(tag) ||
@@ -1019,6 +1062,6 @@
   syncDragPreference();
   browser.storage.onChanged.addListener(() => syncDragPreference());
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { getDomImageSize, getCssMediaUrls, extractBgImageUrls, resolveUrl, isVideoUrl, isImageUrl, isSvgUrl, parseSrcset, pickBestFromSrcset, collectInlineSvgs, handleEmbed, passesSizeFilter, handleMeta, collectMediaUrls, handleSource, handlePicture, handleSvgImage, handleDataBg };
+    module.exports = { getDomImageSize, getCssMediaUrls, extractBgImageUrls, resolveUrl, isVideoUrl, isImageUrl, isSvgUrl, parseSrcset, pickBestFromSrcset, collectInlineSvgs, handleEmbed, passesSizeFilter, handleMeta, collectMediaUrls, handleSource, handlePicture, handleSvgImage, handleDataBg, extractRegexUrls };
   }
 })();

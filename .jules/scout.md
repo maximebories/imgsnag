@@ -68,3 +68,7 @@
 ## 2026-09-03 - Missed JSON-LD in head tag
 **Learning:** The text/attribute sweep TreeWalker previously started its scan from `document.body`, completely missing `application/ld+json` and `application/json` `<script>` tags placed in the `<head>` of the document.
 **Action:** Change the TreeWalker root from `document.body` to `document.documentElement` to ensure the `<head>` tag is included in the regex sweep.
+
+## 2026-09-04 - MutationObserver missed URLs in dynamically added text nodes and attributes
+**Learning:** The MutationObserver in `setupMutationObserver` previously dropped dynamically added text nodes entirely, and only used `NodeFilter.SHOW_ELEMENT` when traversing dynamically added elements. This meant it entirely missed the fallback sweep that `collectImages` applies to catch image URLs embedded in JSON-LD text nodes or in `data-*` attributes that are inserted post-load.
+**Action:** Created a shared `extractRegexUrls` helper that applies the `IMAGE_URL_RE` regex to both text nodes and element attributes. Updated `setupMutationObserver` to process added `Node.TEXT_NODE` objects and traverse added subtrees with `NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT` (and the same `acceptNode` filter), invoking the new helper on every discovered node.

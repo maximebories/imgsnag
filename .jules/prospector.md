@@ -14,3 +14,7 @@
 ## 2026-09-01 - Same-origin iframe descent RFC
 **Learning:** Content script misses media in iframes because all_frames is false. Same-origin iframes can be trivially accessed via iframe.contentDocument within the existing script, avoiding the heavy all_frames: true tax.
 **Action:** Verdict GO, staged. Traverse same-origin contentDocument with try/catch guards.
+
+## 2026-09-04 - Streaming manifests: HLS .m3u8 / DASH .mpd (RFC filed by orchestrator)
+**Learning:** Streaming manifests (HLS `.m3u8`, DASH `.mpd`) are already partially caught if they appear in `<video src>`, but for MSE-driven players (HLS.js, Dash.js), the manifests are fetched via XHR/fetch and played through a `blob:` URL. While `PerformanceObserver` or network interception could theoretically catch the manifest URLs, "downloading" a manifest just yields a text file of chunk URLs, not a playable video file. Re-assembling the TS/M4S chunks into a standard MP4 requires a full client-side muxer (like ffmpeg.wasm), which is vastly out of scope for a lightweight capture extension.
+**Action:** Verdict NO-GO. Do not attempt to capture or parse streaming manifests. Leave them out of scope.
