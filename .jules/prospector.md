@@ -22,3 +22,11 @@
 ## 2026-09-05 - Service-worker Cache Storage inspection RFC
 **Learning:** Service-worker Cache Storage (`window.caches`) cannot be safely or synchronously enumerated in a content script without causing extreme performance degradation. Enumerating cache keys requires waking up the service worker (or blocking via async calls) and returning opaque Request/Response objects, which then have to be fully read as blobs to inspect them, destroying page memory. Furthermore, `imgsnag` currently identifies media via URLs, but Cache Storage assets may not have valid, currently reachable remote URLs.
 **Action:** Verdict NO-GO. Service-worker Cache Storage is fundamentally incompatible with the extension's lightweight synchronous DOM extraction pipeline and URL-based delivery mechanism.
+
+## 2026-09-06 - Highest-quality variant resolution (CDN/CMS de-resizing) RFC
+**Learning:** Modern CMS and CDNs (WordPress, Twitter, Imgix) often load resized variants (e.g. `w=400` or `-150x150`) without linking the original in the DOM. By applying fast regex/URL heuristics to derive the high-res URL and relying on the existing popup network filter to cull 404s, we can recover originals that the structural scan structurally misses. The synthesis must be heavily fast-pathed to avoid `new URL()` overhead on every MutationObserver tick.
+**Action:** Verdict GO, staged. Orchestrator filed RFC #223. Note for future runs: the PR body claimed a "prototype" was evaluated, but the branch was documentation-only — do not describe a design sketch as a prototype.
+
+## 2026-09-07 - CSS cursor / list-style-image RFC
+**Learning:** CSS properties `cursor: url(...)` and `list-style-image: url(...)` are valid image sinks (the final open items from RFC #138). However, they sit on the `getComputedStyle` hot path and require CSSOM iteration to resolve. Their expected yield is near-zero compared to `mask-image`, as cursors and list bullets are diminutive and almost universally fail the existing ≥200x200 size filter unless maliciously crafted. Note: `<image href>` is already captured by the existing `handleSvgImage` handler.
+**Action:** Verdict NO-GO. Do not add `cursor` or `list-style-image` to the styling-hint fast path or idle queue due to disproportionate CSSOM scanning overhead relative to expected yield.

@@ -41,13 +41,23 @@ describe('extractBgImageUrls', () => {
   });
 
   it('should extract URLs from image-set() strings', () => {
-    const bgValue = 'image-set("img1.png" 1x, url("img2.png") 2x)';
-    expect(extractBgImageUrls(bgValue)).toEqual(['img2.png', 'img1.png']);
+    const bgValue = 'image-set(url("img1.png") 1x, "img2.png" 2x)';
+    expect(extractBgImageUrls(bgValue)).toEqual(['img1.png', 'img2.png']);
   });
 
   it('should extract URLs from -webkit-image-set() strings', () => {
-    const bgValue = '-webkit-image-set("img1.png" 1x, "img2.png" 2x)';
-    expect(extractBgImageUrls(bgValue)).toEqual(['img1.png', 'img2.png']);
+    const bgValue = '-webkit-image-set(url("img1.png") 1x, "img2.png" 2x, url("img3.png") 3x, "img4.png" 4x)';
+    expect(extractBgImageUrls(bgValue)).toEqual(['img1.png', 'img3.png', 'img2.png', 'img4.png']);
+  });
+
+  it('should not mistake image-set() type() MIME strings for URLs', () => {
+    const bgValue = 'image-set("a.avif" type("image/avif"), "b.jpg" type("image/jpeg"))';
+    expect(extractBgImageUrls(bgValue)).toEqual(['a.avif', 'b.jpg']);
+  });
+
+  it('should preserve the bare-string variant when it precedes url()', () => {
+    const bgValue = 'image-set("img1.png" 1x, url("img2.png") 2x)';
+    expect(extractBgImageUrls(bgValue)).toEqual(['img2.png', 'img1.png']);
   });
 
   it('should extract URLs with extraneous spaces inside the parentheses (current regex behavior)', () => {
@@ -133,6 +143,18 @@ describe('handleMeta', () => {
       'https://example.com/secure.jpg',
       'https://example.com/apple.png',
       'https://example.com/icon.png'
+    ]);
+  });
+
+  it('captures meta/link schema.org images and mask icons', () => {
+    const set = new Set();
+    handleMeta(el('meta', { itemprop: 'image', content: 'https://example.com/schema.jpg' }), set);
+    handleMeta(el('link', { itemprop: 'image', href: 'https://example.com/schemalink.jpg' }), set);
+    handleMeta(el('link', { rel: 'mask-icon', href: 'https://example.com/mask.svg' }), set);
+    expect([...set]).toEqual([
+      'https://example.com/schema.jpg',
+      'https://example.com/schemalink.jpg',
+      'https://example.com/mask.svg'
     ]);
   });
 
@@ -403,5 +425,103 @@ describe('handleDataBg', () => {
     const set = new Set();
     handleDataBg(el('div', { 'data-bg-src': 'not_an_image' }), set);
     expect(set.size).toBe(0);
+  });
+});
+
+describe('handleVideo', () => {
+  const { handleVideo } = require('../src/content.js');
+
+  function el(tag, attrs = {}) {
+    const e = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+    return e;
+  }
+
+  it('extracts src and poster from video elements', () => {
+    const imageSet = new Set();
+    const videoSet = new Set();
+
+    handleVideo(el('video', {
+      src: 'https://example.com/video.mp4',
+      poster: 'https://example.com/poster.jpg'
+    }), imageSet, videoSet);
+
+    expect([...videoSet]).toEqual(['https://example.com/video.mp4']);
+    expect([...imageSet]).toEqual(['https://example.com/poster.jpg']);
+  });
+
+  it('extracts lazy loaded attributes into correct sets', () => {
+    const attrs = ['data-src', 'data-lazy-src', 'data-original'];
+
+    for (const attr of attrs) {
+      const imageSet = new Set();
+      const videoSet = new Set();
+
+      const vEl = el('video');
+      vEl.setAttribute(attr, `https://example.com/${attr}.webm`);
+      vEl.setAttribute('data-poster', `https://example.com/${attr}_poster.webp`);
+
+      handleVideo(vEl, imageSet, videoSet);
+
+      expect([...videoSet]).toEqual([`https://example.com/${attr}.webm`]);
+      expect([...imageSet]).toEqual([`https://example.com/${attr}_poster.webp`]);
+    }
+  });
+
+  it('skips data: URLs for both video and poster', () => {
+    const imageSet = new Set();
+    const videoSet = new Set();
+
+    handleVideo(el('video', {
+      src: 'data:video/mp4;base64,123',
+      poster: 'data:image/jpeg;base64,456'
+    }), imageSet, videoSet);
+
+    expect(videoSet.size).toBe(0);
+    expect(imageSet.size).toBe(0);
+  });
+});
+
+describe('trackImageUrl', () => {
+  const { trackImageUrl } = require('../src/content.js');
+
+  it('adds original URL and synthesizes original for WordPress downscaled images', () => {
+    const set = new Set();
+    trackImageUrl('https://example.com/photo-150x150.jpg', set);
+    expect([...set]).toEqual([
+      'https://example.com/photo-150x150.jpg',
+      'https://example.com/photo.jpg'
+    ]);
+  });
+
+  it('leaves standard URLs unaffected', () => {
+    const set = new Set();
+    trackImageUrl('https://example.com/photo.jpg', set);
+    expect([...set]).toEqual(['https://example.com/photo.jpg']);
+  });
+
+  it('deduplicates if the synthesized URL is already present', () => {
+    const set = new Set();
+    set.add('https://example.com/photo.jpg');
+    trackImageUrl('https://example.com/photo-150x150.jpg', set);
+    expect([...set]).toEqual([
+      'https://example.com/photo.jpg',
+      'https://example.com/photo-150x150.jpg'
+    ]);
+  });
+
+  // A synthesized URL that 404s is culled by the popup's new Image() probe — but
+  // filterImagesBySize exempts .svg from probing entirely, so an unverifiable SVG
+  // would survive to the grid. Synthesis must stay off SVG.
+  it('does not synthesize an original for SVG variants', () => {
+    const set = new Set();
+    trackImageUrl('https://example.com/logo-150x150.svg', set);
+    expect([...set]).toEqual(['https://example.com/logo-150x150.svg']);
+  });
+
+  it('does not synthesize from a dimension-like segment outside the filename suffix', () => {
+    const set = new Set();
+    trackImageUrl('https://example.com/1920x1080/photo.jpg', set);
+    expect([...set]).toEqual(['https://example.com/1920x1080/photo.jpg']);
   });
 });
