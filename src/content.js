@@ -8,7 +8,6 @@
   const IMAGE_EXT_RE = /\.(?:jpe?g|gif|png|webp|svg|avif)(?:[?#]|$)/i;
   const VIDEO_EXT_RE = /\.(?:mp4|webm|ogv|mov|m4v|avi)(?:[?#]|$)/i;
   const BG_URL_RE = /url\(["']?(.*?)["']?\)/gi;
-  const IMAGE_SET_RE = /(?:-webkit-)?image-set\(([^)]+)\)/gi;
 
   // Catches image URLs embedded in inline scripts or JSON-LD that DOM queries miss
   const IMAGE_URL_RE =
@@ -113,21 +112,26 @@
       urls.push(match[1]);
     }
 
-    IMAGE_SET_RE.lastIndex = 0;
-    let setMatch;
-    while ((setMatch = IMAGE_SET_RE.exec(bgValue)) !== null) {
-      const inner = setMatch[1];
-      const entries = inner.split(',');
-      for (const entry of entries) {
-        const trimmed = entry.trim();
-        if (trimmed.startsWith('"') || trimmed.startsWith("'")) {
-          const quote = trimmed[0];
-          const endQuote = trimmed.indexOf(quote, 1);
-          if (endQuote !== -1) {
-            urls.push(trimmed.substring(1, endQuote));
-          }
-        }
+    const keyword = 'image-set(';
+    let idx = 0;
+    const lowerBg = bgValue.toLowerCase();
+    while ((idx = lowerBg.indexOf(keyword, idx)) !== -1) {
+      const start = idx + keyword.length;
+      let depth = 1;
+      let i = start;
+      for (; i < bgValue.length; i++) {
+        if (bgValue[i] === '(') depth++;
+        else if (bgValue[i] === ')') depth--;
+        if (depth === 0) break;
       }
+      const inner = bgValue.substring(start, i);
+      const withoutUrls = inner.replace(/url\([^)]*\)/gi, '');
+      const QUOTE_RE = /(["'])(.*?)\1/g;
+      let quoteMatch;
+      while ((quoteMatch = QUOTE_RE.exec(withoutUrls)) !== null) {
+        if (quoteMatch[2].trim()) urls.push(quoteMatch[2]);
+      }
+      idx = i + 1;
     }
     return urls;
   }
