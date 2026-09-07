@@ -50,6 +50,16 @@ describe('extractBgImageUrls', () => {
     expect(extractBgImageUrls(bgValue)).toEqual(['img1.png', 'img3.png', 'img2.png', 'img4.png']);
   });
 
+  it('should not mistake image-set() type() MIME strings for URLs', () => {
+    const bgValue = 'image-set("a.avif" type("image/avif"), "b.jpg" type("image/jpeg"))';
+    expect(extractBgImageUrls(bgValue)).toEqual(['a.avif', 'b.jpg']);
+  });
+
+  it('should preserve the bare-string variant when it precedes url()', () => {
+    const bgValue = 'image-set("img1.png" 1x, url("img2.png") 2x)';
+    expect(extractBgImageUrls(bgValue)).toEqual(['img2.png', 'img1.png']);
+  });
+
   it('should extract URLs with extraneous spaces inside the parentheses (current regex behavior)', () => {
     const bgValue = "url(  'image.jpg'  )";
     expect(extractBgImageUrls(bgValue)).toEqual(["  'image.jpg'  "]);

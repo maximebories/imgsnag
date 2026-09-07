@@ -125,7 +125,9 @@
         if (depth === 0) break;
       }
       const inner = bgValue.substring(start, i);
-      const withoutUrls = inner.replace(/url\([^)]*\)/gi, '');
+      // url() variants are already collected by BG_URL_RE above; type() carries a
+      // MIME string, not a URL — strip both before harvesting bare-string variants.
+      const withoutUrls = inner.replace(/(?:url|type)\([^)]*\)/gi, '');
       const QUOTE_RE = /(["'])(.*?)\1/g;
       let quoteMatch;
       while ((quoteMatch = QUOTE_RE.exec(withoutUrls)) !== null) {
