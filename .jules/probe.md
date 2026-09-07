@@ -53,3 +53,11 @@
 ## 2026-09-03 - Centralized download URL validation regression test
 **Learning:** Found a journal-documented security enhancement from the Warden persona (Centralized download URL validation) that lacked regression tests. The extension normalizes URLs to avoid parser differentials and rejects non-allowlisted protocols before triggering downloads.
 **Action:** Always verify that security fixes related to centralized URL validation are pinned with regression tests that explicitly assert the final download API receives the normalized `urlObj.href` string (not the raw input) and rejects un-allowlisted protocols (`javascript:`, `file:`, `data:`, `blob:`), even if `content.js` allows them for its own logic. Also pinned the behavior that bulk download badge counts only track valid URLs post-filtering.
+
+## 2026-09-06 - Missed Lazy Loaded Videos regression test
+**Learning:** Verified that the Scout persona's fix for extracting lazy-loaded video URLs and video poster URLs (from attributes like `data-src`, `data-lazy-src`, `data-original`, and `data-poster`) in `handleVideo` lacked a regression test. Additionally, `handleVideo` was not exposed via `module.exports`, making it untestable in isolation.
+**Action:** Added `handleVideo` to `module.exports` and added a regression test in `tests/content.test.js` to ensure the correct extraction of video URLs into the `videoSet` and poster URLs into the `imageSet`, protecting against regressions that would cross these sets or miss lazy-loaded attributes.
+
+## 2026-09-07 - JSON-LD and application/json in <head> regression test
+**Learning:** Verified that the Scout persona's fix for capturing `application/ld+json` and `application/json` `<script>` tags placed in the `<head>` of the document (by changing the TreeWalker root from `document.body` to `document.documentElement`) lacked a regression test targeting the `<head>` specifically.
+**Action:** Added a regression test in `tests/redos_fallback.test.js` appending these scripts and a `<style>` block to `document.head` to assert that `collectMediaUrls` correctly extracts image URLs from the JSON scripts while appropriately ignoring the style block.
