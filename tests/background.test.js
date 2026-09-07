@@ -1,61 +1,83 @@
-const fs = require('fs');
-const bgScript = fs.readFileSync('src/background.js', 'utf8');
+// Coalesced `dl_<id>` writes in the bulk-download path.
+//
+// The property that matters is DURABILITY, not the write count: those keys exist
+// so `cancel_downloads` survives service-worker suspension. Batching is only
+// legal because `addActiveDownloadId` awaits its flush and `onMessage` returns
+// that promise, so the worker cannot be evicted with ids still buffered in the
+// module-level coalescing map. These tests assert against what is READABLE FROM
+// STORAGE afterwards, so they keep holding if the batching shape changes.
+global.importScripts = () => {};
 
-describe('background.js batching', () => {
+describe('bulk download id persistence', () => {
+  let messageListener;
+  let setCallCount;
+
   beforeEach(() => {
+    messageListener = null;
+    setCallCount = 0;
     jest.resetModules();
+
+    global.mockStorage = {};
     global.browser = {
-      downloads: {
-        download: jest.fn().mockImplementation(async ({ url }) => {
-          // Mock download to return an id based on url
-          const match = url.match(/image(\d+)\.jpg/);
-          const id = match ? parseInt(match[1], 10) : 0;
-          return id;
-        }),
-        onChanged: { addListener: jest.fn() },
-        cancel: jest.fn().mockResolvedValue()
-      },
       storage: {
         local: {
-          get: jest.fn().mockResolvedValue({}),
-          set: jest.fn().mockResolvedValue(),
-          remove: jest.fn().mockResolvedValue()
+          get: async () => global.mockStorage,
+          set: async (obj) => {
+            setCallCount++;
+            // Resolve on a macrotask so a same-microtask batch is observable:
+            // anything still buffered when this settles would be a lost write.
+            await new Promise((r) => setTimeout(r, 0));
+            global.mockStorage = { ...global.mockStorage, ...obj };
+          },
+          remove: async (keys) => {
+            const ks = Array.isArray(keys) ? keys : [keys];
+            ks.forEach((k) => delete global.mockStorage[k]);
+          }
         }
       },
-      runtime: {
-        onMessage: { addListener: jest.fn() }
+      runtime: { onMessage: { addListener: (cb) => { messageListener = cb; } } },
+      downloads: {
+        download: async ({ url }) => parseInt(url.match(/image(\d+)\.jpg/)[1], 10),
+        cancel: async () => {},
+        onChanged: { addListener: () => {} }
       },
-      action: { setBadgeText: jest.fn().mockResolvedValue() }
+      action: { setBadgeText: async () => {} }
     };
-    global.importScripts = jest.fn();
 
-    // Evaluate background script in the global context
-    eval(bgScript);
+    require('../src/background.js');
   });
 
-  it('batches multiple concurrent addActiveDownloadId calls', async () => {
-    // Simulate bulk download message
-    const urls = Array.from({ length: 100 }).map((_, i) => "https://example.com/image" + i + ".jpg");
-    const listener = global.browser.runtime.onMessage.addListener.mock.calls[0][0];
+  it('persists every id from a concurrent bulk download', async () => {
+    const urls = Array.from({ length: 100 }, (_, i) => `https://example.com/image${i}.jpg`);
 
-    const p = listener({ action: 'download_images_bulk', urls }, {});
-    await p; // Wait for the bulk download handler to finish
+    await messageListener({ action: 'download_images_bulk', urls }, {});
 
-    // In a single tick/microtask loop, 100 requests should be batched.
-    // Assert number of calls to storage.local.set is far fewer than 100
-    const setCalls = global.browser.storage.local.set.mock.calls;
-    expect(setCalls.length).toBeLessThan(100);
-    expect(setCalls.length).toBeGreaterThan(0);
-
-    // Collect all arguments passed to set
-    let finalState = {};
-    for (const call of setCalls) {
-      Object.assign(finalState, call[0]);
-    }
-
-    // Expect all 100 ids to be persisted in the batch(es)
+    // Durability: every id is readable from storage once the handler resolves.
     for (let i = 0; i < 100; i++) {
-      expect(finalState["dl_" + i]).toBe(true);
+      expect(global.mockStorage[`dl_${i}`]).toBe(true);
     }
+  });
+
+  it('coalesces those writes into far fewer than one set() per id', async () => {
+    const urls = Array.from({ length: 100 }, (_, i) => `https://example.com/image${i}.jpg`);
+
+    await messageListener({ action: 'download_images_bulk', urls }, {});
+
+    expect(setCallCount).toBeGreaterThan(0);
+    expect(setCallCount).toBeLessThan(100);
+  });
+
+  it('leaves nothing buffered — cancel_downloads sees every id', async () => {
+    const urls = Array.from({ length: 25 }, (_, i) => `https://example.com/image${i}.jpg`);
+    const cancelled = [];
+    global.browser.downloads.cancel = async (id) => { cancelled.push(id); };
+
+    await messageListener({ action: 'download_images_bulk', urls }, {});
+    await messageListener({ action: 'cancel_downloads' }, {});
+
+    expect(cancelled.sort((a, b) => a - b)).toEqual(
+      Array.from({ length: 25 }, (_, i) => i)
+    );
+    expect(Object.keys(global.mockStorage).filter((k) => k.startsWith('dl_'))).toEqual([]);
   });
 });
