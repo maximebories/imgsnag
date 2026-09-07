@@ -76,3 +76,8 @@
 ## 2026-09-06 - image-set() bare-string entries missed after url()
 **Learning:** `extractBgImageUrls` uses two passes: `BG_URL_RE` catches `url(...)` globally, and `IMAGE_SET_RE` catches bare-string variants in `image-set()`. `IMAGE_SET_RE` used `[^)]+` to capture `image-set()` contents, meaning if any variant used `url(...)`, the capture group stopped at `url()`'s closing parenthesis. This caused any bare-string entries that appeared *after* a `url()` in the same `image-set()` to be completely missed.
 **Action:** Replaced the `IMAGE_SET_RE` regex with a safe, non-regex linear scan that tracks parenthesis depth to precisely extract the full `image-set(...)` contents, then safely parses out bare quoted strings without double-counting `url()` variants.
+**Orchestrator follow-up:** Capturing the *full* inner text also widened the false-positive surface: `type("image/avif")` is a standard `image-set()` descriptor, and its MIME string was harvested as a candidate URL (the old truncated capture never reached it). `type(...)` is now stripped alongside `url(...)`. Lesson: when you widen a parser's input window, re-check what else that window now contains.
+
+## 2026-09-07 - Missed Schema.org images and mask icons
+**Learning:** Schema.org microdata frequently encodes high-quality images via `<meta itemprop="image">` and `<link itemprop="image">`, and Safari pinned tab icons use `<link rel="mask-icon">`. These were completely missed by the metadata extraction queries.
+**Action:** Added targeted extraction for `itemprop="image"` and `rel="mask-icon"` to both the initial document query scan in `collectImages()` and the MutationObserver path `handleMeta()`.
