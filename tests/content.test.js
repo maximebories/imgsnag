@@ -405,3 +405,38 @@ describe('handleDataBg', () => {
     expect(set.size).toBe(0);
   });
 });
+
+const { TextEncoder, TextDecoder } = require('util');
+global.TextEncoder = TextEncoder;
+global.TextDecoder = TextDecoder;
+
+
+
+describe('trackImageUrl', () => {
+  const { trackImageUrl } = require('../src/content.js');
+
+  it('adds original URL and synthesizes original for WordPress downscaled images', () => {
+    const set = new Set();
+    trackImageUrl('https://example.com/photo-150x150.jpg', set);
+    expect([...set]).toEqual([
+      'https://example.com/photo-150x150.jpg',
+      'https://example.com/photo.jpg'
+    ]);
+  });
+
+  it('leaves standard URLs unaffected', () => {
+    const set = new Set();
+    trackImageUrl('https://example.com/photo.jpg', set);
+    expect([...set]).toEqual(['https://example.com/photo.jpg']);
+  });
+
+  it('deduplicates if the synthesized URL is already present', () => {
+    const set = new Set();
+    set.add('https://example.com/photo.jpg');
+    trackImageUrl('https://example.com/photo-150x150.jpg', set);
+    expect([...set]).toEqual([
+      'https://example.com/photo.jpg',
+      'https://example.com/photo-150x150.jpg'
+    ]);
+  });
+});

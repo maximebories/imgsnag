@@ -72,3 +72,7 @@
 ## 2026-09-04 - MutationObserver missed URLs in dynamically added text nodes and attributes
 **Learning:** The MutationObserver in `setupMutationObserver` previously dropped dynamically added text nodes entirely, and only used `NodeFilter.SHOW_ELEMENT` when traversing dynamically added elements. This meant it entirely missed the fallback sweep that `collectImages` applies to catch image URLs embedded in JSON-LD text nodes or in `data-*` attributes that are inserted post-load.
 **Action:** Created a shared `extractRegexUrls` helper that applies the `IMAGE_URL_RE` regex to both text nodes and element attributes. Updated `setupMutationObserver` to process added `Node.TEXT_NODE` objects and traverse added subtrees with `NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT` (and the same `acceptNode` filter), invoking the new helper on every discovered node.
+
+## 2026-09-06 - Synthesize original URLs for WordPress downscaled variants
+**Learning:** WordPress and other CMS systems often serve downscaled image variants with a `-WxH` suffix (e.g., `-150x150.jpg`) and omit the original image from the DOM completely. Relying strictly on DOM extraction misses the high-resolution original.
+**Action:** Implemented a new `trackImageUrl` central helper that, after resolving any discovered URL, uses a fast regex to detect `-WxH` suffixes. If found, it synthesizes the original URL by stripping the suffix, resolves it again to enforce security constraints, and adds it to the tracked set, allowing the existing network filter to cull it if it fails to load.
