@@ -72,3 +72,7 @@
 ## 2026-09-04 - MutationObserver missed URLs in dynamically added text nodes and attributes
 **Learning:** The MutationObserver in `setupMutationObserver` previously dropped dynamically added text nodes entirely, and only used `NodeFilter.SHOW_ELEMENT` when traversing dynamically added elements. This meant it entirely missed the fallback sweep that `collectImages` applies to catch image URLs embedded in JSON-LD text nodes or in `data-*` attributes that are inserted post-load.
 **Action:** Created a shared `extractRegexUrls` helper that applies the `IMAGE_URL_RE` regex to both text nodes and element attributes. Updated `setupMutationObserver` to process added `Node.TEXT_NODE` objects and traverse added subtrees with `NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT` (and the same `acceptNode` filter), invoking the new helper on every discovered node.
+
+## 2026-09-07 - Missed Schema.org images and mask icons
+**Learning:** Schema.org microdata frequently encodes high-quality images via `<meta itemprop="image">` and `<link itemprop="image">`, and Safari pinned tab icons use `<link rel="mask-icon">`. These were completely missed by the metadata extraction queries.
+**Action:** Added targeted extraction for `itemprop="image"` and `rel="mask-icon"` to both the initial document query scan in `collectImages()` and the MutationObserver path `handleMeta()`.

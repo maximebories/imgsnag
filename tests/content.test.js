@@ -136,6 +136,18 @@ describe('handleMeta', () => {
     ]);
   });
 
+  it('captures meta/link schema.org images and mask icons', () => {
+    const set = new Set();
+    handleMeta(el('meta', { itemprop: 'image', content: 'https://example.com/schema.jpg' }), set);
+    handleMeta(el('link', { itemprop: 'image', href: 'https://example.com/schemalink.jpg' }), set);
+    handleMeta(el('link', { rel: 'mask-icon', href: 'https://example.com/mask.svg' }), set);
+    expect([...set]).toEqual([
+      'https://example.com/schema.jpg',
+      'https://example.com/schemalink.jpg',
+      'https://example.com/mask.svg'
+    ]);
+  });
+
   it('ignores other meta and link tags', () => {
     const set = new Set();
     handleMeta(el('meta', { name: 'description', content: 'hello' }), set);
