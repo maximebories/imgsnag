@@ -210,6 +210,28 @@ describe('Background Script', () => {
     setBadgeTextSpy.mockRestore();
   });
 
+  test('download_images_bulk: badge steps by 10 above 50 items, and always lands exact', async () => {
+    const setBadgeTextSpy = jest.spyOn(global.browser.action, 'setBadgeText');
+    const urls = Array.from({ length: 60 }, (_, i) => `https://example.com/${i}.jpg`);
+
+    await messageListener({ action: 'download_images_bulk', urls }, {});
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    const progress = setBadgeTextSpy.mock.calls
+      .map(([d]) => d.text)
+      .filter((t) => t && t.includes('/'));
+
+    // Every 10th completion plus the final one — never a non-multiple of 10.
+    expect(progress).toEqual([
+      '10/60', '20/60', '30/60', '40/60', '50/60', '60/60'
+    ]);
+
+    // The user always sees the true total, whatever the step.
+    expect(progress[progress.length - 1]).toBe('60/60');
+    expect(badgeText).toBe('');
+    setBadgeTextSpy.mockRestore();
+  });
+
   test('download_images_bulk: with a download failure', async () => {
     const response = await messageListener({
       action: 'download_images_bulk',
