@@ -57,3 +57,7 @@
 ## 2026-09-06 - Missed Lazy Loaded Videos regression test
 **Learning:** Verified that the Scout persona's fix for extracting lazy-loaded video URLs and video poster URLs (from attributes like `data-src`, `data-lazy-src`, `data-original`, and `data-poster`) in `handleVideo` lacked a regression test. Additionally, `handleVideo` was not exposed via `module.exports`, making it untestable in isolation.
 **Action:** Added `handleVideo` to `module.exports` and added a regression test in `tests/content.test.js` to ensure the correct extraction of video URLs into the `videoSet` and poster URLs into the `imageSet`, protecting against regressions that would cross these sets or miss lazy-loaded attributes.
+
+## 2026-09-08 - JSON-LD and application/json in <head> regression test
+**Learning:** Verified that the Scout persona's fix for capturing `application/ld+json` and `application/json` `<script>` tags placed in the `<head>` of the document (by changing the TreeWalker root from `document.body` to `document.documentElement`) lacked a regression test targeting the `<head>` specifically.
+**Action:** Added a regression test in `tests/redos_fallback.test.js` appending these scripts and a `<style>` block to `document.head` to assert that `collectMediaUrls` correctly extracts image URLs from the JSON scripts while appropriately ignoring the style block.

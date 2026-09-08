@@ -79,4 +79,37 @@ describe('Content script ReDoS fallback (TreeWalker)', () => {
     expect(imageUrls.has('https://example.com/bad.png')).toBe(false);
     expect(imageUrls.has('https://example.com/style.png')).toBe(false);
   });
+
+  it('extracts URLs from JSON-LD and application/json scripts in the head tag', () => {
+    // Document head tests to ensure documentElement root is used for TreeWalker sweep
+
+    // Add JSON-LD script block containing an image URL to head
+    const headScript = document.createElement('script');
+    headScript.setAttribute('type', 'application/ld+json');
+    headScript.textContent = '{"image": "https://example.com/head-schema.gif"}';
+    document.head.appendChild(headScript);
+
+    // Add application/json script block containing an image URL to head
+    const headJsonScript = document.createElement('script');
+    headJsonScript.setAttribute('type', 'application/json');
+    headJsonScript.textContent = '{"props":{"pageProps":{"image":"https://example.com/head-nextjs.png"}}}';
+    document.head.appendChild(headJsonScript);
+
+    // Add a style block containing an image URL to head (should be rejected by REGEX_SWEEP_FILTER)
+    const headStyle = document.createElement('style');
+    headStyle.textContent = '.bg { background-image: url("https://example.com/head-style.png"); }';
+    document.head.appendChild(headStyle);
+
+    // Add a normal script block containing an image URL to head (should be rejected)
+    const headBadScript = document.createElement('script');
+    headBadScript.textContent = 'const headImg = "https://example.com/head-bad.png";';
+    document.head.appendChild(headBadScript);
+
+    const { imageUrls } = collectMediaUrls();
+
+    expect(imageUrls.has('https://example.com/head-schema.gif')).toBe(true);
+    expect(imageUrls.has('https://example.com/head-nextjs.png')).toBe(true);
+    expect(imageUrls.has('https://example.com/head-style.png')).toBe(false);
+    expect(imageUrls.has('https://example.com/head-bad.png')).toBe(false);
+  });
 });
