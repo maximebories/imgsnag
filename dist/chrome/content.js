@@ -44,6 +44,10 @@
     'div, span, section, article, header, footer, a, li, figure, i, [style*="background"]';
 
   const MIN_IMAGE_SIZE = 200;
+  // Ceiling on simultaneous `new Image()` size probes. Each in-flight probe holds
+  // a decoded bitmap, so an unbounded fan-out over a large gallery is a memory
+  // spike, not just extra requests.
+  const SIZE_PROBE_POOL_SIZE = 12;
   // Tags worth an attribute sweep when they turn up in a MutationObserver batch
   const TAG_SET = new Set(['IMG', 'VIDEO', 'SOURCE', 'PICTURE', 'DIV', 'SPAN', 'SECTION', 'ARTICLE', 'HEADER', 'FOOTER', 'A', 'LI', 'FIGURE', 'I', 'META', 'LINK', 'OBJECT', 'EMBED', 'IFRAME', 'image', 'IMAGE']);
 
@@ -526,24 +530,53 @@
       }
     }
 
-    const results = await Promise.all(
-      [...urls].map(async (url) => {
-        if (isSvgUrl(url)) return url;
-        const domSize = sizeMap.get(url) || getDomImageSize(url);
-        if (domSize) {
-          return passesSizeFilter(domSize) ? url : null;
-        }
+    const arr = [...urls];
+    const results = new Array(arr.length);
+    const pendingIndexes = [];
 
-        // Lazy network fetch: if popup is closed, delay the expensive new Image() call
-        if (!popupPort) {
-          pendingNetworkFilter.add(url);
-          return null;
-        }
+    for (let index = 0; index < arr.length; index++) {
+      const url = arr[index];
+      if (isSvgUrl(url)) {
+        results[index] = url;
+        continue;
+      }
+      const domSize = sizeMap.get(url) || getDomImageSize(url);
+      if (domSize) {
+        results[index] = passesSizeFilter(domSize) ? url : null;
+        continue;
+      }
+      // Lazy network fetch: if popup is closed, delay the expensive new Image() call
+      if (!popupPort) {
+        pendingNetworkFilter.add(url);
+        results[index] = null;
+        continue;
+      }
+      pendingIndexes.push(index);
+    }
 
+    // Shared cursor: `pendingPos++` is atomic under JS's single-threaded model,
+    // so N workers can pull from one queue without a lock. Results are written
+    // back by index, never appended, so output order matches input order even
+    // though probes settle out of order.
+    let pendingPos = 0;
+
+    async function worker() {
+      while (pendingPos < pendingIndexes.length) {
+        const index = pendingIndexes[pendingPos++];
+        const url = arr[index];
         const size = await getImageSize(url);
-        return passesSizeFilter(size) ? url : null;
-      })
-    );
+        results[index] = passesSizeFilter(size) ? url : null;
+      }
+    }
+
+    const workers = [];
+    for (let w = 0; w < SIZE_PROBE_POOL_SIZE && w < pendingIndexes.length; w++) {
+      workers.push(worker());
+    }
+    if (workers.length > 0) {
+      await Promise.all(workers);
+    }
+
     return results.filter(Boolean);
   }
 
@@ -1066,6 +1099,6 @@
   syncDragPreference();
   browser.storage.onChanged.addListener(() => syncDragPreference());
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { trackImageUrl, getDomImageSize, getCssMediaUrls, extractBgImageUrls, resolveUrl, isVideoUrl, isImageUrl, isSvgUrl, parseSrcset, pickBestFromSrcset, collectInlineSvgs, handleEmbed, passesSizeFilter, handleMeta, collectMediaUrls, handleSource, handlePicture, handleSvgImage, handleDataBg, extractRegexUrls, handleVideo };
+    module.exports = { trackImageUrl, getDomImageSize, getCssMediaUrls, extractBgImageUrls, resolveUrl, isVideoUrl, isImageUrl, isSvgUrl, parseSrcset, pickBestFromSrcset, collectInlineSvgs, handleEmbed, passesSizeFilter, handleMeta, collectMediaUrls, handleSource, handlePicture, handleSvgImage, handleDataBg, extractRegexUrls, handleVideo, filterImagesBySize, SIZE_PROBE_POOL_SIZE };
   }
 })();
