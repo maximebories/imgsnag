@@ -23,4 +23,3 @@
 ## 2026-09-03 - Comprehensive i18n surface sweep complete
 **Learning:** A full audit of the codebase's i18n surfaces was conducted and confirmed complete. The key set in `_locales/{en,es,fr}/messages.json` is identical (21 keys). All `__MSG_*__` references in both `manifest.chrome.json` and `manifest.firefox.json` resolve correctly. All `browser.i18n.getMessage` keys in `src/popup.js` and `src/options.js` are present. `src/popup.html` and `src/options.html` contain no hardcoded user-visible text. Dynamic properties like `.textContent`, `.title`, and `.setAttribute('aria-label')` are correctly localized. Image `.alt` attributes are intentionally empty `""` for decorative images.
 **Action:** When performing future sweeps, these baseline surfaces are already verified. Focus on newly added features, keys, or UI elements rather than re-verifying the settled core structural localization.
->>>>>>> 594e1ac (docs(lingo): record comprehensive i18n surface sweep)

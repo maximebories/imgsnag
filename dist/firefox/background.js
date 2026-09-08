@@ -19,8 +19,22 @@ async function getActiveDownloadIds() {
     .map((k) => parseInt(k.substring(PREFIX.length), 10));
 }
 
+let pendingActiveDownloadIds = {};
+let flushActiveDownloadIdsTimer = null;
+
+async function flushActiveDownloadIds() {
+  const batch = pendingActiveDownloadIds;
+  pendingActiveDownloadIds = {};
+  flushActiveDownloadIdsTimer = null;
+  await browser.storage.local.set(batch);
+}
+
 async function addActiveDownloadId(id) {
-  await browser.storage.local.set({ [`${PREFIX}${id}`]: true });
+  pendingActiveDownloadIds[`${PREFIX}${id}`] = true;
+  if (!flushActiveDownloadIdsTimer) {
+    flushActiveDownloadIdsTimer = Promise.resolve().then(flushActiveDownloadIds);
+  }
+  await flushActiveDownloadIdsTimer;
 }
 
 async function removeActiveDownloadId(id) {

@@ -13,3 +13,7 @@
 ## 2026-08-27 - [Manifest Icons Size Lists Divergence]
 **Learning:** The `icons` array size lists in `manifest.chrome.json` (16/48/128) and `manifest.firefox.json` (32/48/64/128) are intentionally different to comply with store/browser UI conventions (about:addons and AMO vs Chrome Web Store). Neither list is missing entries; it is not a behavioural parity bug. Firefox downscales gracefully where necessary.
 **Action:** Do not flag differences in the manifest `icons` size list as a parity defect. Focus on behavioural parity (storage, badge fallback, triggered downloads, etc.) rather than store metadata.
+
+## 2026-09-06 - [webextension-polyfill Action Metadata Gap]
+**Learning:** The bundled `webextension-polyfill` (`browser-polyfill.min.js`) contains a `browserAction` metadata block but no `action` metadata block. Because of this gap, the polyfill does not wrap `chrome.action` in Chrome; `browser.action` simply passes through to the native `chrome.action` API. However, this does not cause a synchronous crash (e.g., when calling `browser.action.setBadgeText(...).catch(...)`) because Chrome MV3's native `chrome.action` methods return Promises when the callback is omitted.
+**Action:** Do not attempt to polyfill or abstract `browser.action` to fix a perceived synchronous callback crash in Chrome MV3 based on polyfill metadata gaps. The native Promise support handles it correctly. Always verify native API behavior in a real browser extension context rather than inferring it from polyfill metadata.

@@ -24,3 +24,11 @@
 **Vulnerability:** None (Enhancement). The sweep came back clean.
 **Action:** Added threat-model comments at trust boundaries and centralized the `http:`/`https:` protocol allowlist in `src/background.js` into a single `getSafeDownloadUrl` helper, which returns the normalized `urlObj.href` (never the raw input) or `null`. Both `download_image` and `download_images_bulk` now validate through that one choke point.
 **Prevention:** The proposed `build.sh` zip-exclusion tightening (`-x '*/.*' -x '.*'`) was NOT landed here: the orchestrator may not modify build tooling, and no dotfile is currently produced under `dist/{chrome,firefox}/`, so it is hardening against a hypothetical. Route build-script changes to the maintainer.
+
+## 2026-09-06 - Investigated Non-Finding: Path Traversal via `filenameFromUrl`
+**Vulnerability:** None. The `filenameFromUrl` function in `src/popup.js` attempts to extract a clean filename from a URL path, and its output is used in the popup for `aria-label`, `title`, and fallback display text. A potential path-traversal string (like `../../malicious`) in the URL path does not pose a vulnerability here.
+**Learning:** This is a non-finding for three reasons:
+1. The popup DOM is constructed safely using `createElement` and `textContent` (not `innerHTML`), meaning a traversal string in a label simply renders as an odd-looking label, not an HTML injection.
+2. The `download_image` and `download_images_bulk` handlers in `src/background.js` do not pass a `filename` parameter to `browser.downloads.download()`. The browser derives and sanitizes the filename securely itself, meaning no page-controlled traversal primitive reaches the file system.
+3. The only handler that does supply a filename (`download_svg`) hardcodes it to `imgsnag-inline.svg`, containing no page-controlled input.
+**Prevention:** Do not flag `download_image`, `download_images_bulk`, or `filenameFromUrl` for path traversal. The browser's native download API securely handles derived filenames when none is explicitly provided.
