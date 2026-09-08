@@ -291,11 +291,12 @@
 
     // srcset attributes (img, source, etc.) — best candidate only.
     // <picture> sources are handled per-picture below (format alternatives).
-    document.querySelectorAll('[srcset], [data-srcset], [data-bgset]').forEach((el) => {
+    document.querySelectorAll('[srcset], [data-srcset], [data-bgset], [imagesrcset]').forEach((el) => {
       if (el.tagName === 'SOURCE' && el.parentElement?.tagName === 'PICTURE') return;
       const best = pickBestFromSrcset(el.getAttribute('srcset')) ||
                    pickBestFromSrcset(el.getAttribute('data-srcset')) ||
-                   pickBestFromSrcset(el.getAttribute('data-bgset'));
+                   pickBestFromSrcset(el.getAttribute('data-bgset')) ||
+                   pickBestFromSrcset(el.getAttribute('imagesrcset'));
       if (best) trackImage(best);
     });
 
@@ -618,7 +619,8 @@
       if (el.tagName === 'SOURCE' && el.parentElement?.tagName === 'PICTURE') return;
       const raw = pickBestFromSrcset(el.getAttribute('srcset')) ||
                   pickBestFromSrcset(el.getAttribute('data-srcset')) ||
-                  pickBestFromSrcset(el.getAttribute('data-bgset'));
+                  pickBestFromSrcset(el.getAttribute('data-bgset')) ||
+                  pickBestFromSrcset(el.getAttribute('imagesrcset'));
       if (raw) {
         trackImageUrl(raw, imageSet);
       }
@@ -698,6 +700,10 @@
       const rel = el.getAttribute('rel');
       const asAttr = el.getAttribute('as');
       const itemprop = el.getAttribute('itemprop');
+      if (rel === 'preload' && asAttr === 'image') {
+        const best = pickBestFromSrcset(el.getAttribute('imagesrcset'));
+        if (best) { trackImageUrl(best, imageSet); return; }
+      }
       if ((rel === 'preload' && asAttr === 'image') || rel === 'icon' || rel === 'apple-touch-icon' || rel === 'shortcut icon' || rel === 'image_src' || rel === 'mask-icon' || itemprop === 'image') {
         trackImageUrl(el.getAttribute('href'), imageSet);
       }
@@ -823,7 +829,7 @@
               if (
                 TAG_SET.has(tag) ||
                 (el.hasAttributes && el.hasAttributes() && (
-                  el.hasAttribute('srcset') || el.hasAttribute('data-srcset') || el.hasAttribute('data-bgset') ||
+                  el.hasAttribute('srcset') || el.hasAttribute('data-srcset') || el.hasAttribute('data-bgset') || el.hasAttribute('imagesrcset') ||
                   el.hasAttribute('data-src') || el.hasAttribute('data-lazy-src') || el.hasAttribute('data-original') ||
                   el.hasAttribute('data-bg') || el.hasAttribute('data-bg-src') || el.hasAttribute('data-background') ||
                   el.hasAttribute('data-background-image') ||
@@ -1066,6 +1072,6 @@
   syncDragPreference();
   browser.storage.onChanged.addListener(() => syncDragPreference());
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { trackImageUrl, getDomImageSize, getCssMediaUrls, extractBgImageUrls, resolveUrl, isVideoUrl, isImageUrl, isSvgUrl, parseSrcset, pickBestFromSrcset, collectInlineSvgs, handleEmbed, passesSizeFilter, handleMeta, collectMediaUrls, handleSource, handlePicture, handleSvgImage, handleDataBg, extractRegexUrls, handleVideo };
+    module.exports = { handleSrcset, trackImageUrl, getDomImageSize, getCssMediaUrls, extractBgImageUrls, resolveUrl, isVideoUrl, isImageUrl, isSvgUrl, parseSrcset, pickBestFromSrcset, collectInlineSvgs, handleEmbed, passesSizeFilter, handleMeta, collectMediaUrls, handleSource, handlePicture, handleSvgImage, handleDataBg, extractRegexUrls, handleVideo };
   }
 })();

@@ -128,6 +128,38 @@ describe('handleMeta', () => {
     expect([...set]).toEqual(['https://example.com/twitter.jpg']);
   });
 
+
+  it('captures link[rel="preload"][as="image"] imagesrcset and skips href', () => {
+    const set = new Set();
+    handleMeta(el('link', {
+      rel: 'preload',
+      as: 'image',
+      imagesrcset: 'https://example.com/small.jpg 400w, https://example.com/large.jpg 800w',
+      href: 'https://example.com/fallback.jpg'
+    }), set);
+    expect([...set]).toEqual(['https://example.com/large.jpg']);
+  });
+
+  it('captures link[rel="preload"][as="image"] imagesrcset when no href is present', () => {
+    const set = new Set();
+    handleMeta(el('link', {
+      rel: 'preload',
+      as: 'image',
+      imagesrcset: 'https://example.com/only.jpg 400w'
+    }), set);
+    expect([...set]).toEqual(['https://example.com/only.jpg']);
+  });
+
+  it('ignores invalid protocols in imagesrcset', () => {
+    const set = new Set();
+    handleMeta(el('link', {
+      rel: 'preload',
+      as: 'image',
+      imagesrcset: 'javascript:alert(1) 400w, file:///etc/passwd 800w'
+    }), set);
+    expect([...set]).toEqual([]);
+  });
+
   it('captures link[rel="preload"][as="image"]', () => {
     const set = new Set();
     handleMeta(el('link', { rel: 'preload', as: 'image', href: 'https://example.com/preload.png' }), set);
@@ -479,6 +511,23 @@ describe('handleVideo', () => {
 
     expect(videoSet.size).toBe(0);
     expect(imageSet.size).toBe(0);
+  });
+});
+
+
+describe('handleSrcset', () => {
+  const { handleSrcset } = require('../src/content.js');
+
+  it('extracts imagesrcset via MutationObserver delegate', () => {
+    const set = new Set();
+    const mockEl = {
+      tagName: 'LINK',
+      hasAttribute: () => true,
+      getAttribute: (attr) => attr === 'imagesrcset' ? 'https://example.com/mutation.jpg 200w' : null,
+      parentElement: null
+    };
+    handleSrcset(mockEl, set);
+    expect([...set]).toEqual(['https://example.com/mutation.jpg']);
   });
 });
 
