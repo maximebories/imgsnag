@@ -32,3 +32,8 @@
 2. The `download_image` and `download_images_bulk` handlers in `src/background.js` do not pass a `filename` parameter to `browser.downloads.download()`. The browser derives and sanitizes the filename securely itself, meaning no page-controlled traversal primitive reaches the file system.
 3. The only handler that does supply a filename (`download_svg`) hardcodes it to `imgsnag-inline.svg`, containing no page-controlled input.
 **Prevention:** Do not flag `download_image`, `download_images_bulk`, or `filenameFromUrl` for path traversal. The browser's native download API securely handles derived filenames when none is explicitly provided.
+
+## 2026-09-08 - Hardened Inline SVG Extraction Pipeline
+**Vulnerability:** Evasion of `<use>` element exclusions in inline SVGs via XML namespacing or nested serialization bypasses.
+**Learning:** Relying on DOM queries like `svg.querySelector('use')` to sanitize SVGs is brittle when the serialized output (via `XMLSerializer`) is the actual payload executed. DOM methods can miss namespaced tags (e.g., `<foo:use>`), allowing restricted elements to slip into the serialized string. Furthermore, the `background.js` validation `!markup.trimStart().startsWith('<svg')` was too rigid and broke on valid SVGs that included XML declarations or comments.
+**Prevention:** Validation of serialized page-authored markup must be performed *post-serialization* using strict, robust regular expressions (e.g., `/<(?:[^>\s:]+:)?use\b/i`) on the final markup string. Additionally, ensure `MAX_INLINE_SVG_CHARS` size limits are checked *before* executing regex to prevent ReDoS CPU exhaustion.

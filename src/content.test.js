@@ -257,6 +257,15 @@ describe('collectInlineSvgs', () => {
     addSvg({ withUse: true });
     expect(collectInlineSvgs()).toHaveLength(0);
   });
+
+  it('skips SVGs containing namespaced <use> references (stage 1)', () => {
+    document.body.innerHTML = '<svg width="300" height="300" xmlns="http://www.w3.org/2000/svg"><some:use xmlns:some="http://www.w3.org/2000/svg" href="#icon"></some:use></svg>';
+    expect(collectInlineSvgs()).toHaveLength(0);
+  });
+  it('skips SVGs containing non-alphanumeric namespaced <use> references (stage 1)', () => {
+    document.body.innerHTML = '<svg width="300" height="300" xmlns="http://www.w3.org/2000/svg"><some_use.x:use xmlns:some_use.x="http://www.w3.org/2000/svg" href="#icon"></some_use.x:use></svg>';
+    expect(collectInlineSvgs()).toHaveLength(0);
+  });
 });
 
 describe('handleEmbed', () => {

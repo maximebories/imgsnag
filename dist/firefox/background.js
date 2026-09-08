@@ -124,7 +124,7 @@ browser.runtime.onMessage.addListener((message, sender) => {
       typeof markup !== 'string' ||
       markup.length === 0 ||
       markup.length > MAX_INLINE_SVG_CHARS ||
-      !markup.trimStart().startsWith('<svg')
+      !/^\s*(?:<\?xml[\s\S]*?\?>\s*|<!DOCTYPE[\s\S]*?>\s*|<!--[\s\S]*?-->\s*)*<svg\b/i.test(markup)
     ) {
       return Promise.resolve({ success: false, error: 'Invalid SVG payload' });
     }

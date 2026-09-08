@@ -268,11 +268,31 @@ describe('Background Script', () => {
   });
 
   test('download_svg: rejects payloads that are not SVG markup', async () => {
-    for (const markup of ['<script>alert(1)</script>', '', 'hello', 42, null, '<svg'.padEnd(2 * 1024 * 1024 + 5, 'a')]) {
+    for (const markup of ['<script>alert(1)</script>', '', 'hello', 42, null, '<svg'.padEnd(2 * 1024 * 1024 + 5, 'a'), '<script></script><svg></svg>']) {
       const response = await messageListener({ action: 'download_svg', markup }, {});
       expect(response).toEqual({ success: false, error: 'Invalid SVG payload' });
     }
     expect(downloads).toHaveLength(0);
+  });
+
+  test('download_svg: accepts SVG markup with leading comments', async () => {
+    const response = await messageListener({
+      action: 'download_svg',
+      markup: '<!-- comment -->\n<svg xmlns="http://www.w3.org/2000/svg"><rect width="10" height="10"/></svg>'
+    }, {});
+
+    expect(response).toEqual({ success: true });
+    expect(downloads).toHaveLength(1);
+  });
+
+  test('download_svg: accepts SVG markup with XML declaration and doctype', async () => {
+    const response = await messageListener({
+      action: 'download_svg',
+      markup: '<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">\n<svg xmlns="http://www.w3.org/2000/svg"><rect width="10" height="10"/></svg>'
+    }, {});
+
+    expect(response).toEqual({ success: true });
+    expect(downloads).toHaveLength(1);
   });
 
   test('cancel_downloads: cancels all active downloads', async () => {
