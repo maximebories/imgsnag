@@ -257,6 +257,26 @@ describe('collectInlineSvgs', () => {
     addSvg({ withUse: true });
     expect(collectInlineSvgs()).toHaveLength(0);
   });
+
+  // The HTML parser does not split prefixes on foreign-content tag names, so
+  // `<foo:use>` parses to a single localName "foo:use" that `querySelector('use')`
+  // never matches. Build these through innerHTML — createElementNS would produce a
+  // real prefix + localName "use" and match the old check, hiding the gap.
+  it('skips SVGs containing a namespace-prefixed <use> reference', () => {
+    document.body.innerHTML =
+      '<svg><rect></rect><some:use href="#icon"></some:use></svg>';
+    const svg = document.querySelector('svg');
+    svg.getBoundingClientRect = () => ({ width: 300, height: 300 });
+    expect(collectInlineSvgs()).toHaveLength(0);
+  });
+
+  it('skips SVGs whose <use> prefix uses the full XML name charset', () => {
+    document.body.innerHTML =
+      '<svg><rect></rect><some_use.x:use href="#icon"></some_use.x:use></svg>';
+    const svg = document.querySelector('svg');
+    svg.getBoundingClientRect = () => ({ width: 300, height: 300 });
+    expect(collectInlineSvgs()).toHaveLength(0);
+  });
 });
 
 describe('handleEmbed', () => {

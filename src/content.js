@@ -439,7 +439,6 @@
     const items = [];
     document.querySelectorAll('svg').forEach((svg) => {
       if (svg.ownerSVGElement) return; // nested <svg> — captured via its root
-      if (svg.querySelector('use')) return; // stage 1: <use> refs serialize empty
       const rect = svg.getBoundingClientRect();
       if (rect.width < MIN_IMAGE_SIZE || rect.height < MIN_IMAGE_SIZE) return;
       let markup;
@@ -449,6 +448,12 @@
         return;
       }
       if (!markup || markup.length > MAX_INLINE_SVG_CHARS) return;
+      // stage 1: <use> refs serialize empty. Checked on the serialized markup, not
+      // via querySelector('use') — the HTML parser keeps a foreign-content prefix in
+      // the local name, so `<foo:use>` parses to localName "foo:use" and no CSS type
+      // selector matches it. Prefix charset is "anything but > , whitespace, colon"
+      // because XML names admit `.` and `_` too. Runs after the length cap.
+      if (/<(?:[^>\s:]+:)?use\b/i.test(markup)) return;
       items.push({
         url: SVG_DATA_PREFIX + encodeURIComponent(markup),
         type: 'image',
