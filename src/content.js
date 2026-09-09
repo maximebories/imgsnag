@@ -340,8 +340,10 @@
 
     // <video poster> and lazy loaded variants (still an image)
     document.querySelectorAll('video[poster], video[data-poster]').forEach((video) => {
-      const poster = video.getAttribute('poster') || video.getAttribute('data-poster');
-      if (poster) trackImage(poster);
+      ['poster', 'data-poster'].forEach(attr => {
+        const val = video.getAttribute(attr);
+        if (val) trackImage(val);
+      });
     });
 
     // <object>/<embed>/<iframe> whose source is an image file
@@ -422,13 +424,17 @@
   function collectVideos(trackVideo) {
     // <video src> and lazy loaded variants
     document.querySelectorAll('video[src], video[data-src], video[data-lazy-src], video[data-original]').forEach((video) => {
-      const src = video.getAttribute('src') || video.getAttribute('data-src') || video.getAttribute('data-lazy-src') || video.getAttribute('data-original');
-      if (src) trackVideo(src);
+      ['src', 'data-src', 'data-lazy-src', 'data-original'].forEach(attr => {
+        const val = video.getAttribute(attr);
+        if (val) trackVideo(val);
+      });
     });
     // <video><source src> and lazy loaded variants
     document.querySelectorAll('video source[src], video source[data-src], video source[data-lazy-src], video source[data-original]').forEach((source) => {
-      const src = source.getAttribute('src') || source.getAttribute('data-src') || source.getAttribute('data-lazy-src') || source.getAttribute('data-original');
-      if (src) trackVideo(src);
+      ['src', 'data-src', 'data-lazy-src', 'data-original'].forEach(attr => {
+        const val = source.getAttribute(attr);
+        if (val) trackVideo(val);
+      });
     });
   }
 
@@ -660,26 +666,32 @@
 
   function handleVideo(el, imageSet, videoSet) {
     if (el.tagName === 'VIDEO') {
-      const src = el.getAttribute('src') || el.getAttribute('data-src') || el.getAttribute('data-lazy-src') || el.getAttribute('data-original');
-      if (src) {
-        const url = resolveUrl(src);
-        if (url && !url.startsWith('data:')) videoSet.add(url);
-      }
-      const poster = el.getAttribute('poster') || el.getAttribute('data-poster');
-      if (poster) {
-        trackImageUrl(poster, imageSet);
-      }
+      ['src', 'data-src', 'data-lazy-src', 'data-original'].forEach(attr => {
+        const val = el.getAttribute(attr);
+        if (val) {
+          const url = resolveUrl(val);
+          if (url && !url.startsWith('data:')) videoSet.add(url);
+        }
+      });
+      ['poster', 'data-poster'].forEach(attr => {
+        const val = el.getAttribute(attr);
+        if (val) {
+          trackImageUrl(val, imageSet);
+        }
+      });
     }
   }
 
   function handleSource(el, imageSet, videoSet) {
     if (el.tagName === 'SOURCE') {
       if (el.parentElement?.tagName === 'VIDEO') {
-        const src = el.getAttribute('src') || el.getAttribute('data-src') || el.getAttribute('data-lazy-src') || el.getAttribute('data-original');
-        if (src) {
-          const url = resolveUrl(src);
-          if (url && !url.startsWith('data:')) videoSet.add(url);
-        }
+        ['src', 'data-src', 'data-lazy-src', 'data-original'].forEach(attr => {
+          const val = el.getAttribute(attr);
+          if (val) {
+            const url = resolveUrl(val);
+            if (url && !url.startsWith('data:')) videoSet.add(url);
+          }
+        });
       } else if (el.parentElement?.tagName === 'PICTURE') {
         // Handled per-picture in extractUrlsFromElement
       }
