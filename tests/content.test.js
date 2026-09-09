@@ -134,6 +134,51 @@ describe('handleMeta', () => {
     expect([...set]).toEqual(['https://example.com/preload.png']);
   });
 
+  it('captures the best imagesrcset candidate and skips the href fallback', () => {
+    const set = new Set();
+    handleMeta(el('link', {
+      rel: 'preload',
+      as: 'image',
+      imagesrcset: 'https://example.com/small.jpg 400w, https://example.com/large.jpg 800w',
+      href: 'https://example.com/fallback.jpg'
+    }), set);
+    expect([...set]).toEqual(['https://example.com/large.jpg']);
+  });
+
+  it('captures imagesrcset when no href is present', () => {
+    const set = new Set();
+    handleMeta(el('link', {
+      rel: 'preload',
+      as: 'image',
+      imagesrcset: 'https://example.com/only.jpg 400w'
+    }), set);
+    expect([...set]).toEqual(['https://example.com/only.jpg']);
+  });
+
+  // resolveUrl's protocol allowlist has to hold on this path too: imagesrcset is
+  // page-controlled like every other attribute we read.
+  it('drops disallowed protocols in imagesrcset', () => {
+    const set = new Set();
+    handleMeta(el('link', {
+      rel: 'preload',
+      as: 'image',
+      imagesrcset: 'javascript:alert(1) 400w, file:///etc/passwd 800w'
+    }), set);
+    expect([...set]).toEqual([]);
+  });
+
+  // An imagesrcset that yields no usable candidate must not swallow the href.
+  it('falls back to href when imagesrcset yields nothing', () => {
+    const set = new Set();
+    handleMeta(el('link', {
+      rel: 'preload',
+      as: 'image',
+      imagesrcset: '',
+      href: 'https://example.com/fallback.jpg'
+    }), set);
+    expect([...set]).toEqual(['https://example.com/fallback.jpg']);
+  });
+
   it('captures link icons and og:image:secure_url', () => {
     const set = new Set();
     handleMeta(el('meta', { property: 'og:image:secure_url', content: 'https://example.com/secure.jpg' }), set);
@@ -425,6 +470,35 @@ describe('handleDataBg', () => {
     const set = new Set();
     handleDataBg(el('div', { 'data-bg-src': 'not_an_image' }), set);
     expect(set.size).toBe(0);
+  });
+});
+
+describe('handleSrcset', () => {
+  const { handleSrcset } = require('../src/content.js');
+
+  function el(tag, attrs = {}) {
+    const e = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+    return e;
+  }
+
+  it('extracts imagesrcset on the MutationObserver path', () => {
+    const set = new Set();
+    handleSrcset(el('link', {
+      rel: 'preload',
+      as: 'image',
+      imagesrcset: 'https://example.com/small.jpg 200w, https://example.com/big.jpg 900w'
+    }), set);
+    expect([...set]).toEqual(['https://example.com/big.jpg']);
+  });
+
+  it('still prefers a plain srcset over imagesrcset', () => {
+    const set = new Set();
+    handleSrcset(el('img', {
+      srcset: 'https://example.com/from-srcset.jpg 800w',
+      imagesrcset: 'https://example.com/from-imagesrcset.jpg 900w'
+    }), set);
+    expect([...set]).toEqual(['https://example.com/from-srcset.jpg']);
   });
 });
 
