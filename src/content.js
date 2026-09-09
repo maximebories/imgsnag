@@ -48,6 +48,13 @@
   // a decoded bitmap, so an unbounded fan-out over a large gallery is a memory
   // spike, not just extra requests.
   const SIZE_PROBE_POOL_SIZE = 12;
+  // Lazy-load attribute families. Hoisted because handleVideo/handleSource run
+  // once per added node on the MutationObserver path, and a fresh array literal
+  // per node is pure garbage. These are read as a *list*, not a preference
+  // order: every populated attribute is tracked, because a placeholder `src`
+  // sitting next to the real `data-src` is the whole lazy-load pattern.
+  const MEDIA_SRC_ATTRS = ['src', 'data-src', 'data-lazy-src', 'data-original'];
+  const POSTER_ATTRS = ['poster', 'data-poster'];
   // Tags worth an attribute sweep when they turn up in a MutationObserver batch
   const TAG_SET = new Set(['IMG', 'VIDEO', 'SOURCE', 'PICTURE', 'DIV', 'SPAN', 'SECTION', 'ARTICLE', 'HEADER', 'FOOTER', 'A', 'LI', 'FIGURE', 'I', 'META', 'LINK', 'OBJECT', 'EMBED', 'IFRAME', 'image', 'IMAGE']);
 
@@ -340,7 +347,7 @@
 
     // <video poster> and lazy loaded variants (still an image)
     document.querySelectorAll('video[poster], video[data-poster]').forEach((video) => {
-      ['poster', 'data-poster'].forEach(attr => {
+      POSTER_ATTRS.forEach(attr => {
         const val = video.getAttribute(attr);
         if (val) trackImage(val);
       });
@@ -425,14 +432,14 @@
   function collectVideos(trackVideo) {
     // <video src> and lazy loaded variants
     document.querySelectorAll('video[src], video[data-src], video[data-lazy-src], video[data-original]').forEach((video) => {
-      ['src', 'data-src', 'data-lazy-src', 'data-original'].forEach(attr => {
+      MEDIA_SRC_ATTRS.forEach(attr => {
         const val = video.getAttribute(attr);
         if (val) trackVideo(val);
       });
     });
     // <video><source src> and lazy loaded variants
     document.querySelectorAll('video source[src], video source[data-src], video source[data-lazy-src], video source[data-original]').forEach((source) => {
-      ['src', 'data-src', 'data-lazy-src', 'data-original'].forEach(attr => {
+      MEDIA_SRC_ATTRS.forEach(attr => {
         const val = source.getAttribute(attr);
         if (val) trackVideo(val);
       });
@@ -672,14 +679,14 @@
 
   function handleVideo(el, imageSet, videoSet) {
     if (el.tagName === 'VIDEO') {
-      ['src', 'data-src', 'data-lazy-src', 'data-original'].forEach(attr => {
+      MEDIA_SRC_ATTRS.forEach(attr => {
         const val = el.getAttribute(attr);
         if (val) {
           const url = resolveUrl(val);
           if (url && !url.startsWith('data:')) videoSet.add(url);
         }
       });
-      ['poster', 'data-poster'].forEach(attr => {
+      POSTER_ATTRS.forEach(attr => {
         const val = el.getAttribute(attr);
         if (val) {
           trackImageUrl(val, imageSet);
@@ -691,7 +698,7 @@
   function handleSource(el, imageSet, videoSet) {
     if (el.tagName === 'SOURCE') {
       if (el.parentElement?.tagName === 'VIDEO') {
-        ['src', 'data-src', 'data-lazy-src', 'data-original'].forEach(attr => {
+        MEDIA_SRC_ATTRS.forEach(attr => {
           const val = el.getAttribute(attr);
           if (val) {
             const url = resolveUrl(val);

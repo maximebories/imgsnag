@@ -450,6 +450,40 @@ describe('handleVideo', () => {
     expect([...imageSet]).toEqual(['https://example.com/poster.jpg']);
   });
 
+  // The lazy-load pattern: a placeholder in `src` and the real file in `data-src`.
+  // A `src || data-src` chain short-circuits on the placeholder and the real video
+  // is never discovered at all. Both must be tracked; videos skip the size filter,
+  // so nothing downstream would recover the miss.
+  it('tracks every populated src attribute, not just the first', () => {
+    const imageSet = new Set();
+    const videoSet = new Set();
+
+    handleVideo(el('video', {
+      src: 'https://example.com/placeholder.mp4',
+      'data-src': 'https://example.com/real-1080p.mp4'
+    }), imageSet, videoSet);
+
+    expect([...videoSet].sort()).toEqual([
+      'https://example.com/placeholder.mp4',
+      'https://example.com/real-1080p.mp4'
+    ]);
+  });
+
+  it('tracks both poster and data-poster', () => {
+    const imageSet = new Set();
+    const videoSet = new Set();
+
+    handleVideo(el('video', {
+      poster: 'https://example.com/blank.gif',
+      'data-poster': 'https://example.com/real-poster.jpg'
+    }), imageSet, videoSet);
+
+    expect([...imageSet].sort()).toEqual([
+      'https://example.com/blank.gif',
+      'https://example.com/real-poster.jpg'
+    ]);
+  });
+
   it('extracts lazy loaded attributes into correct sets', () => {
     const attrs = ['data-src', 'data-lazy-src', 'data-original'];
 
