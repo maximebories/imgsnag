@@ -257,6 +257,13 @@ describe('collectInlineSvgs', () => {
     addSvg({ withUse: true });
     expect(collectInlineSvgs()).toHaveLength(0);
   });
+
+  it('skips SVGs containing namespaced <use> references', () => {
+    const svg = addSvg({ width: 300, height: 300 });
+    const use = document.createElementNS(SVG_NS, 'foo:use');
+    svg.appendChild(use);
+    expect(collectInlineSvgs()).toHaveLength(0);
+  });
 });
 
 describe('handleEmbed', () => {

@@ -32,3 +32,8 @@
 2. The `download_image` and `download_images_bulk` handlers in `src/background.js` do not pass a `filename` parameter to `browser.downloads.download()`. The browser derives and sanitizes the filename securely itself, meaning no page-controlled traversal primitive reaches the file system.
 3. The only handler that does supply a filename (`download_svg`) hardcodes it to `imgsnag-inline.svg`, containing no page-controlled input.
 **Prevention:** Do not flag `download_image`, `download_images_bulk`, or `filenameFromUrl` for path traversal. The browser's native download API securely handles derived filenames when none is explicitly provided.
+
+## 2026-09-09 - SVG <use> evasion in Inline-SVG capture
+**Vulnerability:** The inline SVG extraction pipeline (\`collectInlineSvgs\`) attempts to exclude SVGs containing \`<use>\` references to avoid stage 1 capture issues. The existing check (\`svg.querySelector('use')\`) is vulnerable to namespaced evasion (e.g. \`<foo:use>\`), allowing page authors to bypass the exclusion.
+**Fix:** Removed the \`querySelector\` check. Instead, after the SVG is serialized to markup, a strict regex (\`/<(?:[a-z0-9-]+:)?use\b/i\`) is run on the \`outerHTML\` string to detect and block any \`<use>\` references, regardless of namespacing.
+**Prevention:** Do not rely solely on \`querySelector\` for security-critical DOM validation when page authors can inject namespaced variants. Use serialization and strict regex parsing on the resulting markup for validation, as it normalizes namespacing.

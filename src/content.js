@@ -439,7 +439,6 @@
     const items = [];
     document.querySelectorAll('svg').forEach((svg) => {
       if (svg.ownerSVGElement) return; // nested <svg> — captured via its root
-      if (svg.querySelector('use')) return; // stage 1: <use> refs serialize empty
       const rect = svg.getBoundingClientRect();
       if (rect.width < MIN_IMAGE_SIZE || rect.height < MIN_IMAGE_SIZE) return;
       let markup;
@@ -449,6 +448,8 @@
         return;
       }
       if (!markup || markup.length > MAX_INLINE_SVG_CHARS) return;
+      // stage 1: <use> refs serialize empty, block them via regex on markup to catch namespaced evasions
+      if (/<(?:[a-z0-9-]+:)?use\b/i.test(markup)) return;
       items.push({
         url: SVG_DATA_PREFIX + encodeURIComponent(markup),
         type: 'image',
