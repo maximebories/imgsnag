@@ -400,12 +400,13 @@
       }
     } else if (node.nodeType === Node.ELEMENT_NODE) {
       if (!node.hasAttributes()) return;
-      const attrs = node.attributes;
-      for (let i = 0, len = attrs.length; i < len; i++) {
+      const names = node.getAttributeNames();
+      for (let i = 0, len = names.length; i < len; i++) {
         // srcset-family attributes hold many variants of one image; the
         // structural scan already tracked the best candidate
-        if (attrs[i].name.includes('srcset')) continue;
-        const val = attrs[i].value;
+        const name = names[i];
+        if (name.includes('srcset')) continue;
+        const val = node.getAttribute(name);
         if (val && HTTP_HINT_RE.test(val)) {
           let match;
           IMAGE_URL_RE.lastIndex = 0;
