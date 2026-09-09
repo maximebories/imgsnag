@@ -32,3 +32,8 @@
 2. The `download_image` and `download_images_bulk` handlers in `src/background.js` do not pass a `filename` parameter to `browser.downloads.download()`. The browser derives and sanitizes the filename securely itself, meaning no page-controlled traversal primitive reaches the file system.
 3. The only handler that does supply a filename (`download_svg`) hardcodes it to `imgsnag-inline.svg`, containing no page-controlled input.
 **Prevention:** Do not flag `download_image`, `download_images_bulk`, or `filenameFromUrl` for path traversal. The browser's native download API securely handles derived filenames when none is explicitly provided.
+
+## 2026-09-09 - Inflated Severity & Relaxing Invariants
+**Learning:** A flaw in a quality gate (like the `<use>` tag filter, which exists only because `<use>` refs serialize empty and would cause blank downloads) does not automatically become a HIGH severity security issue just because it touches the DOM. A bypassed quality check that buys an attacker nothing more than a slightly-wrong local file is a LOW severity issue. Do not inflate severity.
+**Learning:** Do not relax a fail-closed validator (like the `startsWith('<svg')` check) just because it rejects "technically valid" inputs (like DOCTYPEs or XML declarations) if those inputs are *impossible* for the legitimate client (our own `XMLSerializer`) to produce. A validator that rejects impossible inputs is working exactly as intended. Relaxing it only opens the door to hostile senders.
+**Prevention:** Grade findings based on the concrete primitive they hand an attacker. Before relaxing any validation gate, trace the actual payload generation path to confirm the "rejected" input can genuinely occur in normal operation.
