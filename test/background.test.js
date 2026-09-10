@@ -253,27 +253,107 @@ describe('Background Script', () => {
     expect(badgeText).toBe(''); // Should be reset at the end
   });
 
-  test('download_svg: valid markup downloads with a generated filename', async () => {
-    const response = await messageListener({
-      action: 'download_svg',
-      markup: '<svg xmlns="http://www.w3.org/2000/svg"><rect width="10" height="10"/></svg>'
-    }, {});
 
-    expect(response).toEqual({ success: true });
-    expect(downloads).toHaveLength(1);
-    // jsdom has no URL.createObjectURL, so the data: fallback path is exercised
-    expect(downloads[0].url.startsWith('data:image/svg+xml')).toBe(true);
-    expect(downloads[0].filename).toBe('imgsnag-inline.svg');
-    expect(global.mockStorage).toHaveProperty('dl_1');
+  describe('download_svg browser fork', () => {
+    let originalCreateObjectURL;
+    let originalRevokeObjectURL;
+
+    beforeEach(() => {
+      // Stub the static methods safely without destroying the global.URL constructor
+      originalCreateObjectURL = global.URL.createObjectURL;
+      originalRevokeObjectURL = global.URL.revokeObjectURL;
+    });
+
+    afterEach(() => {
+      global.URL.createObjectURL = originalCreateObjectURL;
+      global.URL.revokeObjectURL = originalRevokeObjectURL;
+    });
+
+    test('Firefox path (createObjectURL available) uses blob: URL and handles revocation', async () => {
+      global.URL.createObjectURL = jest.fn().mockReturnValue('blob:test-url');
+      global.URL.revokeObjectURL = jest.fn();
+
+      const response = await messageListener({
+        action: 'download_svg',
+        markup: '<svg xmlns="http://www.w3.org/2000/svg"><rect width="10" height="10"/></svg>'
+      }, {});
+
+      expect(response).toEqual({ success: true });
+      expect(downloads).toHaveLength(1);
+      expect(downloads[0].url).toBe('blob:test-url');
+      // Assert security invariants (filename and storage)
+      expect(downloads[0].filename).toBe('imgsnag-inline.svg');
+      expect(global.mockStorage).toHaveProperty('dl_1');
+
+      expect(global.URL.createObjectURL).toHaveBeenCalled();
+      expect(global.URL.revokeObjectURL).not.toHaveBeenCalled();
+
+      // Revocation happens exactly once on onChanged
+      onChangedListener({
+        id: downloads[0].id,
+        state: { current: 'complete' }
+      });
+      expect(global.URL.revokeObjectURL).toHaveBeenCalledTimes(1);
+      expect(global.URL.revokeObjectURL).toHaveBeenCalledWith('blob:test-url');
+    });
+
+    test('Firefox path revokes blob immediately on download failure', async () => {
+      global.URL.createObjectURL = jest.fn().mockReturnValue('blob:test-url');
+      global.URL.revokeObjectURL = jest.fn();
+
+      const originalDownload = global.browser.downloads.download;
+      global.browser.downloads.download = jest.fn().mockRejectedValue(new Error('Simulated download failure'));
+
+      try {
+        const response = await messageListener({
+          action: 'download_svg',
+          markup: '<svg xmlns="http://www.w3.org/2000/svg"><rect width="10" height="10"/></svg>'
+        }, {});
+
+        expect(response).toEqual({ success: false, error: 'Simulated download failure' });
+        expect(global.URL.createObjectURL).toHaveBeenCalled();
+        expect(global.URL.revokeObjectURL).toHaveBeenCalledTimes(1);
+        expect(global.URL.revokeObjectURL).toHaveBeenCalledWith('blob:test-url');
+      } finally {
+        global.browser.downloads.download = originalDownload;
+      }
+    });
+
+
+    test('rejects payloads that are not SVG markup', async () => {
+      for (const markup of ['<script>alert(1)</script>', '', 'hello', 42, null, '<svg'.padEnd(2 * 1024 * 1024 + 5, 'a')]) {
+        const response = await messageListener({ action: 'download_svg', markup }, {});
+        expect(response).toEqual({ success: false, error: 'Invalid SVG payload' });
+      }
+      expect(downloads).toHaveLength(0);
+    });
+
+    test('Chrome path (createObjectURL unavailable) uses data: URL', async () => {
+      global.URL.createObjectURL = undefined;
+      global.URL.revokeObjectURL = jest.fn(); // To ensure it's not called
+
+      const response = await messageListener({
+        action: 'download_svg',
+        markup: '<svg xmlns="http://www.w3.org/2000/svg"><rect width="10" height="10"/></svg>'
+      }, {});
+
+      expect(response).toEqual({ success: true });
+      expect(downloads).toHaveLength(1);
+      expect(downloads[0].url.startsWith('data:image/svg+xml')).toBe(true);
+      // Assert security invariants (filename and storage)
+      expect(downloads[0].filename).toBe('imgsnag-inline.svg');
+      expect(global.mockStorage).toHaveProperty('dl_1');
+
+      // Ensure revokeObjectURL is not called on onChanged
+      onChangedListener({
+        id: downloads[0].id,
+        state: { current: 'complete' }
+      });
+      expect(global.URL.revokeObjectURL).not.toHaveBeenCalled();
+    });
   });
 
-  test('download_svg: rejects payloads that are not SVG markup', async () => {
-    for (const markup of ['<script>alert(1)</script>', '', 'hello', 42, null, '<svg'.padEnd(2 * 1024 * 1024 + 5, 'a')]) {
-      const response = await messageListener({ action: 'download_svg', markup }, {});
-      expect(response).toEqual({ success: false, error: 'Invalid SVG payload' });
-    }
-    expect(downloads).toHaveLength(0);
-  });
+
 
   test('cancel_downloads: cancels all active downloads', async () => {
     // Start some downloads
@@ -325,6 +405,7 @@ describe('Background Script', () => {
     global.browser.action.setBadgeText = originalSetBadgeText;
   });
 
+
   test('onChanged listener removes finished downloads', async () => {
     // Start a download
     await messageListener({
@@ -346,6 +427,24 @@ describe('Background Script', () => {
 
     expect(global.mockStorage).not.toHaveProperty('dl_1');
   });
+
+  test('onChanged listener removes interrupted/cancelled downloads', async () => {
+    await messageListener({
+      action: 'download_image',
+      url: 'https://example.com/2.jpg'
+    }, {});
+
+    expect(global.mockStorage).toHaveProperty('dl_1');
+
+    onChangedListener({
+      id: downloads[0].id,
+      state: { current: 'interrupted' }
+    });
+
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(global.mockStorage).not.toHaveProperty('dl_1');
+  });
+
 
   test('storage-backed download tracking pins active downloads to storage.local', async () => {
     // 1. Verify storage is initially empty

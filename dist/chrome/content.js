@@ -48,6 +48,17 @@
   // a decoded bitmap, so an unbounded fan-out over a large gallery is a memory
   // spike, not just extra requests.
   const SIZE_PROBE_POOL_SIZE = 12;
+  // Lazy-load attribute families. Hoisted because handleVideo/handleSource run
+  // once per added node on the MutationObserver path, and a fresh array literal
+  // per node is pure garbage. These are read as a *list*, not a preference
+  // order: every populated attribute is tracked, because a placeholder `src`
+  // sitting next to the real `data-src` is the whole lazy-load pattern.
+  const MEDIA_SRC_ATTRS = ['src', 'data-src', 'data-lazy-src', 'data-original'];
+  const POSTER_ATTRS = ['poster', 'data-poster'];
+  // Same story on <picture><source>, split by parse shape: the first two hold a
+  // srcset candidate list, the rest a bare URL.
+  const SOURCE_SRCSET_ATTRS = ['srcset', 'data-srcset'];
+  const SOURCE_URL_ATTRS = ['src', 'data-src', 'data-lazy-src', 'data-original'];
   // Tags worth an attribute sweep when they turn up in a MutationObserver batch
   const TAG_SET = new Set(['IMG', 'VIDEO', 'SOURCE', 'PICTURE', 'DIV', 'SPAN', 'SECTION', 'ARTICLE', 'HEADER', 'FOOTER', 'A', 'LI', 'FIGURE', 'I', 'META', 'LINK', 'OBJECT', 'EMBED', 'IFRAME', 'image', 'IMAGE']);
 
@@ -273,6 +284,46 @@
     return bestUrl;
   }
 
+  // Every populated variant on one <picture><source>, handed to `track`.
+  //
+  // Read as a *list*, not a preference order — same reasoning as MEDIA_SRC_ATTRS.
+  // Lazy-load markup routinely pairs a placeholder `srcset`/`src` with the real
+  // `data-srcset`/`data-src`, and a `||` chain that stopped at the first hit took
+  // the placeholder and dropped the full-resolution variant entirely. Tracking
+  // both is safe here because these land in the image set, where the ≥200x200
+  // filter culls whichever one was the placeholder. (That cull is real for
+  // images; it is NOT available for videos, which skip the size filter.)
+  //
+  // Returns whether this source yielded a *real* URL. "Real" is deliberately the
+  // same condition trackImageUrl accepts on (resolves, and not an inline data:
+  // payload), so a source counts as "usable" exactly when it actually put
+  // something in the set. Only a usable source ends the caller's scan of its
+  // siblings — one carrying nothing but an inline LQIP placeholder tracked
+  // nothing, so it must not shadow the next source.
+  function collectSourceVariants(source, track) {
+    let usable = false;
+    for (const attr of SOURCE_SRCSET_ATTRS) {
+      const best = pickBestFromSrcset(source.getAttribute(attr));
+      if (best) {
+        track(best);
+        usable = usable || isRealMediaUrl(best);
+      }
+    }
+    for (const attr of SOURCE_URL_ATTRS) {
+      const val = source.getAttribute(attr);
+      if (val) {
+        track(val);
+        usable = usable || isRealMediaUrl(val);
+      }
+    }
+    return usable;
+  }
+
+  function isRealMediaUrl(raw) {
+    const url = resolveUrl(raw);
+    return !!url && !url.startsWith('data:');
+  }
+
   // Media discovery — scans the DOM for downloadable image and video URLs
 
   function collectImages(trackImage) {
@@ -295,11 +346,12 @@
 
     // srcset attributes (img, source, etc.) — best candidate only.
     // <picture> sources are handled per-picture below (format alternatives).
-    document.querySelectorAll('[srcset], [data-srcset], [data-bgset]').forEach((el) => {
+    document.querySelectorAll('[srcset], [data-srcset], [data-bgset], [imagesrcset]').forEach((el) => {
       if (el.tagName === 'SOURCE' && el.parentElement?.tagName === 'PICTURE') return;
       const best = pickBestFromSrcset(el.getAttribute('srcset')) ||
                    pickBestFromSrcset(el.getAttribute('data-srcset')) ||
-                   pickBestFromSrcset(el.getAttribute('data-bgset'));
+                   pickBestFromSrcset(el.getAttribute('data-bgset')) ||
+                   pickBestFromSrcset(el.getAttribute('imagesrcset'));
       if (best) trackImage(best);
     });
 
@@ -322,7 +374,7 @@
 
     // <picture>: every <source> is the SAME image in another format/breakpoint.
     // Prefer the variant the browser actually rendered; otherwise take the
-    // best candidate of the first usable source.
+    // candidates of the first usable source (see collectSourceVariants).
     document.querySelectorAll('picture').forEach((pic) => {
       const img = pic.querySelector('img');
       if (img && img.currentSrc) {
@@ -330,18 +382,16 @@
         return;
       }
       for (const source of pic.querySelectorAll('source')) {
-        const best = pickBestFromSrcset(source.getAttribute('srcset')) ||
-                     pickBestFromSrcset(source.getAttribute('data-srcset')) ||
-                     source.getAttribute('src') || source.getAttribute('data-src') ||
-                     source.getAttribute('data-lazy-src') || source.getAttribute('data-original');
-        if (best) { trackImage(best); return; }
+        if (collectSourceVariants(source, trackImage)) return;
       }
     });
 
     // <video poster> and lazy loaded variants (still an image)
     document.querySelectorAll('video[poster], video[data-poster]').forEach((video) => {
-      const poster = video.getAttribute('poster') || video.getAttribute('data-poster');
-      if (poster) trackImage(poster);
+      POSTER_ATTRS.forEach(attr => {
+        const val = video.getAttribute(attr);
+        if (val) trackImage(val);
+      });
     });
 
     // <object>/<embed>/<iframe> whose source is an image file
@@ -400,12 +450,13 @@
       }
     } else if (node.nodeType === Node.ELEMENT_NODE) {
       if (!node.hasAttributes()) return;
-      const attrs = node.attributes;
-      for (let i = 0, len = attrs.length; i < len; i++) {
+      const names = node.getAttributeNames();
+      for (let i = 0, len = names.length; i < len; i++) {
         // srcset-family attributes hold many variants of one image; the
         // structural scan already tracked the best candidate
-        if (attrs[i].name.includes('srcset')) continue;
-        const val = attrs[i].value;
+        const name = names[i];
+        if (name.includes('srcset')) continue;
+        const val = node.getAttribute(name);
         if (val && HTTP_HINT_RE.test(val)) {
           let match;
           IMAGE_URL_RE.lastIndex = 0;
@@ -422,13 +473,17 @@
   function collectVideos(trackVideo) {
     // <video src> and lazy loaded variants
     document.querySelectorAll('video[src], video[data-src], video[data-lazy-src], video[data-original]').forEach((video) => {
-      const src = video.getAttribute('src') || video.getAttribute('data-src') || video.getAttribute('data-lazy-src') || video.getAttribute('data-original');
-      if (src) trackVideo(src);
+      MEDIA_SRC_ATTRS.forEach(attr => {
+        const val = video.getAttribute(attr);
+        if (val) trackVideo(val);
+      });
     });
     // <video><source src> and lazy loaded variants
     document.querySelectorAll('video source[src], video source[data-src], video source[data-lazy-src], video source[data-original]').forEach((source) => {
-      const src = source.getAttribute('src') || source.getAttribute('data-src') || source.getAttribute('data-lazy-src') || source.getAttribute('data-original');
-      if (src) trackVideo(src);
+      MEDIA_SRC_ATTRS.forEach(attr => {
+        const val = source.getAttribute(attr);
+        if (val) trackVideo(val);
+      });
     });
   }
 
@@ -439,7 +494,6 @@
     const items = [];
     document.querySelectorAll('svg').forEach((svg) => {
       if (svg.ownerSVGElement) return; // nested <svg> — captured via its root
-      if (svg.querySelector('use')) return; // stage 1: <use> refs serialize empty
       const rect = svg.getBoundingClientRect();
       if (rect.width < MIN_IMAGE_SIZE || rect.height < MIN_IMAGE_SIZE) return;
       let markup;
@@ -449,6 +503,12 @@
         return;
       }
       if (!markup || markup.length > MAX_INLINE_SVG_CHARS) return;
+      // stage 1: <use> refs serialize empty. Checked on the serialized markup, not
+      // via querySelector('use') — the HTML parser keeps a foreign-content prefix in
+      // the local name, so `<foo:use>` parses to localName "foo:use" and no CSS type
+      // selector matches it. Prefix charset is "anything but > , whitespace, colon"
+      // because XML names admit `.` and `_` too. Runs after the length cap.
+      if (/<(?:[^>\s:]+:)?use\b/i.test(markup)) return;
       items.push({
         url: SVG_DATA_PREFIX + encodeURIComponent(markup),
         type: 'image',
@@ -651,7 +711,8 @@
       if (el.tagName === 'SOURCE' && el.parentElement?.tagName === 'PICTURE') return;
       const raw = pickBestFromSrcset(el.getAttribute('srcset')) ||
                   pickBestFromSrcset(el.getAttribute('data-srcset')) ||
-                  pickBestFromSrcset(el.getAttribute('data-bgset'));
+                  pickBestFromSrcset(el.getAttribute('data-bgset')) ||
+                  pickBestFromSrcset(el.getAttribute('imagesrcset'));
       if (raw) {
         trackImageUrl(raw, imageSet);
       }
@@ -660,26 +721,32 @@
 
   function handleVideo(el, imageSet, videoSet) {
     if (el.tagName === 'VIDEO') {
-      const src = el.getAttribute('src') || el.getAttribute('data-src') || el.getAttribute('data-lazy-src') || el.getAttribute('data-original');
-      if (src) {
-        const url = resolveUrl(src);
-        if (url && !url.startsWith('data:')) videoSet.add(url);
-      }
-      const poster = el.getAttribute('poster') || el.getAttribute('data-poster');
-      if (poster) {
-        trackImageUrl(poster, imageSet);
-      }
+      MEDIA_SRC_ATTRS.forEach(attr => {
+        const val = el.getAttribute(attr);
+        if (val) {
+          const url = resolveUrl(val);
+          if (url && !url.startsWith('data:')) videoSet.add(url);
+        }
+      });
+      POSTER_ATTRS.forEach(attr => {
+        const val = el.getAttribute(attr);
+        if (val) {
+          trackImageUrl(val, imageSet);
+        }
+      });
     }
   }
 
   function handleSource(el, imageSet, videoSet) {
     if (el.tagName === 'SOURCE') {
       if (el.parentElement?.tagName === 'VIDEO') {
-        const src = el.getAttribute('src') || el.getAttribute('data-src') || el.getAttribute('data-lazy-src') || el.getAttribute('data-original');
-        if (src) {
-          const url = resolveUrl(src);
-          if (url && !url.startsWith('data:')) videoSet.add(url);
-        }
+        MEDIA_SRC_ATTRS.forEach(attr => {
+          const val = el.getAttribute(attr);
+          if (val) {
+            const url = resolveUrl(val);
+            if (url && !url.startsWith('data:')) videoSet.add(url);
+          }
+        });
       } else if (el.parentElement?.tagName === 'PICTURE') {
         // Handled per-picture in extractUrlsFromElement
       }
@@ -731,6 +798,17 @@
       const rel = el.getAttribute('rel');
       const asAttr = el.getAttribute('as');
       const itemprop = el.getAttribute('itemprop');
+      // <link rel=preload as=image imagesrcset="..."> — the responsive preload
+      // form. `href` is only the fallback for browsers that ignore imagesrcset,
+      // so when a candidate resolves we take it and skip href, the same way
+      // <picture> sources and <img srcset> avoid emitting the fallback twice.
+      if (rel === 'preload' && asAttr === 'image') {
+        const best = pickBestFromSrcset(el.getAttribute('imagesrcset'));
+        if (best) {
+          trackImageUrl(best, imageSet);
+          return;
+        }
+      }
       if ((rel === 'preload' && asAttr === 'image') || rel === 'icon' || rel === 'apple-touch-icon' || rel === 'shortcut icon' || rel === 'image_src' || rel === 'mask-icon' || itemprop === 'image') {
         trackImageUrl(el.getAttribute('href'), imageSet);
       }
@@ -767,15 +845,11 @@
         trackImageUrl(img.currentSrc, imageSet);
         return;
       }
+      // One closure per <picture>, not per <source> — handlePicture runs on the
+      // MutationObserver path.
+      const track = (raw) => trackImageUrl(raw, imageSet);
       for (const source of el.querySelectorAll('source')) {
-        const best = pickBestFromSrcset(source.getAttribute('srcset')) ||
-                     pickBestFromSrcset(source.getAttribute('data-srcset')) ||
-                     source.getAttribute('src') || source.getAttribute('data-src') ||
-                     source.getAttribute('data-lazy-src') || source.getAttribute('data-original');
-        if (best) {
-          trackImageUrl(best, imageSet);
-          return;
-        }
+        if (collectSourceVariants(source, track)) return;
       }
     }
   }
@@ -856,7 +930,7 @@
               if (
                 TAG_SET.has(tag) ||
                 (el.hasAttributes && el.hasAttributes() && (
-                  el.hasAttribute('srcset') || el.hasAttribute('data-srcset') || el.hasAttribute('data-bgset') ||
+                  el.hasAttribute('srcset') || el.hasAttribute('data-srcset') || el.hasAttribute('data-bgset') || el.hasAttribute('imagesrcset') ||
                   el.hasAttribute('data-src') || el.hasAttribute('data-lazy-src') || el.hasAttribute('data-original') ||
                   el.hasAttribute('data-bg') || el.hasAttribute('data-bg-src') || el.hasAttribute('data-background') ||
                   el.hasAttribute('data-background-image') ||
@@ -1099,6 +1173,6 @@
   syncDragPreference();
   browser.storage.onChanged.addListener(() => syncDragPreference());
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { trackImageUrl, getDomImageSize, getCssMediaUrls, extractBgImageUrls, resolveUrl, isVideoUrl, isImageUrl, isSvgUrl, parseSrcset, pickBestFromSrcset, collectInlineSvgs, handleEmbed, passesSizeFilter, handleMeta, collectMediaUrls, handleSource, handlePicture, handleSvgImage, handleDataBg, extractRegexUrls, handleVideo, filterImagesBySize, SIZE_PROBE_POOL_SIZE };
+    module.exports = { handleSrcset, trackImageUrl, getDomImageSize, getCssMediaUrls, extractBgImageUrls, resolveUrl, isVideoUrl, isImageUrl, isSvgUrl, parseSrcset, pickBestFromSrcset, collectInlineSvgs, handleEmbed, passesSizeFilter, handleMeta, collectMediaUrls, handleSource, handlePicture, handleSvgImage, handleDataBg, extractRegexUrls, handleVideo, filterImagesBySize, SIZE_PROBE_POOL_SIZE };
   }
 })();

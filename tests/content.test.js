@@ -134,6 +134,51 @@ describe('handleMeta', () => {
     expect([...set]).toEqual(['https://example.com/preload.png']);
   });
 
+  it('captures the best imagesrcset candidate and skips the href fallback', () => {
+    const set = new Set();
+    handleMeta(el('link', {
+      rel: 'preload',
+      as: 'image',
+      imagesrcset: 'https://example.com/small.jpg 400w, https://example.com/large.jpg 800w',
+      href: 'https://example.com/fallback.jpg'
+    }), set);
+    expect([...set]).toEqual(['https://example.com/large.jpg']);
+  });
+
+  it('captures imagesrcset when no href is present', () => {
+    const set = new Set();
+    handleMeta(el('link', {
+      rel: 'preload',
+      as: 'image',
+      imagesrcset: 'https://example.com/only.jpg 400w'
+    }), set);
+    expect([...set]).toEqual(['https://example.com/only.jpg']);
+  });
+
+  // resolveUrl's protocol allowlist has to hold on this path too: imagesrcset is
+  // page-controlled like every other attribute we read.
+  it('drops disallowed protocols in imagesrcset', () => {
+    const set = new Set();
+    handleMeta(el('link', {
+      rel: 'preload',
+      as: 'image',
+      imagesrcset: 'javascript:alert(1) 400w, file:///etc/passwd 800w'
+    }), set);
+    expect([...set]).toEqual([]);
+  });
+
+  // An imagesrcset that yields no usable candidate must not swallow the href.
+  it('falls back to href when imagesrcset yields nothing', () => {
+    const set = new Set();
+    handleMeta(el('link', {
+      rel: 'preload',
+      as: 'image',
+      imagesrcset: '',
+      href: 'https://example.com/fallback.jpg'
+    }), set);
+    expect([...set]).toEqual(['https://example.com/fallback.jpg']);
+  });
+
   it('captures link icons and og:image:secure_url', () => {
     const set = new Set();
     handleMeta(el('meta', { property: 'og:image:secure_url', content: 'https://example.com/secure.jpg' }), set);
@@ -302,6 +347,73 @@ describe('handlePicture', () => {
     handlePicture(picture, imageSet);
     expect([...imageSet]).toEqual(['https://example.com/fallback.jpg']);
   });
+
+  // Regression: the attribute chain used to short-circuit on `srcset`, so a
+  // placeholder srcset next to the real `data-srcset` dropped the only
+  // full-resolution URL on the page. Every populated variant is now tracked;
+  // the >=200x200 filter is what culls the placeholder later.
+  it('keeps the data-srcset variant when a placeholder srcset is present', () => {
+    const imageSet = new Set();
+    const picture = el('picture');
+    const source = el('source', {
+      srcset: 'https://example.com/placeholder.jpg 1w',
+      'data-srcset': 'https://example.com/real-2000.jpg 2000w'
+    });
+    picture.appendChild(source);
+
+    handlePicture(picture, imageSet);
+    expect([...imageSet].sort()).toEqual([
+      'https://example.com/placeholder.jpg',
+      'https://example.com/real-2000.jpg'
+    ]);
+  });
+
+  it('keeps the data-src variant when a placeholder src is present', () => {
+    const imageSet = new Set();
+    const picture = el('picture');
+    const source = el('source', {
+      src: 'https://example.com/tiny.jpg',
+      'data-src': 'https://example.com/full.jpg'
+    });
+    picture.appendChild(source);
+
+    handlePicture(picture, imageSet);
+    expect([...imageSet].sort()).toEqual([
+      'https://example.com/full.jpg',
+      'https://example.com/tiny.jpg'
+    ]);
+  });
+
+  // A source whose only variant is an inline data: URI tracked nothing at all
+  // (trackImageUrl rejects data:), so it must not count as "usable" and hide
+  // the sibling that carries the real URL.
+  it('does not let a data:-only source shadow the next source', () => {
+    const imageSet = new Set();
+    const picture = el('picture');
+    const lqip = el('source', {
+      srcset: 'data:image/gif;base64,R0lGODlhAQABAAAAACw= 1w'
+    });
+    const real = el('source', { 'data-src': 'https://example.com/real.jpg' });
+    picture.appendChild(lqip);
+    picture.appendChild(real);
+
+    handlePicture(picture, imageSet);
+    expect([...imageSet]).toEqual(['https://example.com/real.jpg']);
+  });
+
+  // The flip side: once a source yields a real URL the scan stops, so a
+  // <picture> still contributes one image rather than one per breakpoint.
+  it('stops at the first usable source', () => {
+    const imageSet = new Set();
+    const picture = el('picture');
+    const first = el('source', { srcset: 'https://example.com/webp.webp 800w' });
+    const second = el('source', { srcset: 'https://example.com/jpeg.jpg 800w' });
+    picture.appendChild(first);
+    picture.appendChild(second);
+
+    handlePicture(picture, imageSet);
+    expect([...imageSet]).toEqual(['https://example.com/webp.webp']);
+  });
 });
 
 describe('getCssMediaUrls', () => {
@@ -428,6 +540,35 @@ describe('handleDataBg', () => {
   });
 });
 
+describe('handleSrcset', () => {
+  const { handleSrcset } = require('../src/content.js');
+
+  function el(tag, attrs = {}) {
+    const e = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+    return e;
+  }
+
+  it('extracts imagesrcset on the MutationObserver path', () => {
+    const set = new Set();
+    handleSrcset(el('link', {
+      rel: 'preload',
+      as: 'image',
+      imagesrcset: 'https://example.com/small.jpg 200w, https://example.com/big.jpg 900w'
+    }), set);
+    expect([...set]).toEqual(['https://example.com/big.jpg']);
+  });
+
+  it('still prefers a plain srcset over imagesrcset', () => {
+    const set = new Set();
+    handleSrcset(el('img', {
+      srcset: 'https://example.com/from-srcset.jpg 800w',
+      imagesrcset: 'https://example.com/from-imagesrcset.jpg 900w'
+    }), set);
+    expect([...set]).toEqual(['https://example.com/from-srcset.jpg']);
+  });
+});
+
 describe('handleVideo', () => {
   const { handleVideo } = require('../src/content.js');
 
@@ -448,6 +589,40 @@ describe('handleVideo', () => {
 
     expect([...videoSet]).toEqual(['https://example.com/video.mp4']);
     expect([...imageSet]).toEqual(['https://example.com/poster.jpg']);
+  });
+
+  // The lazy-load pattern: a placeholder in `src` and the real file in `data-src`.
+  // A `src || data-src` chain short-circuits on the placeholder and the real video
+  // is never discovered at all. Both must be tracked; videos skip the size filter,
+  // so nothing downstream would recover the miss.
+  it('tracks every populated src attribute, not just the first', () => {
+    const imageSet = new Set();
+    const videoSet = new Set();
+
+    handleVideo(el('video', {
+      src: 'https://example.com/placeholder.mp4',
+      'data-src': 'https://example.com/real-1080p.mp4'
+    }), imageSet, videoSet);
+
+    expect([...videoSet].sort()).toEqual([
+      'https://example.com/placeholder.mp4',
+      'https://example.com/real-1080p.mp4'
+    ]);
+  });
+
+  it('tracks both poster and data-poster', () => {
+    const imageSet = new Set();
+    const videoSet = new Set();
+
+    handleVideo(el('video', {
+      poster: 'https://example.com/blank.gif',
+      'data-poster': 'https://example.com/real-poster.jpg'
+    }), imageSet, videoSet);
+
+    expect([...imageSet].sort()).toEqual([
+      'https://example.com/blank.gif',
+      'https://example.com/real-poster.jpg'
+    ]);
   });
 
   it('extracts lazy loaded attributes into correct sets', () => {

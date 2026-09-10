@@ -61,3 +61,11 @@
 ## 2026-09-08 - JSON-LD and application/json in <head> regression test
 **Learning:** Verified that the Scout persona's fix for capturing `application/ld+json` and `application/json` `<script>` tags placed in the `<head>` of the document (by changing the TreeWalker root from `document.body` to `document.documentElement`) lacked a regression test targeting the `<head>` specifically.
 **Action:** Added a regression test in `tests/redos_fallback.test.js` appending these scripts and a `<style>` block to `document.head` to assert that `collectMediaUrls` correctly extracts image URLs from the JSON scripts while appropriately ignoring the style block.
+
+## 2026-09-10 - Mocking global URL in Node/Jest
+**Learning:** Overwriting the \`global.URL\` constructor entirely in Jest breaks assumptions when other code invokes \`new URL()\`.
+**Action:** When mocking static methods like \`URL.createObjectURL\` and \`URL.revokeObjectURL\`, stub the methods directly and restore them in \`afterEach\` rather than replacing the \`global.URL\` object.
+
+## 2026-09-10 - Semantic parity in download_svg browser forks
+**Learning:** Twin's journal notes that the \`download_svg\` blob-vs-\`data:\` fork is semantically sound (e.g., safe 2 MB cap and teardown handling in Firefox event pages). However, a review conclusion must be enforced by an observable test.
+**Action:** Always pin browser fork paths with regression tests that explicitly assert the generated URL scheme under mocked API conditions (\`createObjectURL\` present vs absent) rather than relying solely on journaled reasoning.
