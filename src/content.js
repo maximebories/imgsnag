@@ -55,6 +55,8 @@
   // sitting next to the real `data-src` is the whole lazy-load pattern.
   const MEDIA_SRC_ATTRS = ['src', 'data-src', 'data-lazy-src', 'data-original'];
   const POSTER_ATTRS = ['poster', 'data-poster'];
+  const SRCSET_ATTRS = ['srcset', 'data-srcset', 'data-bgset', 'imagesrcset'];
+  const PICTURE_SOURCE_ATTRS = ['srcset', 'data-srcset', 'src', 'data-src', 'data-lazy-src', 'data-original'];
   // Tags worth an attribute sweep when they turn up in a MutationObserver batch
   const TAG_SET = new Set(['IMG', 'VIDEO', 'SOURCE', 'PICTURE', 'DIV', 'SPAN', 'SECTION', 'ARTICLE', 'HEADER', 'FOOTER', 'A', 'LI', 'FIGURE', 'I', 'META', 'LINK', 'OBJECT', 'EMBED', 'IFRAME', 'image', 'IMAGE']);
 
@@ -338,11 +340,24 @@
         return;
       }
       for (const source of pic.querySelectorAll('source')) {
-        const best = pickBestFromSrcset(source.getAttribute('srcset')) ||
-                     pickBestFromSrcset(source.getAttribute('data-srcset')) ||
-                     source.getAttribute('src') || source.getAttribute('data-src') ||
-                     source.getAttribute('data-lazy-src') || source.getAttribute('data-original');
-        if (best) { trackImage(best); return; }
+        let foundValid = false;
+        for (const attr of PICTURE_SOURCE_ATTRS) {
+          if (source.hasAttribute(attr)) {
+            const val = attr.includes('srcset') ? pickBestFromSrcset(source.getAttribute(attr)) : source.getAttribute(attr);
+            if (val) {
+              trackImage(val);
+              // Only consider a source "usable" and stop checking subsequent sources
+              // if its attribute resolved to something that wasn't immediately rejected
+              // as a data URI by trackImageUrl (though we can't observe trackImageUrl's
+              // outcome easily here, we know any non-empty string is a valid extraction attempt)
+              const url = resolveUrl(val);
+              if (url && !url.startsWith('data:')) {
+                 foundValid = true;
+              }
+            }
+          }
+        }
+        if (foundValid) return;
       }
     });
 
@@ -806,14 +821,20 @@
         return;
       }
       for (const source of el.querySelectorAll('source')) {
-        const best = pickBestFromSrcset(source.getAttribute('srcset')) ||
-                     pickBestFromSrcset(source.getAttribute('data-srcset')) ||
-                     source.getAttribute('src') || source.getAttribute('data-src') ||
-                     source.getAttribute('data-lazy-src') || source.getAttribute('data-original');
-        if (best) {
-          trackImageUrl(best, imageSet);
-          return;
+        let foundValid = false;
+        for (const attr of PICTURE_SOURCE_ATTRS) {
+          if (source.hasAttribute(attr)) {
+            const val = attr.includes('srcset') ? pickBestFromSrcset(source.getAttribute(attr)) : source.getAttribute(attr);
+            if (val) {
+              trackImageUrl(val, imageSet);
+              const url = resolveUrl(val);
+              if (url && !url.startsWith('data:')) {
+                foundValid = true;
+              }
+            }
+          }
         }
+        if (foundValid) return;
       }
     }
   }
