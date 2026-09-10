@@ -55,6 +55,10 @@
   // sitting next to the real `data-src` is the whole lazy-load pattern.
   const MEDIA_SRC_ATTRS = ['src', 'data-src', 'data-lazy-src', 'data-original'];
   const POSTER_ATTRS = ['poster', 'data-poster'];
+  // Same story on <picture><source>, split by parse shape: the first two hold a
+  // srcset candidate list, the rest a bare URL.
+  const SOURCE_SRCSET_ATTRS = ['srcset', 'data-srcset'];
+  const SOURCE_URL_ATTRS = ['src', 'data-src', 'data-lazy-src', 'data-original'];
   // Tags worth an attribute sweep when they turn up in a MutationObserver batch
   const TAG_SET = new Set(['IMG', 'VIDEO', 'SOURCE', 'PICTURE', 'DIV', 'SPAN', 'SECTION', 'ARTICLE', 'HEADER', 'FOOTER', 'A', 'LI', 'FIGURE', 'I', 'META', 'LINK', 'OBJECT', 'EMBED', 'IFRAME', 'image', 'IMAGE']);
 
@@ -280,6 +284,46 @@
     return bestUrl;
   }
 
+  // Every populated variant on one <picture><source>, handed to `track`.
+  //
+  // Read as a *list*, not a preference order — same reasoning as MEDIA_SRC_ATTRS.
+  // Lazy-load markup routinely pairs a placeholder `srcset`/`src` with the real
+  // `data-srcset`/`data-src`, and a `||` chain that stopped at the first hit took
+  // the placeholder and dropped the full-resolution variant entirely. Tracking
+  // both is safe here because these land in the image set, where the ≥200x200
+  // filter culls whichever one was the placeholder. (That cull is real for
+  // images; it is NOT available for videos, which skip the size filter.)
+  //
+  // Returns whether this source yielded a *real* URL. "Real" is deliberately the
+  // same condition trackImageUrl accepts on (resolves, and not an inline data:
+  // payload), so a source counts as "usable" exactly when it actually put
+  // something in the set. Only a usable source ends the caller's scan of its
+  // siblings — one carrying nothing but an inline LQIP placeholder tracked
+  // nothing, so it must not shadow the next source.
+  function collectSourceVariants(source, track) {
+    let usable = false;
+    for (const attr of SOURCE_SRCSET_ATTRS) {
+      const best = pickBestFromSrcset(source.getAttribute(attr));
+      if (best) {
+        track(best);
+        usable = usable || isRealMediaUrl(best);
+      }
+    }
+    for (const attr of SOURCE_URL_ATTRS) {
+      const val = source.getAttribute(attr);
+      if (val) {
+        track(val);
+        usable = usable || isRealMediaUrl(val);
+      }
+    }
+    return usable;
+  }
+
+  function isRealMediaUrl(raw) {
+    const url = resolveUrl(raw);
+    return !!url && !url.startsWith('data:');
+  }
+
   // Media discovery — scans the DOM for downloadable image and video URLs
 
   function collectImages(trackImage) {
@@ -330,7 +374,7 @@
 
     // <picture>: every <source> is the SAME image in another format/breakpoint.
     // Prefer the variant the browser actually rendered; otherwise take the
-    // best candidate of the first usable source.
+    // candidates of the first usable source (see collectSourceVariants).
     document.querySelectorAll('picture').forEach((pic) => {
       const img = pic.querySelector('img');
       if (img && img.currentSrc) {
@@ -338,11 +382,7 @@
         return;
       }
       for (const source of pic.querySelectorAll('source')) {
-        const best = pickBestFromSrcset(source.getAttribute('srcset')) ||
-                     pickBestFromSrcset(source.getAttribute('data-srcset')) ||
-                     source.getAttribute('src') || source.getAttribute('data-src') ||
-                     source.getAttribute('data-lazy-src') || source.getAttribute('data-original');
-        if (best) { trackImage(best); return; }
+        if (collectSourceVariants(source, trackImage)) return;
       }
     });
 
@@ -805,15 +845,11 @@
         trackImageUrl(img.currentSrc, imageSet);
         return;
       }
+      // One closure per <picture>, not per <source> — handlePicture runs on the
+      // MutationObserver path.
+      const track = (raw) => trackImageUrl(raw, imageSet);
       for (const source of el.querySelectorAll('source')) {
-        const best = pickBestFromSrcset(source.getAttribute('srcset')) ||
-                     pickBestFromSrcset(source.getAttribute('data-srcset')) ||
-                     source.getAttribute('src') || source.getAttribute('data-src') ||
-                     source.getAttribute('data-lazy-src') || source.getAttribute('data-original');
-        if (best) {
-          trackImageUrl(best, imageSet);
-          return;
-        }
+        if (collectSourceVariants(source, track)) return;
       }
     }
   }
