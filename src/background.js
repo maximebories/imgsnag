@@ -80,7 +80,7 @@ browser.runtime.onMessage.addListener((message, sender) => {
         return { success: true };
       })
       .catch((err) => {
-        console.warn('[imgsnag] Download failed:', message.url, err.message);
+        console.warn('[imgsnag] Download failed:', err.message);
         return { success: false, error: err.message };
       });
   }
@@ -100,7 +100,7 @@ browser.runtime.onMessage.addListener((message, sender) => {
             const downloadId = await browser.downloads.download({ url });
             await addActiveDownloadId(downloadId);
           } catch (err) {
-            console.warn('[imgsnag] Download failed:', url, err.message);
+            console.warn('[imgsnag] Download failed:', err.message);
           } finally {
             completed++;
             const badgeStep = total > 50 ? 10 : 1;
