@@ -347,6 +347,73 @@ describe('handlePicture', () => {
     handlePicture(picture, imageSet);
     expect([...imageSet]).toEqual(['https://example.com/fallback.jpg']);
   });
+
+  // Regression: the attribute chain used to short-circuit on `srcset`, so a
+  // placeholder srcset next to the real `data-srcset` dropped the only
+  // full-resolution URL on the page. Every populated variant is now tracked;
+  // the >=200x200 filter is what culls the placeholder later.
+  it('keeps the data-srcset variant when a placeholder srcset is present', () => {
+    const imageSet = new Set();
+    const picture = el('picture');
+    const source = el('source', {
+      srcset: 'https://example.com/placeholder.jpg 1w',
+      'data-srcset': 'https://example.com/real-2000.jpg 2000w'
+    });
+    picture.appendChild(source);
+
+    handlePicture(picture, imageSet);
+    expect([...imageSet].sort()).toEqual([
+      'https://example.com/placeholder.jpg',
+      'https://example.com/real-2000.jpg'
+    ]);
+  });
+
+  it('keeps the data-src variant when a placeholder src is present', () => {
+    const imageSet = new Set();
+    const picture = el('picture');
+    const source = el('source', {
+      src: 'https://example.com/tiny.jpg',
+      'data-src': 'https://example.com/full.jpg'
+    });
+    picture.appendChild(source);
+
+    handlePicture(picture, imageSet);
+    expect([...imageSet].sort()).toEqual([
+      'https://example.com/full.jpg',
+      'https://example.com/tiny.jpg'
+    ]);
+  });
+
+  // A source whose only variant is an inline data: URI tracked nothing at all
+  // (trackImageUrl rejects data:), so it must not count as "usable" and hide
+  // the sibling that carries the real URL.
+  it('does not let a data:-only source shadow the next source', () => {
+    const imageSet = new Set();
+    const picture = el('picture');
+    const lqip = el('source', {
+      srcset: 'data:image/gif;base64,R0lGODlhAQABAAAAACw= 1w'
+    });
+    const real = el('source', { 'data-src': 'https://example.com/real.jpg' });
+    picture.appendChild(lqip);
+    picture.appendChild(real);
+
+    handlePicture(picture, imageSet);
+    expect([...imageSet]).toEqual(['https://example.com/real.jpg']);
+  });
+
+  // The flip side: once a source yields a real URL the scan stops, so a
+  // <picture> still contributes one image rather than one per breakpoint.
+  it('stops at the first usable source', () => {
+    const imageSet = new Set();
+    const picture = el('picture');
+    const first = el('source', { srcset: 'https://example.com/webp.webp 800w' });
+    const second = el('source', { srcset: 'https://example.com/jpeg.jpg 800w' });
+    picture.appendChild(first);
+    picture.appendChild(second);
+
+    handlePicture(picture, imageSet);
+    expect([...imageSet]).toEqual(['https://example.com/webp.webp']);
+  });
 });
 
 describe('getCssMediaUrls', () => {
