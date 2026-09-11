@@ -55,6 +55,10 @@
   // sitting next to the real `data-src` is the whole lazy-load pattern.
   const MEDIA_SRC_ATTRS = ['src', 'data-src', 'data-lazy-src', 'data-original'];
   const POSTER_ATTRS = ['poster', 'data-poster'];
+  // Same story on <picture><source>, split by parse shape: the first two hold a
+  // srcset candidate list, the rest a bare URL.
+  const SOURCE_SRCSET_ATTRS = ['srcset', 'data-srcset'];
+  const SOURCE_URL_ATTRS = ['src', 'data-src', 'data-lazy-src', 'data-original'];
   // Tags worth an attribute sweep when they turn up in a MutationObserver batch
   const TAG_SET = new Set(['IMG', 'VIDEO', 'SOURCE', 'PICTURE', 'DIV', 'SPAN', 'SECTION', 'ARTICLE', 'HEADER', 'FOOTER', 'A', 'LI', 'FIGURE', 'I', 'META', 'LINK', 'OBJECT', 'EMBED', 'IFRAME', 'image', 'IMAGE']);
 
@@ -280,109 +284,51 @@
     return bestUrl;
   }
 
+  // Every populated variant on one <picture><source>, handed to `track`.
+  //
+  // Read as a *list*, not a preference order — same reasoning as MEDIA_SRC_ATTRS.
+  // Lazy-load markup routinely pairs a placeholder `srcset`/`src` with the real
+  // `data-srcset`/`data-src`, and a `||` chain that stopped at the first hit took
+  // the placeholder and dropped the full-resolution variant entirely. Tracking
+  // both is safe here because these land in the image set, where the ≥200x200
+  // filter culls whichever one was the placeholder. (That cull is real for
+  // images; it is NOT available for videos, which skip the size filter.)
+  //
+  // Returns whether this source yielded a *real* URL. "Real" is deliberately the
+  // same condition trackImageUrl accepts on (resolves, and not an inline data:
+  // payload), so a source counts as "usable" exactly when it actually put
+  // something in the set. Only a usable source ends the caller's scan of its
+  // siblings — one carrying nothing but an inline LQIP placeholder tracked
+  // nothing, so it must not shadow the next source.
+  function collectSourceVariants(source, track) {
+    let usable = false;
+    for (const attr of SOURCE_SRCSET_ATTRS) {
+      const best = pickBestFromSrcset(source.getAttribute(attr));
+      if (best) {
+        track(best);
+        usable = usable || isRealMediaUrl(best);
+      }
+    }
+    for (const attr of SOURCE_URL_ATTRS) {
+      const val = source.getAttribute(attr);
+      if (val) {
+        track(val);
+        usable = usable || isRealMediaUrl(val);
+      }
+    }
+    return usable;
+  }
+
+  function isRealMediaUrl(raw) {
+    const url = resolveUrl(raw);
+    return !!url && !url.startsWith('data:');
+  }
+
   // Media discovery — scans the DOM for downloadable image and video URLs
 
-  function collectImages(trackImage) {
-    // <meta> Open Graph / Twitter, <link rel="preload"> hints, and icons
-    document.querySelectorAll('meta[property="og:image"], meta[property="og:image:secure_url"], meta[name="twitter:image"], meta[itemprop="image"], link[rel="preload"][as="image"], link[rel="icon"], link[rel="apple-touch-icon"], link[rel="shortcut icon"], link[rel="image_src"], link[rel="mask-icon"], link[itemprop="image"]').forEach((el) => {
-      const url = el.getAttribute('content') || el.getAttribute('href');
-      if (url) trackImage(url);
-    });
+  function collectImages(imageUrls, videoUrls) {
+    const trackImage = (url) => trackImageUrl(url, imageUrls);
 
-    // <img src> and lazy loaded variants. When the element carries a srcset
-    // (or data-srcset), src is just one more variant of the same image — the
-    // srcset best-pick below covers it, so skip src to avoid duplicates.
-    document.querySelectorAll('img[src], img[data-src], img[data-lazy-src], img[data-original]').forEach((img) => {
-      const hasSet = img.hasAttribute('srcset') || img.hasAttribute('data-srcset') || img.parentElement?.tagName === 'PICTURE';
-      if (img.src && !hasSet) trackImage(img.src);
-      if (img.hasAttribute('data-src')) trackImage(img.getAttribute('data-src'));
-      if (img.hasAttribute('data-lazy-src')) trackImage(img.getAttribute('data-lazy-src'));
-      if (img.hasAttribute('data-original')) trackImage(img.getAttribute('data-original'));
-    });
-
-    // srcset attributes (img, source, etc.) — best candidate only.
-    // <picture> sources are handled per-picture below (format alternatives).
-    document.querySelectorAll('[srcset], [data-srcset], [data-bgset], [imagesrcset]').forEach((el) => {
-      if (el.tagName === 'SOURCE' && el.parentElement?.tagName === 'PICTURE') return;
-      const best = pickBestFromSrcset(el.getAttribute('srcset')) ||
-                   pickBestFromSrcset(el.getAttribute('data-srcset')) ||
-                   pickBestFromSrcset(el.getAttribute('data-bgset')) ||
-                   pickBestFromSrcset(el.getAttribute('imagesrcset'));
-      if (best) trackImage(best);
-    });
-
-    document.querySelectorAll('[data-bg], [data-bg-src], [data-background], [data-background-image]').forEach((el) => {
-      const attrs = ['data-bg', 'data-bg-src', 'data-background', 'data-background-image'];
-      for (const attr of attrs) {
-        if (el.hasAttribute(attr)) {
-          const bg = el.getAttribute(attr);
-          if (bg) {
-            if (bg.includes('url(') || bg.includes('image-set(')) {
-              for (const raw of extractBgImageUrls(bg)) trackImage(raw);
-            } else {
-              const url = resolveUrl(bg.trim());
-              if (isImageUrl(url)) trackImage(bg.trim());
-            }
-          }
-        }
-      }
-    });
-
-    // <picture>: every <source> is the SAME image in another format/breakpoint.
-    // Prefer the variant the browser actually rendered; otherwise take the
-    // best candidate of the first usable source.
-    document.querySelectorAll('picture').forEach((pic) => {
-      const img = pic.querySelector('img');
-      if (img && img.currentSrc) {
-        trackImage(img.currentSrc);
-        return;
-      }
-      for (const source of pic.querySelectorAll('source')) {
-        const best = pickBestFromSrcset(source.getAttribute('srcset')) ||
-                     pickBestFromSrcset(source.getAttribute('data-srcset')) ||
-                     source.getAttribute('src') || source.getAttribute('data-src') ||
-                     source.getAttribute('data-lazy-src') || source.getAttribute('data-original');
-        if (best) { trackImage(best); return; }
-      }
-    });
-
-    // <video poster> and lazy loaded variants (still an image)
-    document.querySelectorAll('video[poster], video[data-poster]').forEach((video) => {
-      POSTER_ATTRS.forEach(attr => {
-        const val = video.getAttribute(attr);
-        if (val) trackImage(val);
-      });
-    });
-
-    // <object>/<embed>/<iframe> whose source is an image file
-    document.querySelectorAll('object[data], embed[src], iframe[src]').forEach((el) => {
-      const raw = el.tagName === 'OBJECT' ? el.getAttribute('data') : el.getAttribute('src');
-      if (isImageUrl(resolveUrl(raw))) trackImage(raw);
-    });
-
-    // <svg image> embedded images
-    document.querySelectorAll('svg image, image').forEach((el) => {
-      const raw = el.getAttribute('href') || el.getAttribute('xlink:href');
-      if (raw) trackImage(raw);
-    });
-
-    // CSS background-image on likely container elements
-    document.querySelectorAll(BG_IMAGE_SELECTORS).forEach((el) => {
-      // Fast path: skip elements with no styling hints to avoid expensive getComputedStyle calls
-      if (!el.className && !el.id && !el.getAttribute('style')) return;
-
-      pendingBackgroundCheckQueue.push(el);
-      if (!isBgCheckScheduled) {
-        isBgCheckScheduled = true;
-        if (typeof requestIdleCallback !== 'undefined') {
-          requestIdleCallback(processBgImageQueue);
-        } else {
-          setTimeout(processBgImageQueue, 1);
-        }
-      }
-    });
-
-    // Fallback — scan text and attributes to catch JSON-LD or data attributes that DOM queries miss
     const walker = document.createTreeWalker(
       document.documentElement,
       NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT,
@@ -392,6 +338,22 @@
     let node;
     while ((node = walker.nextNode())) {
       extractRegexUrls(node, trackImage);
+      if (node.nodeType !== Node.ELEMENT_NODE) continue;
+
+      const el = node;
+      const tag = el.tagName;
+      if (
+        TAG_SET.has(tag) ||
+        (el.hasAttributes && el.hasAttributes() && (
+          el.hasAttribute('srcset') || el.hasAttribute('data-srcset') || el.hasAttribute('data-bgset') || el.hasAttribute('imagesrcset') ||
+          el.hasAttribute('data-src') || el.hasAttribute('data-lazy-src') || el.hasAttribute('data-original') ||
+          el.hasAttribute('data-bg') || el.hasAttribute('data-bg-src') || el.hasAttribute('data-background') ||
+          el.hasAttribute('data-background-image') ||
+          (el.hasAttribute('style') && el.style && el.style.backgroundImage)
+        ))
+      ) {
+        extractUrlsFromElement(el, imageUrls, videoUrls);
+      }
     }
   }
 
@@ -431,20 +393,7 @@
   }
 
   function collectVideos(trackVideo) {
-    // <video src> and lazy loaded variants
-    document.querySelectorAll('video[src], video[data-src], video[data-lazy-src], video[data-original]').forEach((video) => {
-      MEDIA_SRC_ATTRS.forEach(attr => {
-        const val = video.getAttribute(attr);
-        if (val) trackVideo(val);
-      });
-    });
-    // <video><source src> and lazy loaded variants
-    document.querySelectorAll('video source[src], video source[data-src], video source[data-lazy-src], video source[data-original]').forEach((source) => {
-      MEDIA_SRC_ATTRS.forEach(attr => {
-        const val = source.getAttribute(attr);
-        if (val) trackVideo(val);
-      });
-    });
+    // Handled in unified initial scan
   }
 
   // Inline <svg> elements have no URL — serialize them into data: URLs on
@@ -484,19 +433,8 @@
     const imageUrls = new Set();
     const videoUrls = new Set();
 
-    function trackImage(url) {
-      trackImageUrl(url, imageUrls);
-    }
-
-    function trackVideo(url) {
-      const resolved = resolveUrl(url);
-      if (resolved && !resolved.startsWith('data:') && !videoUrls.has(resolved)) {
-        videoUrls.add(resolved);
-      }
-    }
-
-    collectImages(trackImage);
-    collectVideos(trackVideo);
+    collectImages(imageUrls, videoUrls);
+    collectVideos();
 
     return { imageUrls, videoUrls };
   }
@@ -805,15 +743,11 @@
         trackImageUrl(img.currentSrc, imageSet);
         return;
       }
+      // One closure per <picture>, not per <source> — handlePicture runs on the
+      // MutationObserver path.
+      const track = (raw) => trackImageUrl(raw, imageSet);
       for (const source of el.querySelectorAll('source')) {
-        const best = pickBestFromSrcset(source.getAttribute('srcset')) ||
-                     pickBestFromSrcset(source.getAttribute('data-srcset')) ||
-                     source.getAttribute('src') || source.getAttribute('data-src') ||
-                     source.getAttribute('data-lazy-src') || source.getAttribute('data-original');
-        if (best) {
-          trackImageUrl(best, imageSet);
-          return;
-        }
+        if (collectSourceVariants(source, track)) return;
       }
     }
   }

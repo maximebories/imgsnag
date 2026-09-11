@@ -347,6 +347,73 @@ describe('handlePicture', () => {
     handlePicture(picture, imageSet);
     expect([...imageSet]).toEqual(['https://example.com/fallback.jpg']);
   });
+
+  // Regression: the attribute chain used to short-circuit on `srcset`, so a
+  // placeholder srcset next to the real `data-srcset` dropped the only
+  // full-resolution URL on the page. Every populated variant is now tracked;
+  // the >=200x200 filter is what culls the placeholder later.
+  it('keeps the data-srcset variant when a placeholder srcset is present', () => {
+    const imageSet = new Set();
+    const picture = el('picture');
+    const source = el('source', {
+      srcset: 'https://example.com/placeholder.jpg 1w',
+      'data-srcset': 'https://example.com/real-2000.jpg 2000w'
+    });
+    picture.appendChild(source);
+
+    handlePicture(picture, imageSet);
+    expect([...imageSet].sort()).toEqual([
+      'https://example.com/placeholder.jpg',
+      'https://example.com/real-2000.jpg'
+    ]);
+  });
+
+  it('keeps the data-src variant when a placeholder src is present', () => {
+    const imageSet = new Set();
+    const picture = el('picture');
+    const source = el('source', {
+      src: 'https://example.com/tiny.jpg',
+      'data-src': 'https://example.com/full.jpg'
+    });
+    picture.appendChild(source);
+
+    handlePicture(picture, imageSet);
+    expect([...imageSet].sort()).toEqual([
+      'https://example.com/full.jpg',
+      'https://example.com/tiny.jpg'
+    ]);
+  });
+
+  // A source whose only variant is an inline data: URI tracked nothing at all
+  // (trackImageUrl rejects data:), so it must not count as "usable" and hide
+  // the sibling that carries the real URL.
+  it('does not let a data:-only source shadow the next source', () => {
+    const imageSet = new Set();
+    const picture = el('picture');
+    const lqip = el('source', {
+      srcset: 'data:image/gif;base64,R0lGODlhAQABAAAAACw= 1w'
+    });
+    const real = el('source', { 'data-src': 'https://example.com/real.jpg' });
+    picture.appendChild(lqip);
+    picture.appendChild(real);
+
+    handlePicture(picture, imageSet);
+    expect([...imageSet]).toEqual(['https://example.com/real.jpg']);
+  });
+
+  // The flip side: once a source yields a real URL the scan stops, so a
+  // <picture> still contributes one image rather than one per breakpoint.
+  it('stops at the first usable source', () => {
+    const imageSet = new Set();
+    const picture = el('picture');
+    const first = el('source', { srcset: 'https://example.com/webp.webp 800w' });
+    const second = el('source', { srcset: 'https://example.com/jpeg.jpg 800w' });
+    picture.appendChild(first);
+    picture.appendChild(second);
+
+    handlePicture(picture, imageSet);
+    expect([...imageSet]).toEqual(['https://example.com/webp.webp']);
+  });
 });
 
 describe('getCssMediaUrls', () => {
@@ -631,5 +698,66 @@ describe('trackImageUrl', () => {
     const set = new Set();
     trackImageUrl('https://example.com/1920x1080/photo.jpg', set);
     expect([...set]).toEqual(['https://example.com/1920x1080/photo.jpg']);
+  });
+});
+
+describe('collectMediaUrls initial scan unified traversal', () => {
+  beforeEach(() => {
+    jest.resetModules();
+    document.body.innerHTML = '';
+
+    global.browser = {
+      runtime: {
+        sendMessage: jest.fn().mockResolvedValue(),
+        onConnect: { addListener: jest.fn() }
+      },
+      storage: {
+        sync: { get: jest.fn().mockResolvedValue({ disableDrag: false }) },
+        onChanged: { addListener: jest.fn() }
+      }
+    };
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('dispatches to every source handler in one pass and keeps images and videos apart', () => {
+    document.body.innerHTML = `
+      <meta property="og:image" content="https://example.com/og.jpg">
+      <img src="https://example.com/img.jpg" data-src="https://example.com/lazy.jpg">
+      <div data-bg="https://example.com/data-bg.jpg"></div>
+      <picture>
+        <source srcset="https://example.com/source.jpg 800w">
+        <img src="https://example.com/fallback.jpg">
+      </picture>
+      <video poster="https://example.com/poster.jpg" src="https://example.com/video.mp4"></video>
+      <object data="https://example.com/object.jpg"></object>
+      <svg><image href="https://example.com/svg.jpg"></image></svg>
+      <div style="background-image: url('https://example.com/style.jpg')"></div>
+    `;
+
+    const { collectMediaUrls } = require('../src/content.js');
+    const { imageUrls, videoUrls } = collectMediaUrls();
+
+    // One URL per handler the traversal is responsible for reaching.
+    expect(imageUrls.has('https://example.com/og.jpg')).toBe(true);        // handleMeta
+    expect(imageUrls.has('https://example.com/img.jpg')).toBe(true);       // <img src>
+    expect(imageUrls.has('https://example.com/lazy.jpg')).toBe(true);      // lazy-load attrs
+    expect(imageUrls.has('https://example.com/data-bg.jpg')).toBe(true);   // handleDataBg
+    expect(imageUrls.has('https://example.com/source.jpg')).toBe(true);    // handleSource
+    expect(imageUrls.has('https://example.com/fallback.jpg')).toBe(true);  // <picture> fallback
+    expect(imageUrls.has('https://example.com/poster.jpg')).toBe(true);    // handleVideo poster
+    expect(imageUrls.has('https://example.com/object.jpg')).toBe(true);    // handleEmbed
+    expect(imageUrls.has('https://example.com/svg.jpg')).toBe(true);       // handleSvgImage
+
+    // The two sets must not cross: a video source is never an image.
+    expect(videoUrls.has('https://example.com/video.mp4')).toBe(true);
+    expect(imageUrls.has('https://example.com/video.mp4')).toBe(false);
+
+    // An *inline* style attribute is reached synchronously by the TreeWalker
+    // attribute sweep — no getComputedStyle involved. Only stylesheet-driven
+    // backgrounds go through the deferred idle queue.
+    expect(imageUrls.has('https://example.com/style.jpg')).toBe(true);
   });
 });
