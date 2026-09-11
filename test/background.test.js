@@ -253,26 +253,137 @@ describe('Background Script', () => {
     expect(badgeText).toBe(''); // Should be reset at the end
   });
 
-  test('download_svg: valid markup downloads with a generated filename', async () => {
-    const response = await messageListener({
-      action: 'download_svg',
-      markup: '<svg xmlns="http://www.w3.org/2000/svg"><rect width="10" height="10"/></svg>'
-    }, {});
+  describe('download_svg browser fork', () => {
+    let originalCreateObjectURL;
+    let originalRevokeObjectURL;
 
-    expect(response).toEqual({ success: true });
-    expect(downloads).toHaveLength(1);
-    // jsdom has no URL.createObjectURL, so the data: fallback path is exercised
-    expect(downloads[0].url.startsWith('data:image/svg+xml')).toBe(true);
-    expect(downloads[0].filename).toBe('imgsnag-inline.svg');
-    expect(global.mockStorage).toHaveProperty('dl_1');
-  });
+    beforeEach(() => {
+      // Stub the static methods safely without destroying the global.URL constructor
+      originalCreateObjectURL = global.URL.createObjectURL;
+      originalRevokeObjectURL = global.URL.revokeObjectURL;
+    });
 
-  test('download_svg: rejects payloads that are not SVG markup', async () => {
-    for (const markup of ['<script>alert(1)</script>', '', 'hello', 42, null, '<svg'.padEnd(2 * 1024 * 1024 + 5, 'a')]) {
-      const response = await messageListener({ action: 'download_svg', markup }, {});
-      expect(response).toEqual({ success: false, error: 'Invalid SVG payload' });
-    }
-    expect(downloads).toHaveLength(0);
+    afterEach(() => {
+      global.URL.createObjectURL = originalCreateObjectURL;
+      global.URL.revokeObjectURL = originalRevokeObjectURL;
+    });
+
+    test('Firefox path (createObjectURL available) uses blob: URL and handles revocation', async () => {
+      global.URL.createObjectURL = jest.fn().mockReturnValue('blob:test-url');
+      global.URL.revokeObjectURL = jest.fn();
+
+      const response = await messageListener({
+        action: 'download_svg',
+        markup: '<svg xmlns="http://www.w3.org/2000/svg"><rect width="10" height="10"/></svg>'
+      }, {});
+
+      expect(response).toEqual({ success: true });
+      expect(downloads).toHaveLength(1);
+      expect(downloads[0].url).toBe('blob:test-url');
+      // Assert security invariants (filename and storage)
+      expect(downloads[0].filename).toBe('imgsnag-inline.svg');
+      expect(global.mockStorage).toHaveProperty('dl_1');
+
+      expect(global.URL.createObjectURL).toHaveBeenCalled();
+      expect(global.URL.revokeObjectURL).not.toHaveBeenCalled();
+
+      // Revocation happens exactly once on onChanged
+      onChangedListener({
+        id: downloads[0].id,
+        state: { current: 'complete' }
+      });
+      expect(global.URL.revokeObjectURL).toHaveBeenCalledTimes(1);
+      expect(global.URL.revokeObjectURL).toHaveBeenCalledWith('blob:test-url');
+    });
+
+    test('Firefox path revokes blob immediately on download failure', async () => {
+      global.URL.createObjectURL = jest.fn().mockReturnValue('blob:test-url');
+      global.URL.revokeObjectURL = jest.fn();
+
+      const originalDownload = global.browser.downloads.download;
+      global.browser.downloads.download = jest.fn().mockRejectedValue(new Error('Simulated download failure'));
+
+      try {
+        const response = await messageListener({
+          action: 'download_svg',
+          markup: '<svg xmlns="http://www.w3.org/2000/svg"><rect width="10" height="10"/></svg>'
+        }, {});
+
+        expect(response).toEqual({ success: false, error: 'Simulated download failure' });
+        expect(global.URL.createObjectURL).toHaveBeenCalled();
+        expect(global.URL.revokeObjectURL).toHaveBeenCalledTimes(1);
+        expect(global.URL.revokeObjectURL).toHaveBeenCalledWith('blob:test-url');
+      } finally {
+        global.browser.downloads.download = originalDownload;
+      }
+    });
+
+    test('rejects payloads that are not SVG markup', async () => {
+      for (const markup of ['<script>alert(1)</script>', '', 'hello', 42, null, '<svg'.padEnd(2 * 1024 * 1024 + 5, 'a')]) {
+        const response = await messageListener({ action: 'download_svg', markup }, {});
+        expect(response).toEqual({ success: false, error: 'Invalid SVG payload' });
+      }
+      expect(downloads).toHaveLength(0);
+    });
+
+    // Deliberate hard invariant (Warden 2026-09-09): fail-closed prefix check.
+    // Legitimate well-formed SVGs starting with DOCTYPE or <?xml are rejected
+    // on purpose to guard the payload boundary. Do not relax this.
+    test('strictly rejects well-formed SVGs if they start with <?xml or <!DOCTYPE', async () => {
+      const payloads = [
+        '<?xml version="1.0"?><svg><rect/></svg>',
+        '<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"><svg><rect/></svg>',
+        '   <?xml version="1.0"?><svg></svg>'
+      ];
+      for (const markup of payloads) {
+        const response = await messageListener({ action: 'download_svg', markup }, {});
+        expect(response).toEqual({ success: false, error: 'Invalid SVG payload' });
+      }
+      expect(downloads).toHaveLength(0);
+    });
+
+    test('pins the MAX_INLINE_SVG_CHARS size boundary exact limit', async () => {
+      // MAX_INLINE_SVG_CHARS is 2MB, defined in src/background.js:13
+      // Since background.js has no module.exports, we assert the literal boundary here.
+      const maxChars = 2 * 1024 * 1024;
+
+      // Exactly 2MB should be accepted
+      const exactPayload = '<svg>' + 'a'.repeat(maxChars - 5);
+      const responseExact = await messageListener({ action: 'download_svg', markup: exactPayload }, {});
+      expect(responseExact).toEqual({ success: true });
+      expect(downloads).toHaveLength(1);
+
+      // 2MB + 1 character should be rejected
+      const overPayload = '<svg>' + 'a'.repeat(maxChars - 4);
+      const responseOver = await messageListener({ action: 'download_svg', markup: overPayload }, {});
+      expect(responseOver).toEqual({ success: false, error: 'Invalid SVG payload' });
+      // Downloads array should not have grown
+      expect(downloads).toHaveLength(1);
+    });
+
+    test('Chrome path (createObjectURL unavailable) uses data: URL', async () => {
+      global.URL.createObjectURL = undefined;
+      global.URL.revokeObjectURL = jest.fn(); // To ensure it's not called
+
+      const response = await messageListener({
+        action: 'download_svg',
+        markup: '<svg xmlns="http://www.w3.org/2000/svg"><rect width="10" height="10"/></svg>'
+      }, {});
+
+      expect(response).toEqual({ success: true });
+      expect(downloads).toHaveLength(1);
+      expect(downloads[0].url.startsWith('data:image/svg+xml')).toBe(true);
+      // Assert security invariants (filename and storage)
+      expect(downloads[0].filename).toBe('imgsnag-inline.svg');
+      expect(global.mockStorage).toHaveProperty('dl_1');
+
+      // Ensure revokeObjectURL is not called on onChanged
+      onChangedListener({
+        id: downloads[0].id,
+        state: { current: 'complete' }
+      });
+      expect(global.URL.revokeObjectURL).not.toHaveBeenCalled();
+    });
   });
 
   test('cancel_downloads: cancels all active downloads', async () => {
@@ -344,6 +455,23 @@ describe('Background Script', () => {
     // removeActiveDownloadId is async; let it settle
     await new Promise(resolve => setTimeout(resolve, 0));
 
+    expect(global.mockStorage).not.toHaveProperty('dl_1');
+  });
+
+  test('onChanged listener removes interrupted/cancelled downloads', async () => {
+    await messageListener({
+      action: 'download_image',
+      url: 'https://example.com/2.jpg'
+    }, {});
+
+    expect(global.mockStorage).toHaveProperty('dl_1');
+
+    onChangedListener({
+      id: downloads[0].id,
+      state: { current: 'interrupted' }
+    });
+
+    await new Promise(resolve => setTimeout(resolve, 0));
     expect(global.mockStorage).not.toHaveProperty('dl_1');
   });
 

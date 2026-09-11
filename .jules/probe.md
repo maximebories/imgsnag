@@ -61,3 +61,15 @@
 ## 2026-09-08 - JSON-LD and application/json in <head> regression test
 **Learning:** Verified that the Scout persona's fix for capturing `application/ld+json` and `application/json` `<script>` tags placed in the `<head>` of the document (by changing the TreeWalker root from `document.body` to `document.documentElement`) lacked a regression test targeting the `<head>` specifically.
 **Action:** Added a regression test in `tests/redos_fallback.test.js` appending these scripts and a `<style>` block to `document.head` to assert that `collectMediaUrls` correctly extracts image URLs from the JSON scripts while appropriately ignoring the style block.
+
+## 2026-09-10 - Mocking global URL in Node/Jest
+**Learning:** Overwriting the `global.URL` constructor entirely in Jest breaks assumptions when other code invokes `new URL()` — and `background.js` does exactly that when it re-validates download URLs.
+**Action:** When mocking static methods like `URL.createObjectURL` and `URL.revokeObjectURL`, stub the methods directly and restore them in `afterEach` rather than replacing the `global.URL` object.
+
+## 2026-09-10 - Semantic parity in download_svg browser forks
+**Learning:** Twin's journal notes that the `download_svg` blob-vs-`data:` fork is semantically sound (2 MB cap, teardown handling in Firefox event pages). But a review conclusion is not a regression guard: nothing failed if the blob branch silently stopped revoking.
+**Action:** Pinned both forks in `test/background.test.js` — `createObjectURL` present asserts a `blob:` URL plus exactly one `revokeObjectURL` on `downloads.onChanged` (and one immediate revoke when `downloads.download` rejects); `createObjectURL` absent asserts the `data:image/svg+xml` fallback and *no* revoke. Added a companion test that an `interrupted` download still clears its `dl_<id>` storage key.
+
+## 2026-09-11 - Pinned download_svg boundaries
+**Learning:** Verified that the strict `<svg` prefix validation (rejecting legitimate well-formed SVGs starting with `<?xml` or `<!DOCTYPE`) and the 2MB size boundary in `src/background.js` `download_svg` lacked exact tests. These are hard invariants guarding the extension from oversized or unexpected payloads crossing the page-to-background boundary.
+**Action:** Added two sets of tests in `test/background.test.js`: one to strictly assert the fail-closed prefix rejection of `<?xml` and `<!DOCTYPE`, and another to explicitly pin the exact `MAX_INLINE_SVG_CHARS` size boundary (2 * 1024 * 1024 bytes). Since `src/background.js` has no `module.exports`, the size boundary test was written by asserting against the literal constant with a comment pointing back to `src/background.js:13` as the source of truth—this serves as a pattern for future Probe runs testing background internals.
