@@ -11,6 +11,7 @@ const PREFIX = 'dl_';
 // so persisting this map across suspension would be useless anyway.
 const blobUrlsByDownloadId = new Map();
 const MAX_INLINE_SVG_CHARS = 2 * 1024 * 1024;
+const MAX_ACTIVE_DOWNLOADS = 50000;
 
 async function getActiveDownloadIds() {
   const data = await browser.storage.local.get();
@@ -26,6 +27,19 @@ async function flushActiveDownloadIds() {
   const batch = pendingActiveDownloadIds;
   pendingActiveDownloadIds = {};
   flushActiveDownloadIdsTimer = null;
+
+  // Warden: Protect against unbounded storage growth. Since storage.local.get() is
+  // expensive, we do it once per batch flush instead of on every addActiveDownloadId call.
+  const activeIds = await getActiveDownloadIds();
+  if (activeIds.length + Object.keys(batch).length > MAX_ACTIVE_DOWNLOADS) {
+    // Graceful eviction: drop the oldest tracking entries to respect the cap.
+    const excess = activeIds.length + Object.keys(batch).length - MAX_ACTIVE_DOWNLOADS;
+    if (excess > 0) {
+      const keysToRemove = activeIds.slice(0, excess).map(id => `${PREFIX}${id}`);
+      await browser.storage.local.remove(keysToRemove);
+    }
+  }
+
   await browser.storage.local.set(batch);
 }
 

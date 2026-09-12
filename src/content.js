@@ -67,6 +67,7 @@
   const MAX_INLINE_SVG_CHARS = 2 * 1024 * 1024;
 
   // Persistent media store — survives DOM removal (infinite scroll recycling)
+  const MAX_DISCOVERED_MEDIA = 50000;
   const discoveredMedia = new Map();
   let popupPort = null;
   let isDragDisabled = false;
@@ -649,8 +650,15 @@
   }
 
   async function addNewUrls(urls, type) {
-    const unknown = [...urls].filter((url) => !discoveredMedia.has(url));
+    let unknown = [...urls].filter((url) => !discoveredMedia.has(url));
     if (unknown.length === 0) return;
+
+    // Warden: Protect against unbounded memory growth from hostile infinite scroll pages
+    if (discoveredMedia.size + unknown.length > MAX_DISCOVERED_MEDIA) {
+      const allowed = Math.max(0, MAX_DISCOVERED_MEDIA - discoveredMedia.size);
+      unknown = unknown.slice(0, allowed);
+      if (unknown.length === 0) return;
+    }
 
     const sizeMap = type === 'image' ? new Map() : null;
     if (sizeMap) {
@@ -679,7 +687,7 @@
 
     const added = [];
     for (const item of items) {
-      if (!discoveredMedia.has(item.url)) {
+      if (!discoveredMedia.has(item.url) && discoveredMedia.size < MAX_DISCOVERED_MEDIA) {
         discoveredMedia.set(item.url, item);
         added.push(item);
       }
@@ -998,7 +1006,7 @@
 
       // Capture inline SVGs now so they ride along in the init payload
       for (const item of collectInlineSvgs()) {
-        if (!discoveredMedia.has(item.url)) discoveredMedia.set(item.url, item);
+        if (!discoveredMedia.has(item.url) && discoveredMedia.size < MAX_DISCOVERED_MEDIA) discoveredMedia.set(item.url, item);
       }
 
       port.postMessage({ action: 'init', images: [...discoveredMedia.values()] });
