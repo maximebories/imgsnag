@@ -69,3 +69,6 @@
 ## 2026-09-10 - Semantic parity in download_svg browser forks
 **Learning:** Twin's journal notes that the `download_svg` blob-vs-`data:` fork is semantically sound (2 MB cap, teardown handling in Firefox event pages). But a review conclusion is not a regression guard: nothing failed if the blob branch silently stopped revoking.
 **Action:** Pinned both forks in `test/background.test.js` — `createObjectURL` present asserts a `blob:` URL plus exactly one `revokeObjectURL` on `downloads.onChanged` (and one immediate revoke when `downloads.download` rejects); `createObjectURL` absent asserts the `data:image/svg+xml` fallback and *no* revoke. Added a companion test that an `interrupted` download still clears its `dl_<id>` storage key.
+## 2026-09-12 - Inline SVG evasion regression test
+**Learning:** Verified that the Warden persona's fix for rejecting inline SVGs containing `<use>` tags (to prevent unbounded loops or external requests), including checking for namespace evasion like `<foo:use>`, lacked a regression test.
+**Action:** Added a regression test `tests/inline_svg.test.js` pinning `collectInlineSvgs` behavior, ensuring it only exports SVGs without `<use>` elements in the serialized markup, checking both standard and namespaced cases.
