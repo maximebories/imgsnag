@@ -35,6 +35,7 @@
           }
           return NodeFilter.FILTER_REJECT;
         }
+        if (!node.hasAttributes()) return NodeFilter.FILTER_SKIP;
       }
       return NodeFilter.FILTER_ACCEPT;
     }
@@ -59,6 +60,7 @@
   // srcset candidate list, the rest a bare URL.
   const SOURCE_SRCSET_ATTRS = ['srcset', 'data-srcset'];
   const SOURCE_URL_ATTRS = ['src', 'data-src', 'data-lazy-src', 'data-original'];
+  const DATA_BG_ATTRS = ['data-bg', 'data-bg-src', 'data-background', 'data-background-image'];
   // Tags worth an attribute sweep when they turn up in a MutationObserver batch
   const TAG_SET = new Set(['IMG', 'VIDEO', 'SOURCE', 'PICTURE', 'DIV', 'SPAN', 'SECTION', 'ARTICLE', 'HEADER', 'FOOTER', 'A', 'LI', 'FIGURE', 'I', 'META', 'LINK', 'OBJECT', 'EMBED', 'IFRAME', 'image', 'IMAGE']);
 
@@ -329,6 +331,15 @@
   function collectImages(trackImage) {
     // <meta> Open Graph / Twitter, <link rel="preload"> hints, and icons
     document.querySelectorAll('meta[property="og:image"], meta[property="og:image:secure_url"], meta[name="twitter:image"], meta[itemprop="image"], link[rel="preload"][as="image"], link[rel="icon"], link[rel="apple-touch-icon"], link[rel="shortcut icon"], link[rel="image_src"], link[rel="mask-icon"], link[itemprop="image"]').forEach((el) => {
+      if (el.tagName === 'LINK' && el.getAttribute('rel') === 'preload' && el.getAttribute('as') === 'image') {
+        const best = pickBestFromSrcset(el.getAttribute('imagesrcset'));
+        if (best) {
+          const resolved = resolveUrl(best);
+          if (resolved && !resolved.startsWith('data:')) {
+            return; // Skip fallback, [imagesrcset] block below handles it
+          }
+        }
+      }
       const url = el.getAttribute('content') || el.getAttribute('href');
       if (url) trackImage(url);
     });
@@ -356,8 +367,7 @@
     });
 
     document.querySelectorAll('[data-bg], [data-bg-src], [data-background], [data-background-image]').forEach((el) => {
-      const attrs = ['data-bg', 'data-bg-src', 'data-background', 'data-background-image'];
-      for (const attr of attrs) {
+      for (const attr of DATA_BG_ATTRS) {
         if (el.hasAttribute(attr)) {
           const bg = el.getAttribute(attr);
           if (bg) {
@@ -706,7 +716,7 @@
   }
 
   function handleSrcset(el, imageSet) {
-    if (el.hasAttribute) {
+    if (el.hasAttributes && el.hasAttributes()) {
       // Picture sources are format alternatives handled by handleSource
       if (el.tagName === 'SOURCE' && el.parentElement?.tagName === 'PICTURE') return;
       const raw = pickBestFromSrcset(el.getAttribute('srcset')) ||
@@ -805,8 +815,11 @@
       if (rel === 'preload' && asAttr === 'image') {
         const best = pickBestFromSrcset(el.getAttribute('imagesrcset'));
         if (best) {
-          trackImageUrl(best, imageSet);
-          return;
+          const resolved = resolveUrl(best);
+          if (resolved && !resolved.startsWith('data:')) {
+            trackImageUrl(best, imageSet);
+            return;
+          }
         }
       }
       if ((rel === 'preload' && asAttr === 'image') || rel === 'icon' || rel === 'apple-touch-icon' || rel === 'shortcut icon' || rel === 'image_src' || rel === 'mask-icon' || itemprop === 'image') {
@@ -862,9 +875,8 @@
   }
 
   function handleDataBg(el, imageSet) {
-    if (el.hasAttribute) {
-      const attrs = ['data-bg', 'data-bg-src', 'data-background', 'data-background-image'];
-      for (const attr of attrs) {
+    if (el.hasAttributes && el.hasAttributes()) {
+      for (const attr of DATA_BG_ATTRS) {
         if (el.hasAttribute(attr)) {
           const bg = el.getAttribute(attr);
           if (bg) {
