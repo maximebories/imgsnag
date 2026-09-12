@@ -326,6 +326,41 @@ describe('Background Script', () => {
       expect(downloads).toHaveLength(0);
     });
 
+    // Deliberate hard invariant (Warden 2026-09-09): fail-closed prefix check.
+    // Legitimate well-formed SVGs starting with DOCTYPE or <?xml are rejected
+    // on purpose to guard the payload boundary. Do not relax this.
+    test('strictly rejects well-formed SVGs if they start with <?xml or <!DOCTYPE', async () => {
+      const payloads = [
+        '<?xml version="1.0"?><svg><rect/></svg>',
+        '<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"><svg><rect/></svg>',
+        '   <?xml version="1.0"?><svg></svg>'
+      ];
+      for (const markup of payloads) {
+        const response = await messageListener({ action: 'download_svg', markup }, {});
+        expect(response).toEqual({ success: false, error: 'Invalid SVG payload' });
+      }
+      expect(downloads).toHaveLength(0);
+    });
+
+    test('pins the MAX_INLINE_SVG_CHARS size boundary exact limit', async () => {
+      // MAX_INLINE_SVG_CHARS is 2MB, defined in src/background.js:13
+      // Since background.js has no module.exports, we assert the literal boundary here.
+      const maxChars = 2 * 1024 * 1024;
+
+      // Exactly 2MB should be accepted
+      const exactPayload = '<svg>' + 'a'.repeat(maxChars - 5);
+      const responseExact = await messageListener({ action: 'download_svg', markup: exactPayload }, {});
+      expect(responseExact).toEqual({ success: true });
+      expect(downloads).toHaveLength(1);
+
+      // 2MB + 1 character should be rejected
+      const overPayload = '<svg>' + 'a'.repeat(maxChars - 4);
+      const responseOver = await messageListener({ action: 'download_svg', markup: overPayload }, {});
+      expect(responseOver).toEqual({ success: false, error: 'Invalid SVG payload' });
+      // Downloads array should not have grown
+      expect(downloads).toHaveLength(1);
+    });
+
     test('Chrome path (createObjectURL unavailable) uses data: URL', async () => {
       global.URL.createObjectURL = undefined;
       global.URL.revokeObjectURL = jest.fn(); // To ensure it's not called
