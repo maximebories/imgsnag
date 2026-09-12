@@ -145,6 +145,28 @@ describe('handleMeta', () => {
     expect([...set]).toEqual(['https://example.com/large.jpg']);
   });
 
+  it('skips the href fallback when imagesrcset is valid and non-data', () => {
+    const set = new Set();
+    handleMeta(el('link', {
+      rel: 'preload',
+      as: 'image',
+      imagesrcset: 'https://example.com/large.jpg 800w',
+      href: 'https://example.com/fallback-preload.jpg'
+    }), set);
+    expect([...set]).toEqual(['https://example.com/large.jpg']);
+  });
+
+  it('falls back to href when imagesrcset yields only data: or disallowed candidates', () => {
+    const set = new Set();
+    handleMeta(el('link', {
+      rel: 'preload',
+      as: 'image',
+      imagesrcset: 'data:image/png;base64,iVBORw0KGgo 400w',
+      href: 'https://example.com/fallback.jpg'
+    }), set);
+    expect([...set]).toEqual(['https://example.com/fallback.jpg']);
+  });
+
   it('captures imagesrcset when no href is present', () => {
     const set = new Set();
     handleMeta(el('link', {
