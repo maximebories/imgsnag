@@ -35,6 +35,7 @@
           }
           return NodeFilter.FILTER_REJECT;
         }
+        if (!node.hasAttributes()) return NodeFilter.FILTER_SKIP;
       }
       return NodeFilter.FILTER_ACCEPT;
     }
