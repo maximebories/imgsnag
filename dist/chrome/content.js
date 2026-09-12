@@ -35,6 +35,7 @@
           }
           return NodeFilter.FILTER_REJECT;
         }
+        if (!node.hasAttributes()) return NodeFilter.FILTER_SKIP;
       }
       return NodeFilter.FILTER_ACCEPT;
     }
@@ -59,6 +60,7 @@
   // srcset candidate list, the rest a bare URL.
   const SOURCE_SRCSET_ATTRS = ['srcset', 'data-srcset'];
   const SOURCE_URL_ATTRS = ['src', 'data-src', 'data-lazy-src', 'data-original'];
+  const DATA_BG_ATTRS = ['data-bg', 'data-bg-src', 'data-background', 'data-background-image'];
   // Tags worth an attribute sweep when they turn up in a MutationObserver batch
   const TAG_SET = new Set(['IMG', 'VIDEO', 'SOURCE', 'PICTURE', 'DIV', 'SPAN', 'SECTION', 'ARTICLE', 'HEADER', 'FOOTER', 'A', 'LI', 'FIGURE', 'I', 'META', 'LINK', 'OBJECT', 'EMBED', 'IFRAME', 'image', 'IMAGE']);
 
@@ -356,8 +358,7 @@
     });
 
     document.querySelectorAll('[data-bg], [data-bg-src], [data-background], [data-background-image]').forEach((el) => {
-      const attrs = ['data-bg', 'data-bg-src', 'data-background', 'data-background-image'];
-      for (const attr of attrs) {
+      for (const attr of DATA_BG_ATTRS) {
         if (el.hasAttribute(attr)) {
           const bg = el.getAttribute(attr);
           if (bg) {
@@ -706,7 +707,7 @@
   }
 
   function handleSrcset(el, imageSet) {
-    if (el.hasAttribute) {
+    if (el.hasAttributes && el.hasAttributes()) {
       // Picture sources are format alternatives handled by handleSource
       if (el.tagName === 'SOURCE' && el.parentElement?.tagName === 'PICTURE') return;
       const raw = pickBestFromSrcset(el.getAttribute('srcset')) ||
@@ -862,9 +863,8 @@
   }
 
   function handleDataBg(el, imageSet) {
-    if (el.hasAttribute) {
-      const attrs = ['data-bg', 'data-bg-src', 'data-background', 'data-background-image'];
-      for (const attr of attrs) {
+    if (el.hasAttributes && el.hasAttributes()) {
+      for (const attr of DATA_BG_ATTRS) {
         if (el.hasAttribute(attr)) {
           const bg = el.getAttribute(attr);
           if (bg) {
