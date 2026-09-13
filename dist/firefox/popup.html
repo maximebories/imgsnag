@@ -33,7 +33,7 @@
 
       #empty .hint {
         font-size: 11px;
-        color: #777;
+        color: #555;
         text-align: center;
         max-width: 80%;
       }
@@ -77,7 +77,7 @@
         display: block;
         transition: opacity 0.15s;
       }
-      .cell:hover img { opacity: 0.85; }
+      .cell:hover img, .cell:hover video, .cell:focus-within img, .cell:focus-within video { opacity: 0.85; }
       .cell[hidden] { display: none; } /* visual-dedup hides smaller variants */
 
       .cell-action {
@@ -175,7 +175,7 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        color: #999;
+        color: #555;
         font-size: 11px;
         text-align: center;
         padding: 8px;
@@ -187,6 +187,7 @@
         height: 100%;
         object-fit: cover;
         display: block;
+        transition: opacity 0.15s;
       }
 
       .cell .play-overlay {
@@ -218,7 +219,7 @@
         display: none;
         padding: 4px 8px;
         font-size: 11px;
-        color: #666;
+        color: #555;
         background: #e5e7eb;
         text-align: center;
         border-top: 1px solid #e0e0e0;
@@ -284,13 +285,14 @@
         :root { color-scheme: light dark; }
         body { background: #1a1a1a; color: #f5f5f5; }
         #bar { background: #1a1a1a; border-top-color: #333; }
-        #hidden-count { background: #1a1a1a; color: #888; border-top-color: #333; }
+        #hidden-count { background: #1a1a1a; color: #a3a3a3; border-top-color: #333; }
         #counter { color: #a3a3a3; }
         .cell { background: #333; }
         .group-header { color: #a3a3a3; }
         #btn-all { background: #374151; color: #f9fafb; }
         #btn-all:hover { background: #4b5563; }
-        #empty .hint { color: #888; }
+        #empty .hint { color: #a3a3a3; }
+        .cell .placeholder { color: #bbb; }
       }
 
       @media (prefers-reduced-motion: reduce) {
