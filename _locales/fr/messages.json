@@ -12,7 +12,8 @@
     "description": "Label for the checkbox to turn off drag-to-save."
   },
   "optionsStatus": {
-    "message": "Enregistré"
+    "message": "Enregistré",
+    "description": "Status message shown when options are saved."
   },
   "popupSelect": {
     "message": "Sélectionner",
@@ -23,33 +24,40 @@
     "description": "Action button tooltip for downloading a specific image."
   },
   "popupLoading": {
-    "message": "Analyse de la page..."
+    "message": "Analyse de la page...",
+    "description": "Message shown while scanning the page for media."
   },
   "popupNoMedia": {
-    "message": "Aucune image ou vidéo trouvée"
+    "message": "Aucune image ou vidéo trouvée",
+    "description": "Message shown when no images or videos are found."
   },
   "popupVideos": {
-    "message": "Vidéos"
+    "message": "Vidéos",
+    "description": "Header for the video section in the popup."
   },
   "popupDownloadSelected": {
-    "message": "Télécharger la sélection"
+    "message": "Télécharger la sélection",
+    "description": "Button label for downloading only the selected media."
   },
   "popupDownloadAll": {
-    "message": "Tout télécharger"
+    "message": "Tout télécharger",
+    "description": "Button label for downloading all captured media."
   },
   "popupSelected": {
     "message": "sélectionnée(s)",
     "description": "Noun following the count of selected images (e.g., '3 selected')."
   },
   "popupReload": {
-    "message": "Rechargez la page et réessayez"
+    "message": "Rechargez la page et réessayez",
+    "description": "Message shown when an error occurs and the page needs to be reloaded."
   },
   "popupMediaFallback": {
     "message": "média",
     "description": "Fallback name for an image/video when the URL has no filename."
   },
   "optionsTitle": {
-    "message": "Options"
+    "message": "Options",
+    "description": "Title of the options page."
   },
   "popupDerivedBadge": {
     "message": "SVG généré",
@@ -60,7 +68,8 @@
     "description": "Short visible badge text indicating an image is an SVG."
   },
   "popupEmptyHint": {
-    "message": "Astuce : Alt+Clic ou glissez des images pour enregistrer"
+    "message": "Astuce : Alt+Clic ou glissez des images pour enregistrer",
+    "description": "Hint shown to users on how to save images directly."
   },
   "popupInlineSvg": {
     "message": "imgsnag-inline.svg",
