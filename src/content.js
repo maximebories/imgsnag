@@ -408,11 +408,24 @@
     });
 
     // CSS background-image on likely container elements
-    document.querySelectorAll(BG_IMAGE_SELECTORS).forEach((el) => {
-      // Fast path: skip elements with no styling hints to avoid expensive getComputedStyle calls
-      if (!el.className && !el.id && !el.getAttribute('style')) return;
-
-      pendingBackgroundCheckQueue.push(el);
+    const bgTags = new Set(['DIV', 'SPAN', 'SECTION', 'ARTICLE', 'HEADER', 'FOOTER', 'A', 'LI', 'FIGURE', 'I']);
+    const bgWalker = document.createTreeWalker(
+      document.documentElement,
+      NodeFilter.SHOW_ELEMENT,
+      {
+        acceptNode(node) {
+          if (!node.className && !node.id && !node.getAttribute('style')) return NodeFilter.FILTER_SKIP;
+          const tag = node.tagName;
+          if (bgTags.has(tag) || (node.getAttribute('style') || '').includes('background')) {
+            return NodeFilter.FILTER_ACCEPT;
+          }
+          return NodeFilter.FILTER_SKIP;
+        }
+      }
+    );
+    let bgEl;
+    while ((bgEl = bgWalker.nextNode())) {
+      pendingBackgroundCheckQueue.push(bgEl);
       if (!isBgCheckScheduled) {
         isBgCheckScheduled = true;
         if (typeof requestIdleCallback !== 'undefined') {
@@ -421,7 +434,7 @@
           setTimeout(processBgImageQueue, 1);
         }
       }
-    });
+    }
 
     // Fallback — scan text and attributes to catch JSON-LD or data attributes that DOM queries miss
     const walker = document.createTreeWalker(
@@ -456,7 +469,7 @@
         // srcset-family attributes hold many variants of one image; the
         // structural scan already tracked the best candidate
         const name = names[i];
-        if (name.includes('srcset')) continue;
+        if (name === 'srcset' || name === 'data-srcset' || name === 'data-bgset' || name === 'imagesrcset') continue;
         const val = node.getAttribute(name);
         if (val && HTTP_HINT_RE.test(val)) {
           let match;
@@ -927,16 +940,25 @@
               extractRegexUrls(el, trackSweptImage);
               if (el.nodeType !== Node.ELEMENT_NODE) continue;
               const tag = el.tagName;
-              if (
-                TAG_SET.has(tag) ||
-                (el.hasAttributes && el.hasAttributes() && (
-                  el.hasAttribute('srcset') || el.hasAttribute('data-srcset') || el.hasAttribute('data-bgset') || el.hasAttribute('imagesrcset') ||
-                  el.hasAttribute('data-src') || el.hasAttribute('data-lazy-src') || el.hasAttribute('data-original') ||
-                  el.hasAttribute('data-bg') || el.hasAttribute('data-bg-src') || el.hasAttribute('data-background') ||
-                  el.hasAttribute('data-background-image') ||
-                  (el.hasAttribute('style') && el.style && el.style.backgroundImage)
-                ))
-              ) {
+              let shouldExtract = TAG_SET.has(tag);
+              if (!shouldExtract && el.hasAttributes && el.hasAttributes()) {
+                const attrs = el.getAttributeNames();
+                for (let k = 0, len = attrs.length; k < len; k++) {
+                  const attr = attrs[k];
+                  if (
+                    attr === 'srcset' || attr === 'data-srcset' || attr === 'data-bgset' || attr === 'imagesrcset' ||
+                    attr === 'data-src' || attr === 'data-lazy-src' || attr === 'data-original' ||
+                    attr === 'data-bg' || attr === 'data-bg-src' || attr === 'data-background' || attr === 'data-background-image'
+                  ) {
+                    shouldExtract = true;
+                    break;
+                  }
+                }
+                if (!shouldExtract && el.hasAttribute('style') && el.style && el.style.backgroundImage) {
+                  shouldExtract = true;
+                }
+              }
+              if (shouldExtract) {
                 extractUrlsFromElement(el, imageUrls, videoUrls);
               }
             }

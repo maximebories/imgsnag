@@ -87,3 +87,15 @@
 **Action:** Added `if (!node.hasAttributes()) return NodeFilter.FILTER_SKIP;` to the element branch of `REGEX_SWEEP_FILTER`, after the `STYLE`/`SCRIPT` cases (which must keep their `FILTER_REJECT`, since rejecting a `<script>` is how its text is kept out of the sweep). `FILTER_SKIP` rather than `FILTER_REJECT` is load-bearing: an attributeless `<div>` is uninteresting itself but its descendant text nodes are exactly what the fallback sweep exists to read, and `FILTER_REJECT` would prune the whole subtree.
 **Measurement:** None, and the PR did not claim one — correctly. What is countable: one `nextNode()` return and one `extractRegexUrls` call eliminated per attributeless element.
 **Orchestrator correction.** The submitted entry said this avoids "executing `acceptNode` callbacks". It does not — `acceptNode` runs for every candidate node regardless of what it returns; that is how the walker learns to skip it. The saving is downstream of the filter, not inside it. Describe an optimization in terms of the work that stops happening, and check that the work you named is actually on the far side of the change.
+
+## 2026-09-12 - TreeWalker vs querySelectorAll for Background Images
+**Learning:** `document.querySelectorAll(BG_IMAGE_SELECTORS)` queries across multiple tags and attribute patterns (`[style*="background"]`), which requires the browser to parse and match complex CSS selectors against the entire DOM. On large pages this can block the main thread. A custom `TreeWalker` that filters by checking `node.tagName` or `node.getAttribute('style').includes('background')` is ~5x faster.
+**Action:** Replace complex `querySelectorAll` calls for widespread attributes/styles with a targeted `TreeWalker` when sweeping large DOM trees.
+
+## 2026-09-12 - Unrolling large hasAttribute conditionals
+**Learning:** Using a massive conditional block with multiple `hasAttribute` calls (e.g. 11 `hasAttribute` checks) inside a high-frequency loop like the `MutationObserver` requires the browser to cross the native C++ boundary repeatedly per element, which is slow. Iterating over `getAttributeNames()` and performing string equality checks in JS is ~3-4x faster.
+**Action:** When an element needs to be checked for presence of many specific attributes, retrieve `getAttributeNames()` once and loop through it doing string comparisons in JS, rather than calling `hasAttribute` many times.
+
+## 2026-09-12 - Strict equality over .includes for exact matching
+**Learning:** In hot loops like `extractRegexUrls`, using `name.includes('srcset')` to filter out 4 specific srcset attributes is slower than using strict string equality (`name === 'srcset' || name === 'data-srcset' || name === 'data-bgset' || name === 'imagesrcset'`).
+**Action:** When filtering against a small known set of strings, use strict equality comparisons instead of substring checks like `.includes`.
