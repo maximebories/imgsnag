@@ -927,16 +927,25 @@
               extractRegexUrls(el, trackSweptImage);
               if (el.nodeType !== Node.ELEMENT_NODE) continue;
               const tag = el.tagName;
-              if (
-                TAG_SET.has(tag) ||
-                (el.hasAttributes && el.hasAttributes() && (
-                  el.hasAttribute('srcset') || el.hasAttribute('data-srcset') || el.hasAttribute('data-bgset') || el.hasAttribute('imagesrcset') ||
-                  el.hasAttribute('data-src') || el.hasAttribute('data-lazy-src') || el.hasAttribute('data-original') ||
-                  el.hasAttribute('data-bg') || el.hasAttribute('data-bg-src') || el.hasAttribute('data-background') ||
-                  el.hasAttribute('data-background-image') ||
-                  (el.hasAttribute('style') && el.style && el.style.backgroundImage)
-                ))
-              ) {
+              let shouldExtract = TAG_SET.has(tag);
+              if (!shouldExtract && el.hasAttributes && el.hasAttributes()) {
+                const attrs = el.getAttributeNames();
+                for (let k = 0, len = attrs.length; k < len; k++) {
+                  const attr = attrs[k];
+                  if (
+                    attr === 'srcset' || attr === 'data-srcset' || attr === 'data-bgset' || attr === 'imagesrcset' ||
+                    attr === 'data-src' || attr === 'data-lazy-src' || attr === 'data-original' ||
+                    attr === 'data-bg' || attr === 'data-bg-src' || attr === 'data-background' || attr === 'data-background-image'
+                  ) {
+                    shouldExtract = true;
+                    break;
+                  }
+                }
+                if (!shouldExtract && el.hasAttribute('style') && el.style && el.style.backgroundImage) {
+                  shouldExtract = true;
+                }
+              }
+              if (shouldExtract) {
                 extractUrlsFromElement(el, imageUrls, videoUrls);
               }
             }
