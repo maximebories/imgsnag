@@ -47,3 +47,6 @@
 ## 2026-08-29 - Auto-save single-option settings pages
 **Learning:** For a single-option settings page (like a single checkbox for dragging), having a separate "Save" button adds unnecessary friction. Auto-saving on `change` provides immediate feedback. In addition, checkboxes hidden inside labels require explicit pointer cursors to signal interactability.
 **Action:** Remove standalone save buttons on single-option preference pages in favor of auto-save on `change`, and ensure label wrappers have `cursor: pointer`.
+## 2024-09-13 - Contrast and Keyboard Hover Parity
+**Learning:** Text elements like hints, empty states, and placeholders must meet WCAG AA contrast (4.5:1) in both light and dark modes to be legible. Furthermore, visual feedback for mouse users (e.g. image dimming on `:hover`) should be exactly mirrored for keyboard users. Relying purely on outline indicators leaves keyboard users without the same degree of state feedback.
+**Action:** Use `:focus-within` on container elements to trigger the same visual state changes for keyboard users that `:hover` provides for mouse users. Always verify text contrast against its container's background across color schemes.
