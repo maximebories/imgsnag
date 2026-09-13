@@ -331,6 +331,14 @@
   function collectImages(trackImage) {
     // <meta> Open Graph / Twitter, <link rel="preload"> hints, and icons
     document.querySelectorAll('meta[property="og:image"], meta[property="og:image:secure_url"], meta[name="twitter:image"], meta[itemprop="image"], link[rel="preload"][as="image"], link[rel="icon"], link[rel="apple-touch-icon"], link[rel="shortcut icon"], link[rel="image_src"], link[rel="mask-icon"], link[itemprop="image"]').forEach((el) => {
+      // A responsive preload's `href` is only the fallback for browsers that
+      // ignore imagesrcset. The [imagesrcset] sweep below already takes the best
+      // candidate, so emitting href here too would double-count one image —
+      // but only when that candidate is real; a data: LQIP tracks nothing and
+      // must not suppress the fallback.
+      if (el.tagName === 'LINK' && el.getAttribute('rel') === 'preload' && el.getAttribute('as') === 'image') {
+        if (isRealMediaUrl(pickBestFromSrcset(el.getAttribute('imagesrcset')))) return;
+      }
       const url = el.getAttribute('content') || el.getAttribute('href');
       if (url) trackImage(url);
     });
@@ -803,9 +811,12 @@
       // form. `href` is only the fallback for browsers that ignore imagesrcset,
       // so when a candidate resolves we take it and skip href, the same way
       // <picture> sources and <img srcset> avoid emitting the fallback twice.
+      // "Resolves" is the operative word: a candidate that is only an inline
+      // data: LQIP puts nothing in the set, so it must fall through to href
+      // rather than swallow it.
       if (rel === 'preload' && asAttr === 'image') {
         const best = pickBestFromSrcset(el.getAttribute('imagesrcset'));
-        if (best) {
+        if (isRealMediaUrl(best)) {
           trackImageUrl(best, imageSet);
           return;
         }
@@ -1173,6 +1184,6 @@
   syncDragPreference();
   browser.storage.onChanged.addListener(() => syncDragPreference());
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { handleSrcset, trackImageUrl, getDomImageSize, getCssMediaUrls, extractBgImageUrls, resolveUrl, isVideoUrl, isImageUrl, isSvgUrl, parseSrcset, pickBestFromSrcset, collectInlineSvgs, handleEmbed, passesSizeFilter, handleMeta, collectMediaUrls, handleSource, handlePicture, handleSvgImage, handleDataBg, extractRegexUrls, handleVideo, filterImagesBySize, SIZE_PROBE_POOL_SIZE };
+    module.exports = { handleSrcset, trackImageUrl, getDomImageSize, getCssMediaUrls, extractBgImageUrls, resolveUrl, isVideoUrl, isImageUrl, isSvgUrl, parseSrcset, pickBestFromSrcset, collectInlineSvgs, handleEmbed, passesSizeFilter, handleMeta, collectMediaUrls, handleSource, handlePicture, handleSvgImage, handleDataBg, extractRegexUrls, handleVideo, filterImagesBySize, SIZE_PROBE_POOL_SIZE, REGEX_SWEEP_FILTER };
   }
 })();
