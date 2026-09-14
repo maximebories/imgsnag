@@ -118,19 +118,19 @@ describe('handleMeta', () => {
 
   it('captures meta[property="og:image"]', () => {
     const set = new Set();
-    handleMeta(el('meta', { property: 'og:image', content: 'https://example.com/og.jpg' }), set);
+    handleMeta(el('meta', { property: 'og:image', content: 'https://example.com/og.jpg' }), set, new Set());
     expect([...set]).toEqual(['https://example.com/og.jpg']);
   });
 
   it('captures meta[name="twitter:image"]', () => {
     const set = new Set();
-    handleMeta(el('meta', { name: 'twitter:image', content: 'https://example.com/twitter.jpg' }), set);
+    handleMeta(el('meta', { name: 'twitter:image', content: 'https://example.com/twitter.jpg' }), set, new Set());
     expect([...set]).toEqual(['https://example.com/twitter.jpg']);
   });
 
   it('captures link[rel="preload"][as="image"]', () => {
     const set = new Set();
-    handleMeta(el('link', { rel: 'preload', as: 'image', href: 'https://example.com/preload.png' }), set);
+    handleMeta(el('link', { rel: 'preload', as: 'image', href: 'https://example.com/preload.png' }), set, new Set());
     expect([...set]).toEqual(['https://example.com/preload.png']);
   });
 
@@ -141,7 +141,7 @@ describe('handleMeta', () => {
       as: 'image',
       imagesrcset: 'https://example.com/small.jpg 400w, https://example.com/large.jpg 800w',
       href: 'https://example.com/fallback.jpg'
-    }), set);
+    }), set, new Set());
     expect([...set]).toEqual(['https://example.com/large.jpg']);
   });
 
@@ -152,7 +152,7 @@ describe('handleMeta', () => {
       as: 'image',
       imagesrcset: 'https://example.com/large.jpg 800w',
       href: 'https://example.com/fallback-preload.jpg'
-    }), set);
+    }), set, new Set());
     expect([...set]).toEqual(['https://example.com/large.jpg']);
   });
 
@@ -163,7 +163,7 @@ describe('handleMeta', () => {
       as: 'image',
       imagesrcset: 'data:image/png;base64,iVBORw0KGgo 400w',
       href: 'https://example.com/fallback.jpg'
-    }), set);
+    }), set, new Set());
     expect([...set]).toEqual(['https://example.com/fallback.jpg']);
   });
 
@@ -173,7 +173,7 @@ describe('handleMeta', () => {
       rel: 'preload',
       as: 'image',
       imagesrcset: 'https://example.com/only.jpg 400w'
-    }), set);
+    }), set, new Set());
     expect([...set]).toEqual(['https://example.com/only.jpg']);
   });
 
@@ -197,15 +197,15 @@ describe('handleMeta', () => {
       as: 'image',
       imagesrcset: '',
       href: 'https://example.com/fallback.jpg'
-    }), set);
+    }), set, new Set());
     expect([...set]).toEqual(['https://example.com/fallback.jpg']);
   });
 
   it('captures link icons and og:image:secure_url', () => {
     const set = new Set();
-    handleMeta(el('meta', { property: 'og:image:secure_url', content: 'https://example.com/secure.jpg' }), set);
-    handleMeta(el('link', { rel: 'apple-touch-icon', href: 'https://example.com/apple.png' }), set);
-    handleMeta(el('link', { rel: 'icon', href: 'https://example.com/icon.png' }), set);
+    handleMeta(el('meta', { property: 'og:image:secure_url', content: 'https://example.com/secure.jpg' }), set, new Set());
+    handleMeta(el('link', { rel: 'apple-touch-icon', href: 'https://example.com/apple.png' }), set, new Set());
+    handleMeta(el('link', { rel: 'icon', href: 'https://example.com/icon.png' }), set, new Set());
     expect([...set]).toEqual([
       'https://example.com/secure.jpg',
       'https://example.com/apple.png',
@@ -215,9 +215,9 @@ describe('handleMeta', () => {
 
   it('captures meta/link schema.org images and mask icons', () => {
     const set = new Set();
-    handleMeta(el('meta', { itemprop: 'image', content: 'https://example.com/schema.jpg' }), set);
-    handleMeta(el('link', { itemprop: 'image', href: 'https://example.com/schemalink.jpg' }), set);
-    handleMeta(el('link', { rel: 'mask-icon', href: 'https://example.com/mask.svg' }), set);
+    handleMeta(el('meta', { itemprop: 'image', content: 'https://example.com/schema.jpg' }), set, new Set());
+    handleMeta(el('link', { itemprop: 'image', href: 'https://example.com/schemalink.jpg' }), set, new Set());
+    handleMeta(el('link', { rel: 'mask-icon', href: 'https://example.com/mask.svg' }), set, new Set());
     expect([...set]).toEqual([
       'https://example.com/schema.jpg',
       'https://example.com/schemalink.jpg',
@@ -225,11 +225,26 @@ describe('handleMeta', () => {
     ]);
   });
 
+
+  it('captures meta video properties', () => {
+    const imageSet = new Set();
+    const videoSet = new Set();
+    handleMeta(el('meta', { property: 'og:video', content: 'https://example.com/og-video.mp4' }), imageSet, videoSet);
+    handleMeta(el('meta', { property: 'og:video:secure_url', content: 'https://example.com/og-video-secure.mp4' }), imageSet, videoSet);
+    handleMeta(el('meta', { name: 'twitter:player:stream', content: 'https://example.com/twitter-video.mp4' }), imageSet, videoSet);
+    expect([...imageSet]).toEqual([]);
+    expect([...videoSet]).toEqual([
+      'https://example.com/og-video.mp4',
+      'https://example.com/og-video-secure.mp4',
+      'https://example.com/twitter-video.mp4'
+    ]);
+  });
+
   it('ignores other meta and link tags', () => {
     const set = new Set();
-    handleMeta(el('meta', { name: 'description', content: 'hello' }), set);
-    handleMeta(el('link', { rel: 'stylesheet', href: 'style.css' }), set);
-    handleMeta(el('div', { class: 'something' }), set);
+    handleMeta(el('meta', { name: 'description', content: 'hello' }), set, new Set());
+    handleMeta(el('link', { rel: 'stylesheet', href: 'style.css' }), set, new Set());
+    handleMeta(el('div', { class: 'something' }), set, new Set());
     expect(set.size).toBe(0);
   });
 });
