@@ -213,6 +213,19 @@ describe('handleMeta', () => {
     ]);
   });
 
+  it('captures both imagesrcset and href on link icons without suppressing href', () => {
+    const set = new Set();
+    handleMeta(el('link', {
+      rel: 'apple-touch-icon',
+      imagesrcset: 'https://example.com/apple-highres.png 2x, https://example.com/apple-lowres.png 1x',
+      href: 'https://example.com/apple-fallback.png'
+    }), set);
+    expect([...set]).toEqual([
+      'https://example.com/apple-highres.png',
+      'https://example.com/apple-fallback.png'
+    ]);
+  });
+
   it('captures meta/link schema.org images and mask icons', () => {
     const set = new Set();
     handleMeta(el('meta', { itemprop: 'image', content: 'https://example.com/schema.jpg' }), set);
