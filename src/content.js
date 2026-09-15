@@ -480,6 +480,21 @@
   }
 
   function collectVideos(trackVideo) {
+    // <meta> Open Graph / Twitter video metadata
+    document.querySelectorAll('meta[property="og:video"], meta[property="og:video:secure_url"], meta[name="twitter:player:stream"]').forEach((el) => {
+      const prop = el.getAttribute('property');
+      const name = el.getAttribute('name');
+      let type = null;
+      if (el.parentElement) {
+        const typeMeta = el.parentElement.querySelector(`meta[property="${prop}:type"], meta[name="${name}:content_type"]`);
+        if (typeMeta) type = typeMeta.getAttribute('content');
+      }
+      if (type !== 'text/html') {
+        const url = el.getAttribute('content');
+        if (url && (type || isVideoUrl(url))) trackVideo(url);
+      }
+    });
+
     // <video src> and lazy loaded variants
     document.querySelectorAll('video[src], video[data-src], video[data-lazy-src], video[data-original]').forEach((video) => {
       MEDIA_SRC_ATTRS.forEach(attr => {
@@ -795,13 +810,25 @@
     }
   }
 
-  function handleMeta(el, imageSet) {
+  function handleMeta(el, imageSet, videoSet) {
     if (el.tagName === 'META') {
       const prop = el.getAttribute('property');
       const name = el.getAttribute('name');
       const itemprop = el.getAttribute('itemprop');
       if (prop === 'og:image' || prop === 'og:image:secure_url' || name === 'twitter:image' || itemprop === 'image') {
         trackImageUrl(el.getAttribute('content'), imageSet);
+      } else if (videoSet && (prop === 'og:video' || prop === 'og:video:secure_url' || name === 'twitter:player:stream')) {
+        let type = null;
+        if (el.parentElement) {
+          const typeMeta = el.parentElement.querySelector(`meta[property="${prop}:type"], meta[name="${name}:content_type"]`);
+          if (typeMeta) type = typeMeta.getAttribute('content');
+        }
+        if (type !== 'text/html') {
+          const url = resolveUrl(el.getAttribute('content'));
+          if (url && !url.startsWith('data:') && (type || isVideoUrl(url))) {
+            videoSet.add(url);
+          }
+        }
       }
     } else if (el.tagName === 'LINK') {
       const rel = el.getAttribute('rel');
@@ -906,7 +933,7 @@
     handleSource(el, imageSet, videoSet);
     handleBackgroundImage(el, imageSet);
     handleDataBg(el, imageSet);
-    handleMeta(el, imageSet);
+    handleMeta(el, imageSet, videoSet);
     handleEmbed(el, imageSet);
     handlePicture(el, imageSet);
     handleSvgImage(el, imageSet);
