@@ -479,7 +479,52 @@
     }
   }
 
+  // Open Graph / Twitter video metadata. The URL these tags carry is only
+  // sometimes media: when the sibling type tag says text/html — YouTube, Vimeo
+  // and most embeds — og:video is a *player page*, and downloading it drops an
+  // HTML document in the user's Downloads folder under a video-looking name.
+  // So a declared type is believed only when it is a real video/* type, and an
+  // absent type is treated as untrusted and falls back to the extension check.
+  // That also keeps HLS/DASH manifests out, which browser.downloads cannot
+  // fetch as a single file (RFC #263).
+  const VIDEO_META_SELECTOR = 'meta[property="og:video"], meta[property="og:video:url"], meta[property="og:video:secure_url"], meta[name="twitter:player:stream"]';
+  // A Map, not an object literal: the keys are compared against page-controlled
+  // attributes, and Map.get() cannot be answered by Object.prototype.
+  const VIDEO_META_TYPE_SELECTORS = new Map([
+    // og:video:type describes the whole og:video family — there is no
+    // og:video:secure_url:type in the Open Graph vocabulary.
+    ['og:video', 'meta[property="og:video:type"]'],
+    ['og:video:url', 'meta[property="og:video:type"]'],
+    ['og:video:secure_url', 'meta[property="og:video:type"]'],
+    ['twitter:player:stream', 'meta[name="twitter:player:stream:content_type"]'],
+  ]);
+
+  // The media URL a video <meta> carries, or null when it is not one of ours
+  // or does not survive the type guard.
+  function videoUrlFromMeta(el) {
+    const typeSelector = VIDEO_META_TYPE_SELECTORS.get(el.getAttribute('property'))
+      || VIDEO_META_TYPE_SELECTORS.get(el.getAttribute('name'));
+    if (!typeSelector) return null;
+    const url = resolveUrl(el.getAttribute('content'));
+    if (!url || url.startsWith('data:')) return null;
+    // Looked up at decision time rather than cached during the initial scan:
+    // on the MutationObserver path the type tag may not have been inserted yet
+    // when this element arrives. Scoped to the parent, so the answer comes from
+    // the same <head> the tag lives in; no type found means untrusted, which is
+    // the safe direction.
+    const typeMeta = el.parentElement ? el.parentElement.querySelector(typeSelector) : null;
+    const type = typeMeta && typeMeta.getAttribute('content');
+    if (type) return /^video\//i.test(type.trim()) ? url : null;
+    return isVideoUrl(url) ? url : null;
+  }
+
   function collectVideos(trackVideo) {
+    // <meta> Open Graph / Twitter video metadata (RFC #263)
+    document.querySelectorAll(VIDEO_META_SELECTOR).forEach((el) => {
+      const url = videoUrlFromMeta(el);
+      if (url) trackVideo(url);
+    });
+
     // <video src> and lazy loaded variants
     document.querySelectorAll('video[src], video[data-src], video[data-lazy-src], video[data-original]').forEach((video) => {
       MEDIA_SRC_ATTRS.forEach(attr => {
@@ -795,13 +840,16 @@
     }
   }
 
-  function handleMeta(el, imageSet) {
+  function handleMeta(el, imageSet, videoSet) {
     if (el.tagName === 'META') {
       const prop = el.getAttribute('property');
       const name = el.getAttribute('name');
       const itemprop = el.getAttribute('itemprop');
       if (prop === 'og:image' || prop === 'og:image:secure_url' || name === 'twitter:image' || itemprop === 'image') {
         trackImageUrl(el.getAttribute('content'), imageSet);
+      } else if (videoSet) {
+        const videoUrl = videoUrlFromMeta(el);
+        if (videoUrl) videoSet.add(videoUrl);
       }
     } else if (el.tagName === 'LINK') {
       const rel = el.getAttribute('rel');
@@ -906,7 +954,7 @@
     handleSource(el, imageSet, videoSet);
     handleBackgroundImage(el, imageSet);
     handleDataBg(el, imageSet);
-    handleMeta(el, imageSet);
+    handleMeta(el, imageSet, videoSet);
     handleEmbed(el, imageSet);
     handlePicture(el, imageSet);
     handleSvgImage(el, imageSet);
