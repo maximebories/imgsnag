@@ -479,7 +479,47 @@
     }
   }
 
+  const META_TYPE_SELECTORS = new Map([
+    ['og:video', 'meta[property="og:video:type"]'],
+    ['og:video:url', 'meta[property="og:video:type"]'],
+    ['og:video:secure_url', 'meta[property="og:video:type"]'],
+    ['twitter:player:stream', 'meta[name="twitter:player:stream:content_type"]']
+  ]);
+
+  function videoUrlFromMeta(el) {
+    const prop = el.getAttribute('property');
+    const name = el.getAttribute('name');
+    const tagKey = prop || name;
+
+    let type = null;
+    if (el.parentElement) {
+      const selector = META_TYPE_SELECTORS.get(tagKey);
+      if (selector) {
+        const typeMeta = el.parentElement.querySelector(selector);
+        if (typeMeta) type = typeMeta.getAttribute('content');
+      }
+    }
+
+    if (type) {
+      if (!type.startsWith('video/')) return null;
+    }
+
+    const raw = el.getAttribute('content');
+    const url = resolveUrl(raw);
+    if (!url || url.startsWith('data:')) return null;
+
+    if (!type && !isVideoUrl(url)) return null;
+
+    return url;
+  }
+
   function collectVideos(trackVideo) {
+    // <meta> Open Graph / Twitter video metadata
+    document.querySelectorAll('meta[property="og:video"], meta[property="og:video:url"], meta[property="og:video:secure_url"], meta[name="twitter:player:stream"]').forEach((el) => {
+      const url = videoUrlFromMeta(el);
+      if (url) trackVideo(url);
+    });
+
     // <video src> and lazy loaded variants
     document.querySelectorAll('video[src], video[data-src], video[data-lazy-src], video[data-original]').forEach((video) => {
       MEDIA_SRC_ATTRS.forEach(attr => {
@@ -795,13 +835,16 @@
     }
   }
 
-  function handleMeta(el, imageSet) {
+  function handleMeta(el, imageSet, videoSet) {
     if (el.tagName === 'META') {
       const prop = el.getAttribute('property');
       const name = el.getAttribute('name');
       const itemprop = el.getAttribute('itemprop');
       if (prop === 'og:image' || prop === 'og:image:secure_url' || name === 'twitter:image' || itemprop === 'image') {
         trackImageUrl(el.getAttribute('content'), imageSet);
+      } else if (videoSet && (prop === 'og:video' || prop === 'og:video:url' || prop === 'og:video:secure_url' || name === 'twitter:player:stream')) {
+        const url = videoUrlFromMeta(el);
+        if (url) videoSet.add(url);
       }
     } else if (el.tagName === 'LINK') {
       const rel = el.getAttribute('rel');
@@ -822,12 +865,6 @@
         }
       }
       if ((rel === 'preload' && asAttr === 'image') || rel === 'icon' || rel === 'apple-touch-icon' || rel === 'shortcut icon' || rel === 'image_src' || rel === 'mask-icon' || itemprop === 'image') {
-        // Outside preload, `href` is the icon the page actually renders, not a
-        // fallback — so an imagesrcset candidate is tracked *in addition to* it,
-        // never instead of it. trackImageUrl drops falsy and data: input itself.
-        if (!(rel === 'preload' && asAttr === 'image')) {
-          trackImageUrl(pickBestFromSrcset(el.getAttribute('imagesrcset')), imageSet);
-        }
         trackImageUrl(el.getAttribute('href'), imageSet);
       }
     }
@@ -906,7 +943,7 @@
     handleSource(el, imageSet, videoSet);
     handleBackgroundImage(el, imageSet);
     handleDataBg(el, imageSet);
-    handleMeta(el, imageSet);
+    handleMeta(el, imageSet, videoSet);
     handleEmbed(el, imageSet);
     handlePicture(el, imageSet);
     handleSvgImage(el, imageSet);

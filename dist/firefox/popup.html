@@ -269,7 +269,7 @@
         background: #2563eb;
         color: #fff;
       }
-      #btn-selected:hover:not(:disabled), #btn-selected:focus-visible:not(:disabled) { background: #1d4ed8; }
+      #btn-selected:hover:not(:disabled) { background: #1d4ed8; }
       #btn-selected:disabled {
         opacity: 0.4;
         cursor: not-allowed;
@@ -279,19 +279,18 @@
         background: #e5e7eb;
         color: #1a1a1a;
       }
-      #btn-all:hover, #btn-all:focus-visible { background: #d1d5db; }
+      #btn-all:hover { background: #d1d5db; }
 
       @media (prefers-color-scheme: dark) {
         :root { color-scheme: light dark; }
         body { background: #1a1a1a; color: #f5f5f5; }
-        #loading, #empty, #error { color: #a3a3a3; }
         #bar { background: #1a1a1a; border-top-color: #333; }
         #hidden-count { background: #1a1a1a; color: #a3a3a3; border-top-color: #333; }
         #counter { color: #a3a3a3; }
         .cell { background: #333; }
         .group-header { color: #a3a3a3; }
         #btn-all { background: #374151; color: #f9fafb; }
-        #btn-all:hover, #btn-all:focus-visible { background: #4b5563; }
+        #btn-all:hover { background: #4b5563; }
         #empty .hint { color: #a3a3a3; }
         .cell .placeholder { color: #bbb; }
       }
