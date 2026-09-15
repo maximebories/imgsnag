@@ -90,6 +90,37 @@ describe('Background Script', () => {
     }
   });
 
+  test('accepts popup-only actions when sender is trusted (no sender.tab)', async () => {
+    // A trusted sender (the popup itself) has no sender.tab property.
+    // We must test both forms the runtime might provide: undefined sender, or sender with undefined tab.
+
+    // 1. download_images_bulk
+    const bulkResponse = await messageListener(
+      { action: 'download_images_bulk', urls: ['https://example.com/trusted1.jpg'] },
+      {} // Sender present, but no tab
+    );
+    expect(bulkResponse).toEqual({ started: true, completed: true });
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(downloads.some(d => d.url === 'https://example.com/trusted1.jpg')).toBe(true);
+
+    // 2. download_svg
+    // For download_svg, the URL relies on browser environment (blob vs data:), so we just assert success.
+    global.URL.createObjectURL = jest.fn().mockReturnValue('blob:mock-trusted');
+    const svgResponse = await messageListener(
+      { action: 'download_svg', markup: '<svg xmlns="http://www.w3.org/2000/svg"><rect/></svg>' },
+      undefined // No sender at all
+    );
+    expect(svgResponse).toEqual({ success: true });
+    expect(downloads.some(d => d.filename === 'imgsnag-inline.svg')).toBe(true);
+
+    // 3. cancel_downloads
+    const cancelResponse = await messageListener(
+      { action: 'cancel_downloads' },
+      {}
+    );
+    expect(cancelResponse).toEqual({});
+  });
+
   test('accepts download_image from content script', async () => {
     const sender = { tab: { id: 1 } };
     const response = await messageListener({
