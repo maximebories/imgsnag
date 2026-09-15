@@ -822,6 +822,12 @@
         }
       }
       if ((rel === 'preload' && asAttr === 'image') || rel === 'icon' || rel === 'apple-touch-icon' || rel === 'shortcut icon' || rel === 'image_src' || rel === 'mask-icon' || itemprop === 'image') {
+        // Outside preload, `href` is the icon the page actually renders, not a
+        // fallback — so an imagesrcset candidate is tracked *in addition to* it,
+        // never instead of it. trackImageUrl drops falsy and data: input itself.
+        if (!(rel === 'preload' && asAttr === 'image')) {
+          trackImageUrl(pickBestFromSrcset(el.getAttribute('imagesrcset')), imageSet);
+        }
         trackImageUrl(el.getAttribute('href'), imageSet);
       }
     }
