@@ -118,19 +118,19 @@ describe('handleMeta', () => {
 
   it('captures meta[property="og:image"]', () => {
     const set = new Set();
-    handleMeta(el('meta', { property: 'og:image', content: 'https://example.com/og.jpg' }), set);
+    handleMeta(el('meta', { property: 'og:image', content: 'https://example.com/og.jpg' }), set, new Set());
     expect([...set]).toEqual(['https://example.com/og.jpg']);
   });
 
   it('captures meta[name="twitter:image"]', () => {
     const set = new Set();
-    handleMeta(el('meta', { name: 'twitter:image', content: 'https://example.com/twitter.jpg' }), set);
+    handleMeta(el('meta', { name: 'twitter:image', content: 'https://example.com/twitter.jpg' }), set, new Set());
     expect([...set]).toEqual(['https://example.com/twitter.jpg']);
   });
 
   it('captures link[rel="preload"][as="image"]', () => {
     const set = new Set();
-    handleMeta(el('link', { rel: 'preload', as: 'image', href: 'https://example.com/preload.png' }), set);
+    handleMeta(el('link', { rel: 'preload', as: 'image', href: 'https://example.com/preload.png' }), set, new Set());
     expect([...set]).toEqual(['https://example.com/preload.png']);
   });
 
@@ -203,9 +203,9 @@ describe('handleMeta', () => {
 
   it('captures link icons and og:image:secure_url', () => {
     const set = new Set();
-    handleMeta(el('meta', { property: 'og:image:secure_url', content: 'https://example.com/secure.jpg' }), set);
-    handleMeta(el('link', { rel: 'apple-touch-icon', href: 'https://example.com/apple.png' }), set);
-    handleMeta(el('link', { rel: 'icon', href: 'https://example.com/icon.png' }), set);
+    handleMeta(el('meta', { property: 'og:image:secure_url', content: 'https://example.com/secure.jpg' }), set, new Set());
+    handleMeta(el('link', { rel: 'apple-touch-icon', href: 'https://example.com/apple.png' }), set, new Set());
+    handleMeta(el('link', { rel: 'icon', href: 'https://example.com/icon.png' }), set, new Set());
     expect([...set]).toEqual([
       'https://example.com/secure.jpg',
       'https://example.com/apple.png',
@@ -228,9 +228,9 @@ describe('handleMeta', () => {
 
   it('captures meta/link schema.org images and mask icons', () => {
     const set = new Set();
-    handleMeta(el('meta', { itemprop: 'image', content: 'https://example.com/schema.jpg' }), set);
-    handleMeta(el('link', { itemprop: 'image', href: 'https://example.com/schemalink.jpg' }), set);
-    handleMeta(el('link', { rel: 'mask-icon', href: 'https://example.com/mask.svg' }), set);
+    handleMeta(el('meta', { itemprop: 'image', content: 'https://example.com/schema.jpg' }), set, new Set());
+    handleMeta(el('link', { itemprop: 'image', href: 'https://example.com/schemalink.jpg' }), set, new Set());
+    handleMeta(el('link', { rel: 'mask-icon', href: 'https://example.com/mask.svg' }), set, new Set());
     expect([...set]).toEqual([
       'https://example.com/schema.jpg',
       'https://example.com/schemalink.jpg',
@@ -238,11 +238,123 @@ describe('handleMeta', () => {
     ]);
   });
 
+  it('ignores meta video properties when type is text/html', () => {
+    const imageSet = new Set();
+    const videoSet = new Set();
+    const parent = el('div');
+    const videoMeta = el('meta', { property: 'og:video', content: 'https://example.com/player' });
+    const typeMeta = el('meta', { property: 'og:video:type', content: 'text/html' });
+    parent.appendChild(videoMeta);
+    parent.appendChild(typeMeta);
+
+    handleMeta(videoMeta, imageSet, videoSet);
+    expect([...videoSet]).toEqual([]);
+  });
+
+  it('captures meta video properties when type is present and not text/html', () => {
+    const imageSet = new Set();
+    const videoSet = new Set();
+    const parent = el('div');
+    const videoMeta = el('meta', { property: 'og:video', content: 'https://example.com/video-no-ext' });
+    const typeMeta = el('meta', { property: 'og:video:type', content: 'video/mp4' });
+    parent.appendChild(videoMeta);
+    parent.appendChild(typeMeta);
+
+    handleMeta(videoMeta, imageSet, videoSet);
+    expect([...videoSet]).toEqual(['https://example.com/video-no-ext']);
+  });
+
+  it('captures meta video properties when type is absent but url has video extension', () => {
+    const imageSet = new Set();
+    const videoSet = new Set();
+    const parent = el('div');
+    const videoMeta = el('meta', { property: 'og:video', content: 'https://example.com/video.mp4' });
+    parent.appendChild(videoMeta);
+
+    handleMeta(videoMeta, imageSet, videoSet);
+    expect([...videoSet]).toEqual(['https://example.com/video.mp4']);
+  });
+
+  it('ignores meta video properties when type is absent and url lacks video extension', () => {
+    const imageSet = new Set();
+    const videoSet = new Set();
+    const parent = el('div');
+    const videoMeta = el('meta', { property: 'og:video', content: 'https://example.com/video-no-ext' });
+    parent.appendChild(videoMeta);
+
+    handleMeta(videoMeta, imageSet, videoSet);
+    expect([...videoSet]).toEqual([]);
+  });
+
+  it('captures meta video properties', () => {
+    const imageSet = new Set();
+    const videoSet = new Set();
+    handleMeta(el('meta', { property: 'og:video', content: 'https://example.com/og-video.mp4' }), imageSet, videoSet);
+    handleMeta(el('meta', { property: 'og:video:secure_url', content: 'https://example.com/og-video-secure.mp4' }), imageSet, videoSet);
+    handleMeta(el('meta', { name: 'twitter:player:stream', content: 'https://example.com/twitter-video.mp4' }), imageSet, videoSet);
+    expect([...imageSet]).toEqual([]);
+    expect([...videoSet]).toEqual([
+      'https://example.com/og-video.mp4',
+      'https://example.com/og-video-secure.mp4',
+      'https://example.com/twitter-video.mp4'
+    ]);
+  });
+
+  it('types og:video:secure_url from og:video:type, which is the only type tag the vocabulary has', () => {
+    const videoSet = new Set();
+    const parent = el('div');
+    // A Vimeo-shaped head: the secure_url is the player page, and og:video:type
+    // is what says so. Looking for og:video:secure_url:type finds nothing and
+    // lets the page through.
+    const videoMeta = el('meta', { property: 'og:video:secure_url', content: 'https://example.com/player' });
+    parent.appendChild(videoMeta);
+    parent.appendChild(el('meta', { property: 'og:video:type', content: 'text/html' }));
+
+    handleMeta(videoMeta, new Set(), videoSet);
+    expect([...videoSet]).toEqual([]);
+  });
+
+  it('captures og:video:url', () => {
+    const videoSet = new Set();
+    handleMeta(el('meta', { property: 'og:video:url', content: 'https://example.com/clip.webm' }), new Set(), videoSet);
+    expect([...videoSet]).toEqual(['https://example.com/clip.webm']);
+  });
+
+  it('ignores meta video properties whose declared type is not a video type', () => {
+    const videoSet = new Set();
+    const parent = el('div');
+    // A declared non-media type is the page telling us this is not video —
+    // believe it, rather than accepting anything that merely is not text/html.
+    const videoMeta = el('meta', { property: 'og:video', content: 'https://example.com/stream' });
+    parent.appendChild(videoMeta);
+    parent.appendChild(el('meta', { property: 'og:video:type', content: 'application/x-mpegURL' }));
+
+    handleMeta(videoMeta, new Set(), videoSet);
+    expect([...videoSet]).toEqual([]);
+  });
+
+  it('survives a hostile property attribute on a twitter:player:stream tag', () => {
+    const videoSet = new Set();
+    const parent = el('div');
+    // `property` is unconstrained on a tag matched by `name`. Interpolated into
+    // the type-tag selector, this quote makes querySelector throw a SyntaxError
+    // out of handleMeta, aborting discovery for the whole page.
+    const videoMeta = el('meta', {
+      name: 'twitter:player:stream',
+      property: 'a"b',
+      content: 'https://example.com/hostile.mp4'
+    });
+    parent.appendChild(videoMeta);
+
+    expect(() => handleMeta(videoMeta, new Set(), videoSet)).not.toThrow();
+    expect([...videoSet]).toEqual(['https://example.com/hostile.mp4']);
+  });
+
   it('ignores other meta and link tags', () => {
     const set = new Set();
-    handleMeta(el('meta', { name: 'description', content: 'hello' }), set);
-    handleMeta(el('link', { rel: 'stylesheet', href: 'style.css' }), set);
-    handleMeta(el('div', { class: 'something' }), set);
+    handleMeta(el('meta', { name: 'description', content: 'hello' }), set, new Set());
+    handleMeta(el('link', { rel: 'stylesheet', href: 'style.css' }), set, new Set());
+    handleMeta(el('div', { class: 'something' }), set, new Set());
     expect(set.size).toBe(0);
   });
 });
