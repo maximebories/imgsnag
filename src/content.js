@@ -62,7 +62,7 @@
   const SOURCE_URL_ATTRS = ['src', 'data-src', 'data-lazy-src', 'data-original'];
   const DATA_BG_ATTRS = ['data-bg', 'data-bg-src', 'data-background', 'data-background-image'];
   // Tags worth an attribute sweep when they turn up in a MutationObserver batch
-  const TAG_SET = new Set(['IMG', 'VIDEO', 'SOURCE', 'PICTURE', 'DIV', 'SPAN', 'SECTION', 'ARTICLE', 'HEADER', 'FOOTER', 'A', 'LI', 'FIGURE', 'I', 'META', 'LINK', 'OBJECT', 'EMBED', 'IFRAME', 'image', 'IMAGE']);
+  const TAG_SET = new Set(['IMG', 'VIDEO', 'SOURCE', 'PICTURE', 'DIV', 'SPAN', 'SECTION', 'ARTICLE', 'HEADER', 'FOOTER', 'A', 'LI', 'FIGURE', 'I', 'META', 'LINK', 'OBJECT', 'EMBED', 'IFRAME', 'image', 'IMAGE', 'SCRIPT']);
 
   // Inline-SVG capture (derived files, RFC #118 stage 1)
   const SVG_DATA_PREFIX = 'data:image/svg+xml;charset=utf-8,';
@@ -592,6 +592,10 @@
     collectImages(trackImage);
     collectVideos(trackVideo);
 
+    document.querySelectorAll('script[type="application/ld+json"], script[type="application/json"]').forEach((el) => {
+      handleScript(el, imageUrls, videoUrls);
+    });
+
     return { imageUrls, videoUrls };
   }
 
@@ -927,6 +931,70 @@
     }
   }
 
+    function extractMediaFromJson(obj, imageSet, videoSet) {
+    if (typeof obj === 'string') {
+      const url = resolveUrl(obj);
+      if (url && !url.startsWith('data:')) {
+        if (isVideoUrl(url)) {
+          videoSet.add(url);
+        } else if (isImageUrl(url)) {
+          trackImageUrl(url, imageSet);
+        }
+      }
+    } else if (Array.isArray(obj)) {
+      for (const item of obj) {
+        extractMediaFromJson(item, imageSet, videoSet);
+      }
+    } else if (obj !== null && typeof obj === 'object') {
+      for (const [key, value] of Object.entries(obj)) {
+        const lowerKey = key.toLowerCase();
+        if (lowerKey === 'image' || lowerKey === 'thumbnailurl' || lowerKey === 'logo') {
+           if (typeof value === 'string') {
+              const url = resolveUrl(value);
+              if (url && !url.startsWith('data:')) trackImageUrl(url, imageSet);
+           } else if (Array.isArray(value)) {
+              for (const item of value) {
+                 if (typeof item === 'string') {
+                    const url = resolveUrl(item);
+                    if (url && !url.startsWith('data:')) trackImageUrl(url, imageSet);
+                 } else {
+                    extractMediaFromJson(item, imageSet, videoSet);
+                 }
+              }
+           } else if (value !== null && typeof value === 'object') {
+              if (value.url && typeof value.url === 'string') {
+                 const url = resolveUrl(value.url);
+                 if (url && !url.startsWith('data:')) trackImageUrl(url, imageSet);
+              }
+              // Still extract recursively in case there are other fields
+              extractMediaFromJson(value, imageSet, videoSet);
+           }
+        } else if (lowerKey === 'contenturl' || lowerKey === 'embedurl') {
+           if (typeof value === 'string') {
+              const url = resolveUrl(value);
+              if (url && !url.startsWith('data:')) videoSet.add(url);
+           }
+        } else {
+           extractMediaFromJson(value, imageSet, videoSet);
+        }
+      }
+    }
+  }
+
+  function handleScript(el, imageSet, videoSet) {
+    if (el.tagName === 'SCRIPT') {
+      const type = el.getAttribute('type');
+      if (type === 'application/ld+json' || type === 'application/json') {
+        try {
+          const data = JSON.parse(el.textContent);
+          extractMediaFromJson(data, imageSet, videoSet);
+        } catch (e) {
+          // invalid JSON
+        }
+      }
+    }
+  }
+
   function handleDataBg(el, imageSet) {
     if (el.hasAttributes && el.hasAttributes()) {
       for (const attr of DATA_BG_ATTRS) {
@@ -954,6 +1022,7 @@
     handleSource(el, imageSet, videoSet);
     handleBackgroundImage(el, imageSet);
     handleDataBg(el, imageSet);
+    handleScript(el, imageSet, videoSet);
     handleMeta(el, imageSet, videoSet);
     handleEmbed(el, imageSet);
     handlePicture(el, imageSet);
@@ -1238,6 +1307,6 @@
   syncDragPreference();
   browser.storage.onChanged.addListener(() => syncDragPreference());
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { handleSrcset, trackImageUrl, getDomImageSize, getCssMediaUrls, extractBgImageUrls, resolveUrl, isVideoUrl, isImageUrl, isSvgUrl, parseSrcset, pickBestFromSrcset, collectInlineSvgs, handleEmbed, passesSizeFilter, handleMeta, collectMediaUrls, handleSource, handlePicture, handleSvgImage, handleDataBg, extractRegexUrls, handleVideo, filterImagesBySize, SIZE_PROBE_POOL_SIZE, REGEX_SWEEP_FILTER };
+    module.exports = { handleSrcset, trackImageUrl, getDomImageSize, getCssMediaUrls, extractBgImageUrls, resolveUrl, isVideoUrl, isImageUrl, isSvgUrl, parseSrcset, pickBestFromSrcset, collectInlineSvgs, handleEmbed, passesSizeFilter, handleMeta, collectMediaUrls, handleSource, handlePicture, handleSvgImage, handleDataBg, extractRegexUrls, handleVideo, filterImagesBySize, SIZE_PROBE_POOL_SIZE, REGEX_SWEEP_FILTER, handleScript, extractMediaFromJson };
   }
 })();

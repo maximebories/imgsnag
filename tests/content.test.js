@@ -908,3 +908,105 @@ describe('collectMediaUrls initial scan unified traversal', () => {
     expect(imageUrls.has('https://example.com/style.jpg')).toBe(true);
   });
 });
+
+describe('handleScript & extractMediaFromJson', () => {
+  const { handleScript, extractMediaFromJson } = require('../src/content.js');
+
+  function el(tag, attrs = {}) {
+    const e = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+    return e;
+  }
+
+  it('extracts extensionless image URLs from specific JSON keys', () => {
+    const imageSet = new Set();
+    const videoSet = new Set();
+    const data = {
+      "@context": "https://schema.org",
+      "@type": "Article",
+      "image": "https://example.com/images/extensionless-hero",
+      "thumbnailUrl": [
+         "https://example.com/thumb1",
+         "https://example.com/thumb2.jpg"
+      ]
+    };
+    const script = el('script', { type: 'application/ld+json' });
+    script.textContent = JSON.stringify(data);
+
+    handleScript(script, imageSet, videoSet);
+
+    expect([...imageSet]).toEqual([
+       'https://example.com/images/extensionless-hero',
+       'https://example.com/thumb1',
+       'https://example.com/thumb2.jpg'
+    ]);
+  });
+
+  it('extracts video URLs from contentUrl and embedUrl without extension check', () => {
+    const imageSet = new Set();
+    const videoSet = new Set();
+    const data = {
+      "@type": "VideoObject",
+      "contentUrl": "https://example.com/video/stream",
+      "embedUrl": "https://example.com/embed/12345"
+    };
+
+    const script = el('script', { type: 'application/json' });
+    script.textContent = JSON.stringify(data);
+
+    handleScript(script, imageSet, videoSet);
+
+    expect([...videoSet]).toEqual([
+       'https://example.com/video/stream',
+       'https://example.com/embed/12345'
+    ]);
+  });
+
+  it('recursively searches nested objects for known keys', () => {
+    const imageSet = new Set();
+    const videoSet = new Set();
+    const data = {
+       "publisher": {
+          "logo": {
+             "url": "https://example.com/logo-img"
+          }
+       },
+       "about": [
+          { "image": "https://example.com/about1" },
+          { "image": { "url": "https://example.com/about2" } }
+       ],
+       "random": "https://example.com/not-an-image"
+    };
+
+    const script = el('script', { type: 'application/ld+json' });
+    script.textContent = JSON.stringify(data);
+
+    handleScript(script, imageSet, videoSet);
+
+    expect([...imageSet].sort()).toEqual([
+       'https://example.com/about1',
+       'https://example.com/about2',
+       'https://example.com/logo-img'
+    ]);
+  });
+
+  it('gracefully handles invalid JSON', () => {
+    const imageSet = new Set();
+    const videoSet = new Set();
+    const script = el('script', { type: 'application/ld+json' });
+    script.textContent = '{"invalid json';
+
+    expect(() => handleScript(script, imageSet, videoSet)).not.toThrow();
+    expect(imageSet.size).toBe(0);
+  });
+
+  it('ignores other script types', () => {
+    const imageSet = new Set();
+    const videoSet = new Set();
+    const script = el('script', { type: 'text/javascript' });
+    script.textContent = JSON.stringify({ image: 'https://example.com/test.jpg' });
+
+    handleScript(script, imageSet, videoSet);
+    expect(imageSet.size).toBe(0);
+  });
+});
