@@ -915,6 +915,38 @@ describe('collectMediaUrls initial scan unified traversal', () => {
     jest.restoreAllMocks();
   });
 
+  it('collectVideos: rejects og:video when og:video:type is text/html', () => {
+    const { collectMediaUrls } = require('../src/content.js');
+    document.head.innerHTML = `
+      <meta property="og:video" content="https://example.com/player">
+      <meta property="og:video:type" content="text/html">
+    `;
+    const { videoUrls } = collectMediaUrls();
+    expect(videoUrls.has('https://example.com/player')).toBe(false);
+    document.head.innerHTML = '';
+  });
+
+  it('collectVideos: accepts og:video with extensionless URL when og:video:type is video/mp4', () => {
+    const { collectMediaUrls } = require('../src/content.js');
+    document.head.innerHTML = `
+      <meta property="og:video" content="https://example.com/video-no-ext">
+      <meta property="og:video:type" content="video/mp4">
+    `;
+    const { videoUrls } = collectMediaUrls();
+    expect(videoUrls.has('https://example.com/video-no-ext')).toBe(true);
+    document.head.innerHTML = '';
+  });
+
+  it('collectVideos: rejects twitter:player:stream with extensionless URL when untyped', () => {
+    const { collectMediaUrls } = require('../src/content.js');
+    document.head.innerHTML = `
+      <meta name="twitter:player:stream" content="https://example.com/video-no-ext">
+    `;
+    const { videoUrls } = collectMediaUrls();
+    expect(videoUrls.has('https://example.com/video-no-ext')).toBe(false);
+    document.head.innerHTML = '';
+  });
+
   it('dispatches to every source handler in one pass and keeps images and videos apart', () => {
     document.body.innerHTML = `
       <meta property="og:image" content="https://example.com/og.jpg">
