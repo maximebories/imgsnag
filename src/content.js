@@ -592,6 +592,10 @@
     collectImages(trackImage);
     collectVideos(trackVideo);
 
+    document.querySelectorAll('script[type="application/ld+json"]').forEach((el) => {
+      handleScript(el, imageUrls, videoUrls);
+    });
+
     return { imageUrls, videoUrls };
   }
 
@@ -927,6 +931,79 @@
     }
   }
 
+    function extractMediaFromJson(obj, imageSet, videoSet, depth = 0, parentType = null) {
+    if (depth > 10) return; // depth cap
+
+    if (Array.isArray(obj)) {
+      for (const item of obj) {
+        extractMediaFromJson(item, imageSet, videoSet, depth + 1, parentType);
+      }
+    } else if (obj !== null && typeof obj === 'object') {
+      const type = obj['@type'] || parentType;
+
+      for (const [key, value] of Object.entries(obj)) {
+        const lowerKey = key.toLowerCase();
+
+        if (lowerKey === 'image' || lowerKey === 'thumbnailurl' || lowerKey === 'logo') {
+           if (typeof value === 'string') {
+              const url = resolveUrl(value);
+              if (url && !url.startsWith('data:')) trackImageUrl(url, imageSet);
+           } else if (Array.isArray(value)) {
+              for (const item of value) {
+                 if (typeof item === 'string') {
+                    const url = resolveUrl(item);
+                    if (url && !url.startsWith('data:')) trackImageUrl(url, imageSet);
+                 } else {
+                    extractMediaFromJson(item, imageSet, videoSet, depth + 1, type);
+                 }
+              }
+           } else if (value !== null && typeof value === 'object') {
+              if (value.url && typeof value.url === 'string') {
+                 const url = resolveUrl(value.url);
+                 if (url && !url.startsWith('data:')) trackImageUrl(url, imageSet);
+              }
+              extractMediaFromJson(value, imageSet, videoSet, depth + 1, type);
+           }
+        } else if (lowerKey === 'contenturl') {
+           if (typeof value === 'string') {
+              const url = resolveUrl(value);
+              if (url && !url.startsWith('data:')) {
+                 if (type === 'VideoObject') {
+                    // Check if encodingFormat exists and is not text/html
+                    const format = obj['encodingFormat'];
+                    if (format && typeof format === 'string' && /^video\//i.test(format.trim())) {
+                        videoSet.add(url);
+                    } else if (!format && isVideoUrl(url)) { // Fallback extension check
+                        videoSet.add(url);
+                    }
+                 } else if (type === 'ImageObject') {
+                    trackImageUrl(url, imageSet);
+                 }
+              }
+           }
+        } else {
+           extractMediaFromJson(value, imageSet, videoSet, depth + 1, type);
+        }
+      }
+    }
+  }
+
+  function handleScript(el, imageSet, videoSet) {
+    if (el.tagName === 'SCRIPT') {
+      const type = el.getAttribute('type');
+      if (type === 'application/ld+json') {
+        const text = el.textContent;
+        // length cap before parse
+        if (!text || text.length > 512 * 1024) return;
+        try {
+          const data = JSON.parse(text);
+          extractMediaFromJson(data, imageSet, videoSet);
+        } catch (e) {
+          // invalid JSON
+        }
+      }
+    }
+  }
   function handleDataBg(el, imageSet) {
     if (el.hasAttributes && el.hasAttributes()) {
       for (const attr of DATA_BG_ATTRS) {
@@ -1238,6 +1315,6 @@
   syncDragPreference();
   browser.storage.onChanged.addListener(() => syncDragPreference());
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { handleSrcset, trackImageUrl, getDomImageSize, getCssMediaUrls, extractBgImageUrls, resolveUrl, isVideoUrl, isImageUrl, isSvgUrl, parseSrcset, pickBestFromSrcset, collectInlineSvgs, handleEmbed, passesSizeFilter, handleMeta, collectMediaUrls, handleSource, handlePicture, handleSvgImage, handleDataBg, extractRegexUrls, handleVideo, filterImagesBySize, SIZE_PROBE_POOL_SIZE, REGEX_SWEEP_FILTER };
+    module.exports = { handleSrcset, trackImageUrl, getDomImageSize, getCssMediaUrls, extractBgImageUrls, resolveUrl, isVideoUrl, isImageUrl, isSvgUrl, parseSrcset, pickBestFromSrcset, collectInlineSvgs, handleEmbed, passesSizeFilter, handleMeta, collectMediaUrls, handleSource, handlePicture, handleSvgImage, handleDataBg, extractRegexUrls, handleVideo, filterImagesBySize, SIZE_PROBE_POOL_SIZE, REGEX_SWEEP_FILTER, handleScript, extractMediaFromJson };
   }
 })();
