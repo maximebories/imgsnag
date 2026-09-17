@@ -348,7 +348,7 @@
     // srcset best-pick below covers it, so skip src to avoid duplicates.
     document.querySelectorAll('img[src], img[data-src], img[data-lazy-src], img[data-original]').forEach((img) => {
       const hasSet = img.hasAttribute('srcset') || img.hasAttribute('data-srcset') || img.parentElement?.tagName === 'PICTURE';
-      if (img.src && !hasSet) trackImage(img.src);
+      if (img.src && (!hasSet || !isRealMediaUrl(pickBestFromSrcset(img.getAttribute('srcset')) || pickBestFromSrcset(img.getAttribute('data-srcset'))))) trackImage(img.src);
       if (img.hasAttribute('data-src')) trackImage(img.getAttribute('data-src'));
       if (img.hasAttribute('data-lazy-src')) trackImage(img.getAttribute('data-lazy-src'));
       if (img.hasAttribute('data-original')) trackImage(img.getAttribute('data-original'));
@@ -747,10 +747,18 @@
     if (el.tagName === 'IMG') {
       // With a srcset present, src is just another variant of the same image
       const hasSet = el.hasAttribute('srcset') || el.hasAttribute('data-srcset') || el.parentElement?.tagName === 'PICTURE';
+      let realSet = false;
+      if (hasSet) {
+        if (el.parentElement?.tagName === 'PICTURE') {
+          realSet = true; // Handled per-picture, so we skip src here to avoid duplicates.
+        } else {
+          realSet = isRealMediaUrl(pickBestFromSrcset(el.getAttribute('srcset')) || pickBestFromSrcset(el.getAttribute('data-srcset')));
+        }
+      }
       const attrs = ['src', 'data-src', 'data-lazy-src', 'data-original'];
       for (const attr of attrs) {
         let val;
-        if (attr === 'src') val = hasSet ? null : el.src;
+        if (attr === 'src') val = (hasSet && realSet) ? null : el.src;
         else val = el.hasAttribute(attr) ? el.getAttribute(attr) : null;
         if (val) {
           trackImageUrl(val, imageSet);
