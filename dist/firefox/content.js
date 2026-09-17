@@ -345,10 +345,18 @@
 
     // <img src> and lazy loaded variants. When the element carries a srcset
     // (or data-srcset), src is just one more variant of the same image — the
-    // srcset best-pick below covers it, so skip src to avoid duplicates.
+    // srcset best-pick below covers it, so skip src to avoid duplicates. But a
+    // srcset of nothing but data: LQIP placeholders tracks nothing, so it must
+    // not suppress the src fallback (same rule as the imagesrcset preload above).
+    // Inside a <picture>, the per-picture sweep below already elects one
+    // variant — src there is a duplicate under a different URL, so it stays out.
     document.querySelectorAll('img[src], img[data-src], img[data-lazy-src], img[data-original]').forEach((img) => {
-      const hasSet = img.hasAttribute('srcset') || img.hasAttribute('data-srcset') || img.parentElement?.tagName === 'PICTURE';
-      if (img.src && !hasSet) trackImage(img.src);
+      const inPicture = img.parentElement?.tagName === 'PICTURE';
+      const hasSet = img.hasAttribute('srcset') || img.hasAttribute('data-srcset');
+      const setUsable = inPicture || (hasSet && isRealMediaUrl(
+        pickBestFromSrcset(img.getAttribute('srcset')) || pickBestFromSrcset(img.getAttribute('data-srcset'))
+      ));
+      if (img.src && !setUsable) trackImage(img.src);
       if (img.hasAttribute('data-src')) trackImage(img.getAttribute('data-src'));
       if (img.hasAttribute('data-lazy-src')) trackImage(img.getAttribute('data-lazy-src'));
       if (img.hasAttribute('data-original')) trackImage(img.getAttribute('data-original'));
@@ -747,10 +755,18 @@
     if (el.tagName === 'IMG') {
       // With a srcset present, src is just another variant of the same image
       const hasSet = el.hasAttribute('srcset') || el.hasAttribute('data-srcset') || el.parentElement?.tagName === 'PICTURE';
+      let realSet = false;
+      if (hasSet) {
+        if (el.parentElement?.tagName === 'PICTURE') {
+          realSet = true; // Handled per-picture, so we skip src here to avoid duplicates.
+        } else {
+          realSet = isRealMediaUrl(pickBestFromSrcset(el.getAttribute('srcset')) || pickBestFromSrcset(el.getAttribute('data-srcset')));
+        }
+      }
       const attrs = ['src', 'data-src', 'data-lazy-src', 'data-original'];
       for (const attr of attrs) {
         let val;
-        if (attr === 'src') val = hasSet ? null : el.src;
+        if (attr === 'src') val = (hasSet && realSet) ? null : el.src;
         else val = el.hasAttribute(attr) ? el.getAttribute(attr) : null;
         if (val) {
           trackImageUrl(val, imageSet);

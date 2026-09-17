@@ -19,6 +19,10 @@
     "message": "Seleccionar",
     "description": "Button label for toggling a checkbox on an image cell."
   },
+  "popupDeselect": {
+    "message": "Deseleccionar",
+    "description": "Button label for toggling off a checkbox on an image cell."
+  },
   "popupDownload": {
     "message": "Descargar",
     "description": "Action button tooltip for downloading a specific image."
