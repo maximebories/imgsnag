@@ -293,6 +293,7 @@
     check.setAttribute('role', 'checkbox');
     check.setAttribute('aria-checked', 'false');
     const fullSelectLabel = `${browser.i18n.getMessage('popupSelect')} ${fullFilename}${dimSuffix}`;
+    const fullDeselectLabel = `${browser.i18n.getMessage('popupDeselect')} ${fullFilename}${dimSuffix}`;
     check.setAttribute('aria-label', fullSelectLabel);
     check.title = fullSelectLabel;
 
@@ -306,10 +307,14 @@
         selectedUrls.delete(item.url);
         check.classList.remove('selected');
         check.setAttribute('aria-checked', 'false');
+        check.setAttribute('aria-label', fullSelectLabel);
+        check.title = fullSelectLabel;
       } else {
         selectedUrls.add(item.url);
         check.classList.add('selected');
         check.setAttribute('aria-checked', 'true');
+        check.setAttribute('aria-label', fullDeselectLabel);
+        check.title = fullDeselectLabel;
       }
       updateCounter();
     }
