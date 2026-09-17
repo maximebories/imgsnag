@@ -41,8 +41,9 @@
     }
   };
 
-  const BG_IMAGE_SELECTORS =
-    'div, span, section, article, header, footer, a, li, figure, i, [style*="background"]';
+  const BG_IMAGE_TAGS = new Set([
+    'DIV', 'SPAN', 'SECTION', 'ARTICLE', 'HEADER', 'FOOTER', 'A', 'LI', 'FIGURE', 'I'
+  ]);
 
   const MIN_IMAGE_SIZE = 200;
   // Ceiling on simultaneous `new Image()` size probes. Each in-flight probe holds
@@ -416,20 +417,36 @@
     });
 
     // CSS background-image on likely container elements
-    document.querySelectorAll(BG_IMAGE_SELECTORS).forEach((el) => {
-      // Fast path: skip elements with no styling hints to avoid expensive getComputedStyle calls
-      if (!el.className && !el.id && !el.getAttribute('style')) return;
-
-      pendingBackgroundCheckQueue.push(el);
-      if (!isBgCheckScheduled) {
-        isBgCheckScheduled = true;
-        if (typeof requestIdleCallback !== 'undefined') {
-          requestIdleCallback(processBgImageQueue);
-        } else {
-          setTimeout(processBgImageQueue, 1);
+    const bgWalker = document.createTreeWalker(
+      document.documentElement,
+      NodeFilter.SHOW_ELEMENT,
+      {
+        acceptNode(node) {
+          // Fast path: skip elements with no styling hints to avoid expensive getComputedStyle calls
+          // We can also skip their subtrees in terms of CSS selector matching, but a TreeWalker
+          // node filter returns FILTER_SKIP so we still traverse descendants.
+          if (!node.className && !node.id && !node.getAttribute('style')) return NodeFilter.FILTER_SKIP;
+          return NodeFilter.FILTER_ACCEPT;
         }
       }
-    });
+    );
+
+    let bgNode;
+    while ((bgNode = bgWalker.nextNode())) {
+      const isBgTag = BG_IMAGE_TAGS.has(bgNode.tagName);
+      const hasBgStyle = bgNode.hasAttribute('style') && bgNode.getAttribute('style').includes('background');
+      if (isBgTag || hasBgStyle) {
+        pendingBackgroundCheckQueue.push(bgNode);
+        if (!isBgCheckScheduled) {
+          isBgCheckScheduled = true;
+          if (typeof requestIdleCallback !== 'undefined') {
+            requestIdleCallback(processBgImageQueue);
+          } else {
+            setTimeout(processBgImageQueue, 1);
+          }
+        }
+      }
+    }
 
     // Fallback — scan text and attributes to catch JSON-LD or data attributes that DOM queries miss
     const walker = document.createTreeWalker(
