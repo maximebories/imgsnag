@@ -659,6 +659,52 @@ describe('getCssMediaUrls', () => {
   });
 });
 
+describe('isImageUrl', () => {
+  const { isImageUrl } = require('../src/content.js');
+
+  it('accepts valid image extensions', () => {
+    expect(isImageUrl('https://example.com/image.jpg')).toBe(true);
+    expect(isImageUrl('https://example.com/image.png')).toBe(true);
+    expect(isImageUrl('https://example.com/image.svg')).toBe(true);
+    expect(isImageUrl('https://example.com/image.webp')).toBe(true);
+    expect(isImageUrl('https://example.com/image.avif')).toBe(true);
+    expect(isImageUrl('https://example.com/image.gif')).toBe(true);
+  });
+
+  it('accepts valid data URIs for images', () => {
+    expect(isImageUrl('data:image/png;base64,iVBORw0KGgo')).toBe(true);
+    expect(isImageUrl('data:image/svg+xml;base64,PHN2Zw==')).toBe(true);
+  });
+
+  it('rejects invalid or non-image extensions', () => {
+    expect(isImageUrl('https://example.com/page.html')).toBe(false);
+    expect(isImageUrl('https://example.com/document.pdf')).toBe(false);
+    expect(isImageUrl('https://example.com/video.mp4')).toBe(false);
+    expect(isImageUrl('https://example.com/script.js')).toBe(false);
+  });
+
+  it('rejects invalid URLs that fail to parse', () => {
+    expect(isImageUrl('invalid-url-not-parsable')).toBe(false);
+    expect(isImageUrl('mailto:someone@example.com')).toBe(false);
+  });
+
+  it('handles null, undefined, and empty string', () => {
+    expect(isImageUrl(null)).toBe(false);
+    expect(isImageUrl(undefined)).toBe(false);
+    expect(isImageUrl('')).toBe(false);
+  });
+
+  it('guards against malicious edge cases like double extensions or query string masking', () => {
+    // These should not be seen as images because the true path extension is not an image
+    expect(isImageUrl('https://example.com/malicious.jpg.pdf')).toBe(false);
+    expect(isImageUrl('https://example.com/malicious.pdf?foo=bar.jpg')).toBe(false);
+
+    // These should be seen as images despite trailing query strings
+    expect(isImageUrl('https://example.com/image.jpg?w=800')).toBe(true);
+    expect(isImageUrl('https://example.com/image.jpg#fragment')).toBe(true);
+  });
+});
+
 describe('handleDataBg', () => {
   const { handleDataBg } = require('../src/content.js');
 
