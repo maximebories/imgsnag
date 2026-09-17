@@ -985,4 +985,34 @@ describe('collectMediaUrls initial scan unified traversal', () => {
     // backgrounds go through the deferred idle queue.
     expect(imageUrls.has('https://example.com/style.jpg')).toBe(true);
   });
+
+  // Both URLs below are deliberately extensionless: the regex attribute sweep
+  // only extracts URLs that look like media, so an extensionless src is visible
+  // to these assertions only if the <img> path itself tracked it.
+  it('tracks src when the srcset holds nothing but data: placeholders', () => {
+    document.body.innerHTML = `
+      <img src="https://example.com/real-photo"
+           srcset="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw== 1x">
+    `;
+
+    const { collectMediaUrls } = require('../src/content.js');
+    const { imageUrls } = collectMediaUrls();
+
+    expect(imageUrls.has('https://example.com/real-photo')).toBe(true);
+  });
+
+  it('still skips src inside a <picture> whose source is usable', () => {
+    document.body.innerHTML = `
+      <picture>
+        <source srcset="https://example.com/elected.jpg 800w">
+        <img src="https://example.com/picture-fallback">
+      </picture>
+    `;
+
+    const { collectMediaUrls } = require('../src/content.js');
+    const { imageUrls } = collectMediaUrls();
+
+    expect(imageUrls.has('https://example.com/elected.jpg')).toBe(true);
+    expect(imageUrls.has('https://example.com/picture-fallback')).toBe(false);
+  });
 });
