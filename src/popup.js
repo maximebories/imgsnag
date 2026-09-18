@@ -292,9 +292,10 @@
     check.className = 'check';
     check.setAttribute('role', 'checkbox');
     check.setAttribute('aria-checked', 'false');
-    const fullSelectLabel = `${browser.i18n.getMessage('popupSelect')} ${fullFilename}${dimSuffix}`;
-    const fullDeselectLabel = `${browser.i18n.getMessage('popupDeselect')} ${fullFilename}${dimSuffix}`;
-    check.setAttribute('aria-label', fullSelectLabel);
+    const optionName = `${fullFilename}${dimSuffix}`;
+    const fullSelectLabel = `${browser.i18n.getMessage('popupSelect')} ${optionName}`;
+    const fullDeselectLabel = `${browser.i18n.getMessage('popupDeselect')} ${optionName}`;
+    check.setAttribute('aria-label', optionName);
     check.title = fullSelectLabel;
 
     const flash = document.createElement('div');
@@ -307,13 +308,11 @@
         selectedUrls.delete(item.url);
         check.classList.remove('selected');
         check.setAttribute('aria-checked', 'false');
-        check.setAttribute('aria-label', fullSelectLabel);
         check.title = fullSelectLabel;
       } else {
         selectedUrls.add(item.url);
         check.classList.add('selected');
         check.setAttribute('aria-checked', 'true');
-        check.setAttribute('aria-label', fullDeselectLabel);
         check.title = fullDeselectLabel;
       }
       updateCounter();
