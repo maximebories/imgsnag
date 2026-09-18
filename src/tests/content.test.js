@@ -22,6 +22,11 @@ describe('resolveUrl', () => {
     expect(resolveUrl(url)).toBe(url);
   });
 
+  it('should accept allowed protocols like blob: and data:', () => {
+    expect(resolveUrl('blob:https://example.com/a123')).toBe('blob:https://example.com/a123');
+    expect(resolveUrl('data:image/png;base64,iVBORw0KGgo=')).toBe('data:image/png;base64,iVBORw0KGgo=');
+  });
+
   it('should resolve relative URLs against the current location', () => {
     // jsdom sets window.location.href to 'http://localhost/' by default
     expect(resolveUrl('/path/to/image.png')).toBe('http://localhost/path/to/image.png');
