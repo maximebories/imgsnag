@@ -62,7 +62,19 @@
   const SOURCE_URL_ATTRS = ['src', 'data-src', 'data-lazy-src', 'data-original'];
   const DATA_BG_ATTRS = ['data-bg', 'data-bg-src', 'data-background', 'data-background-image'];
   // Tags worth an attribute sweep when they turn up in a MutationObserver batch
-  const TAG_SET = new Set(['IMG', 'VIDEO', 'SOURCE', 'PICTURE', 'DIV', 'SPAN', 'SECTION', 'ARTICLE', 'HEADER', 'FOOTER', 'A', 'LI', 'FIGURE', 'I', 'META', 'LINK', 'OBJECT', 'EMBED', 'IFRAME', 'image', 'IMAGE']);
+  const TAG_SET = new Set(['IMG', 'VIDEO', 'SOURCE', 'PICTURE', 'DIV', 'SPAN', 'SECTION', 'ARTICLE', 'HEADER', 'FOOTER', 'A', 'LI', 'FIGURE', 'I', 'META', 'LINK', 'OBJECT', 'EMBED', 'IFRAME', 'image', 'IMAGE', 'INPUT']);
+
+  // <input type="image"> renders and resolves its src exactly like an <img>, so every
+  // path that reads an <img> treats it the same way. `el.type` is the IDL attribute,
+  // which is already lowercased and defaults to 'text' when absent.
+  function isImgLike(el) {
+    return el.tagName === 'IMG' || (el.tagName === 'INPUT' && el.type === 'image');
+  }
+  // The static-scan counterpart of isImgLike. `type` is one of the attributes HTML
+  // matches ASCII case-insensitively in selectors, so type="IMAGE" matches too.
+  const IMG_LIKE_SELECTOR = ['img', 'input[type="image"]']
+    .flatMap((base) => SOURCE_URL_ATTRS.map((attr) => `${base}[${attr}]`))
+    .join(', ');
 
   // Inline-SVG capture (derived files, RFC #118 stage 1)
   const SVG_DATA_PREFIX = 'data:image/svg+xml;charset=utf-8,';
@@ -350,7 +362,7 @@
     // not suppress the src fallback (same rule as the imagesrcset preload above).
     // Inside a <picture>, the per-picture sweep below already elects one
     // variant — src there is a duplicate under a different URL, so it stays out.
-    document.querySelectorAll('img[src], img[data-src], img[data-lazy-src], img[data-original]').forEach((img) => {
+    document.querySelectorAll(IMG_LIKE_SELECTOR).forEach((img) => {
       const inPicture = img.parentElement?.tagName === 'PICTURE';
       const hasSet = img.hasAttribute('srcset') || img.hasAttribute('data-srcset');
       const setUsable = inPicture || (hasSet && isRealMediaUrl(
@@ -752,7 +764,7 @@
   // Scan a single element for media URLs (used by MutationObserver)
 
   function handleImg(el, imageSet) {
-    if (el.tagName === 'IMG') {
+    if (isImgLike(el)) {
       // With a srcset present, src is just another variant of the same image
       const hasSet = el.hasAttribute('srcset') || el.hasAttribute('data-srcset') || el.parentElement?.tagName === 'PICTURE';
       let realSet = false;
@@ -1137,7 +1149,7 @@
   function getTargetUrlsForElement(el) {
     const urls = [];
 
-    if (el.tagName === 'IMG' && el.src) {
+    if (isImgLike(el) && el.src) {
       const url = resolveUrl(el.src);
       if (url && !url.startsWith('data:')) urls.push(url);
       return urls;
@@ -1163,7 +1175,7 @@
     let didDownload = false;
 
     for (const el of elements) {
-      if (el.tagName === 'IMG') {
+      if (isImgLike(el)) {
         let hasValidImage = false;
         const attrs = ['data-src', 'data-lazy-src', 'data-original', 'src'];
         for (const attr of attrs) {
@@ -1226,7 +1238,7 @@
   document.addEventListener('dragend', (e) => {
     // Warden: Prevent hostile pages from synthesizing events to force downloads
     if (!e.isTrusted) return;
-    if (e.target.tagName === 'IMG' && !isDragDisabled) {
+    if (isImgLike(e.target) && !isDragDisabled) {
       const attrs = ['data-src', 'data-lazy-src', 'data-original', 'src'];
       for (const attr of attrs) {
         let val;
@@ -1254,6 +1266,6 @@
   syncDragPreference();
   browser.storage.onChanged.addListener(() => syncDragPreference());
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { handleSrcset, trackImageUrl, getDomImageSize, getCssMediaUrls, extractBgImageUrls, resolveUrl, isVideoUrl, isImageUrl, isSvgUrl, parseSrcset, pickBestFromSrcset, collectInlineSvgs, handleEmbed, passesSizeFilter, handleMeta, collectMediaUrls, handleSource, handlePicture, handleSvgImage, handleDataBg, extractRegexUrls, handleVideo, filterImagesBySize, SIZE_PROBE_POOL_SIZE, REGEX_SWEEP_FILTER };
+    module.exports = { handleImg, handleSrcset, trackImageUrl, getDomImageSize, getCssMediaUrls, extractBgImageUrls, resolveUrl, isVideoUrl, isImageUrl, isSvgUrl, parseSrcset, pickBestFromSrcset, collectInlineSvgs, handleEmbed, passesSizeFilter, handleMeta, collectMediaUrls, handleSource, handlePicture, handleSvgImage, handleDataBg, extractRegexUrls, handleVideo, filterImagesBySize, SIZE_PROBE_POOL_SIZE, REGEX_SWEEP_FILTER };
   }
 })();
