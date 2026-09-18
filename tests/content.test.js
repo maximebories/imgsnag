@@ -915,6 +915,28 @@ describe('collectMediaUrls initial scan unified traversal', () => {
     jest.restoreAllMocks();
   });
 
+  it('collectImages: discovers extensionless URL on input type="image"', () => {
+    const { collectMediaUrls } = require('../src/content.js');
+    document.body.innerHTML = `
+      <input type="image" src="https://example.com/button-submit">
+      <input type="image" data-src="https://example.com/button-lazy">
+    `;
+    const { imageUrls } = collectMediaUrls();
+    expect(imageUrls.has('https://example.com/button-submit')).toBe(true);
+    expect(imageUrls.has('https://example.com/button-lazy')).toBe(true);
+    document.body.innerHTML = '';
+  });
+
+  it('handleImg: discovers extensionless URL on dynamically added input type="image"', () => {
+    const { handleImg } = require('../src/content.js');
+    const imageSet = new Set();
+    const el = document.createElement('input');
+    el.type = 'image';
+    el.src = 'https://example.com/dynamic-button';
+    handleImg(el, imageSet);
+    expect(imageSet.has('https://example.com/dynamic-button')).toBe(true);
+  });
+
   it('collectVideos: rejects og:video when og:video:type is text/html', () => {
     const { collectMediaUrls } = require('../src/content.js');
     document.head.innerHTML = `
