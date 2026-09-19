@@ -79,6 +79,7 @@
   // Inline-SVG capture (derived files, RFC #118 stage 1)
   const SVG_DATA_PREFIX = 'data:image/svg+xml;charset=utf-8,';
   const MAX_INLINE_SVG_CHARS = 2 * 1024 * 1024;
+  const MAX_TRACKED_MEDIA = 10000;
 
   // Persistent media store — survives DOM removal (infinite scroll recycling)
   const discoveredMedia = new Map();
@@ -626,18 +627,21 @@
     });
   }
 
-  function getDomImageSize(url) {
-    // Warden: Trust boundary - CSS.escape mitigates selector injection from page-controlled URLs
-    const el = document.querySelector(`img[src="${CSS.escape(url)}"]`);
-    if (el && el.naturalWidth > 0 && el.naturalHeight > 0) {
-      // Responsive images render their srcset-chosen candidate; only trust the
-      // natural size when the queried URL is actually the one being rendered
-      const activeUrl = el.currentSrc || el.src;
-      if (activeUrl === url) {
-        return { width: el.naturalWidth, height: el.naturalHeight };
+  // Image sizes are read from one pass over document.images, keyed on
+  // `currentSrc || src`. Keying on the *rendered* URL is what keeps responsive
+  // images honest: a srcset candidate that is not the one being displayed must
+  // not inherit the displayed candidate's natural dimensions.
+  function buildDomSizeMap() {
+    const sizeMap = new Map();
+    const imgs = document.images;
+    const len = imgs.length;
+    for (let i = 0; i < len; i++) {
+      const img = imgs[i];
+      if (img.naturalWidth > 0 && img.naturalHeight > 0) {
+        sizeMap.set(img.currentSrc || img.src, { width: img.naturalWidth, height: img.naturalHeight });
       }
     }
-    return null;
+    return sizeMap;
   }
 
   const pendingNetworkFilter = new Set();
@@ -651,18 +655,7 @@
   }
 
   async function filterImagesBySize(urls, providedSizeMap) {
-    let sizeMap = providedSizeMap;
-    if (!sizeMap) {
-      sizeMap = new Map();
-      const imgs = document.images;
-      const len = imgs.length;
-      for (let i = 0; i < len; i++) {
-        const img = imgs[i];
-        if (img.naturalWidth > 0 && img.naturalHeight > 0) {
-          sizeMap.set(img.currentSrc || img.src, { width: img.naturalWidth, height: img.naturalHeight });
-        }
-      }
-    }
+    const sizeMap = providedSizeMap || buildDomSizeMap();
 
     const arr = [...urls];
     const results = new Array(arr.length);
@@ -674,14 +667,19 @@
         results[index] = url;
         continue;
       }
-      const domSize = sizeMap.get(url) || getDomImageSize(url);
+      // No getDomImageSize() fallback: sizeMap was just built from
+      // document.images keyed on `currentSrc || src`, and getDomImageSize
+      // matches a strict subset of that (same element set, but it also
+      // requires the literal src *attribute* to equal the resolved URL).
+      // A miss here is a miss there too — the querySelector only cost time.
+      const domSize = sizeMap.get(url);
       if (domSize) {
         results[index] = passesSizeFilter(domSize) ? url : null;
         continue;
       }
       // Lazy network fetch: if popup is closed, delay the expensive new Image() call
       if (!popupPort) {
-        pendingNetworkFilter.add(url);
+        if (pendingNetworkFilter.size < MAX_TRACKED_MEDIA) pendingNetworkFilter.add(url);
         results[index] = null;
         continue;
       }
@@ -699,6 +697,10 @@
         const index = pendingIndexes[pendingPos++];
         const url = arr[index];
         const size = await getImageSize(url);
+        // Record the measurement so callers can read dimensions back off the
+        // map. Probed URLs are absent from document.images by definition, so
+        // without this they reach the popup as 0×0 and lose their size label.
+        if (size) sizeMap.set(url, size);
         results[index] = passesSizeFilter(size) ? url : null;
       }
     }
@@ -723,20 +725,11 @@
   }
 
   async function addNewUrls(urls, type) {
+    if (discoveredMedia.size >= MAX_TRACKED_MEDIA) return;
     const unknown = [...urls].filter((url) => !discoveredMedia.has(url));
     if (unknown.length === 0) return;
 
-    const sizeMap = type === 'image' ? new Map() : null;
-    if (sizeMap) {
-      const imgs = document.images;
-      const len = imgs.length;
-      for (let i = 0; i < len; i++) {
-        const img = imgs[i];
-        if (img.naturalWidth > 0 && img.naturalHeight > 0) {
-          sizeMap.set(img.currentSrc || img.src, { width: img.naturalWidth, height: img.naturalHeight });
-        }
-      }
-    }
+    const sizeMap = type === 'image' ? buildDomSizeMap() : null;
 
     let accepted;
     if (type === 'video') {
@@ -747,12 +740,13 @@
     }
 
     const items = accepted.map((url) => {
-      const size = type === 'image' ? (sizeMap.get(url) || getDomImageSize(url)) : null;
+      const size = type === 'image' ? sizeMap.get(url) : null;
       return { url, type, width: size?.width || 0, height: size?.height || 0 };
     });
 
     const added = [];
     for (const item of items) {
+      if (discoveredMedia.size >= MAX_TRACKED_MEDIA) break;
       if (!discoveredMedia.has(item.url)) {
         discoveredMedia.set(item.url, item);
         added.push(item);
@@ -1091,6 +1085,7 @@
 
       // Capture inline SVGs now so they ride along in the init payload
       for (const item of collectInlineSvgs()) {
+        if (discoveredMedia.size >= MAX_TRACKED_MEDIA) break;
         if (!discoveredMedia.has(item.url)) discoveredMedia.set(item.url, item);
       }
 
@@ -1266,6 +1261,6 @@
   syncDragPreference();
   browser.storage.onChanged.addListener(() => syncDragPreference());
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { handleImg, handleSrcset, trackImageUrl, getDomImageSize, getCssMediaUrls, extractBgImageUrls, resolveUrl, isVideoUrl, isImageUrl, isSvgUrl, parseSrcset, pickBestFromSrcset, collectInlineSvgs, handleEmbed, passesSizeFilter, handleMeta, collectMediaUrls, handleSource, handlePicture, handleSvgImage, handleDataBg, extractRegexUrls, handleVideo, filterImagesBySize, SIZE_PROBE_POOL_SIZE, REGEX_SWEEP_FILTER };
+    module.exports = { handleImg, handleSrcset, trackImageUrl, buildDomSizeMap, getCssMediaUrls, extractBgImageUrls, resolveUrl, isVideoUrl, isImageUrl, isSvgUrl, parseSrcset, pickBestFromSrcset, collectInlineSvgs, handleEmbed, passesSizeFilter, handleMeta, collectMediaUrls, handleSource, handlePicture, handleSvgImage, handleDataBg, extractRegexUrls, handleVideo, filterImagesBySize, SIZE_PROBE_POOL_SIZE, REGEX_SWEEP_FILTER };
   }
 })();
