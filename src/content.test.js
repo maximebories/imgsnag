@@ -345,8 +345,14 @@ describe('handleSvgImage', () => {
   });
 });
 
-describe('getDomImageSize', () => {
-  const { getDomImageSize } = require('./content');
+// These three cases used to target getDomImageSize(), a querySelector-based
+// fallback removed once it was shown to be a strict subset of buildDomSizeMap()
+// (same element set, but it additionally required the literal src *attribute*
+// to equal the resolved URL). The rule they protect — only trust a natural size
+// when the queried URL is the one actually being rendered — now lives in the
+// map's `currentSrc || src` key, so the coverage moves here rather than away.
+describe('buildDomSizeMap', () => {
+  const { buildDomSizeMap } = require('./content');
 
   function el(tag, attrs = {}) {
     const e = document.createElement(tag);
@@ -354,42 +360,57 @@ describe('getDomImageSize', () => {
     return e;
   }
 
+  function addImg({ src, currentSrc, width = 1200, height = 800 }) {
+    const img = el('img', { src });
+    Object.defineProperty(img, 'naturalWidth', { value: width });
+    Object.defineProperty(img, 'naturalHeight', { value: height });
+    Object.defineProperty(img, 'currentSrc', { value: currentSrc });
+    document.body.appendChild(img);
+    return img;
+  }
+
   afterEach(() => {
     document.body.innerHTML = '';
   });
 
-  it('rejects sizes when queried URL does not match actively rendered currentSrc', () => {
-    const img = el('img', { src: 'https://example.com/tracking-pixel.gif' });
-    Object.defineProperty(img, 'naturalWidth', { value: 1200 });
-    Object.defineProperty(img, 'naturalHeight', { value: 800 });
-    // Simulate srcset fallback making the active URL different from the queried src
-    Object.defineProperty(img, 'currentSrc', { value: 'https://example.com/large-image.jpg' });
+  it('does not attribute rendered dimensions to a non-rendered srcset candidate', () => {
+    // src points at the tracking pixel, but the browser is rendering the large
+    // candidate — the pixel URL must not inherit 1200x800.
+    addImg({
+      src: 'https://example.com/tracking-pixel.gif',
+      currentSrc: 'https://example.com/large-image.jpg'
+    });
 
-    document.body.appendChild(img);
-
-    expect(getDomImageSize('https://example.com/tracking-pixel.gif')).toBeNull();
+    const sizeMap = buildDomSizeMap();
+    expect(sizeMap.get('https://example.com/tracking-pixel.gif')).toBeUndefined();
+    expect(sizeMap.get('https://example.com/large-image.jpg')).toEqual({ width: 1200, height: 800 });
   });
 
-  it('returns natural dimensions when queried URL matches actively rendered currentSrc', () => {
-    const img = el('img', { src: 'https://example.com/large-image.jpg' });
-    Object.defineProperty(img, 'naturalWidth', { value: 1200 });
-    Object.defineProperty(img, 'naturalHeight', { value: 800 });
-    Object.defineProperty(img, 'currentSrc', { value: 'https://example.com/large-image.jpg' });
+  it('records natural dimensions under the actively rendered URL', () => {
+    addImg({
+      src: 'https://example.com/large-image.jpg',
+      currentSrc: 'https://example.com/large-image.jpg'
+    });
 
-    document.body.appendChild(img);
-
-    expect(getDomImageSize('https://example.com/large-image.jpg')).toEqual({ width: 1200, height: 800 });
+    expect(buildDomSizeMap().get('https://example.com/large-image.jpg'))
+      .toEqual({ width: 1200, height: 800 });
   });
 
-  it('returns natural dimensions when queried URL matches src and currentSrc is empty', () => {
-    const img = el('img', { src: 'https://example.com/large-image.jpg' });
-    Object.defineProperty(img, 'naturalWidth', { value: 1200 });
-    Object.defineProperty(img, 'naturalHeight', { value: 800 });
-    // In many basic cases without srcset, currentSrc might be empty string or equal to src
-    Object.defineProperty(img, 'currentSrc', { value: '' });
+  it('falls back to src when currentSrc is empty (no srcset in play)', () => {
+    addImg({ src: 'https://example.com/large-image.jpg', currentSrc: '' });
 
-    document.body.appendChild(img);
+    expect(buildDomSizeMap().get('https://example.com/large-image.jpg'))
+      .toEqual({ width: 1200, height: 800 });
+  });
 
-    expect(getDomImageSize('https://example.com/large-image.jpg')).toEqual({ width: 1200, height: 800 });
+  it('skips images that have not finished decoding (0x0 natural size)', () => {
+    addImg({
+      src: 'https://example.com/pending.jpg',
+      currentSrc: 'https://example.com/pending.jpg',
+      width: 0,
+      height: 0
+    });
+
+    expect(buildDomSizeMap().has('https://example.com/pending.jpg')).toBe(false);
   });
 });
