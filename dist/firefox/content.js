@@ -674,7 +674,7 @@
         results[index] = url;
         continue;
       }
-      const domSize = sizeMap.get(url) || getDomImageSize(url);
+      const domSize = sizeMap.get(url);
       if (domSize) {
         results[index] = passesSizeFilter(domSize) ? url : null;
         continue;
@@ -747,7 +747,7 @@
     }
 
     const items = accepted.map((url) => {
-      const size = type === 'image' ? (sizeMap.get(url) || getDomImageSize(url)) : null;
+      const size = type === 'image' ? (sizeMap.get(url)) : null;
       return { url, type, width: size?.width || 0, height: size?.height || 0 };
     });
 
