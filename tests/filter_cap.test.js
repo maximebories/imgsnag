@@ -100,4 +100,41 @@ describe('filterImagesBySize network-probe fan-out', () => {
 
     expect(results).toHaveLength(Math.ceil(urls.size / 2));
   });
+
+  // A probed URL is by definition absent from document.images, so the caller
+  // has no other way to learn its dimensions. addNewUrls reads sizes straight
+  // back off this map to build the popup item; without the write-back every
+  // network-probed image reaches the grid as 0x0 and loses its size label.
+  it('records probe measurements in the provided sizeMap', async () => {
+    const big = 'https://example.com/probed-big.jpg';
+    const small = 'https://example.com/probed-small.jpg';
+    installProbe({
+      [big]: { width: 640, height: 480 },
+      [small]: { width: 50, height: 50 }
+    });
+
+    const sizeMap = new Map();
+    const results = await filterImagesBySize(new Set([big, small]), sizeMap);
+
+    expect(results).toEqual([big]);
+    expect(sizeMap.get(big)).toEqual({ width: 640, height: 480 });
+    // Rejected URLs are still measured — the map is a measurement cache, not
+    // an accept list, and addNewUrls only reads it for accepted entries.
+    expect(sizeMap.get(small)).toEqual({ width: 50, height: 50 });
+  });
+
+  it('leaves the sizeMap untouched for a probe that fails to load', async () => {
+    const broken = 'https://example.com/broken.jpg';
+    global.Image = class {
+      set src(url) {
+        setTimeout(() => this.onerror(), 0);
+      }
+    };
+
+    const sizeMap = new Map();
+    const results = await filterImagesBySize(new Set([broken]), sizeMap);
+
+    expect(results).toEqual([]);
+    expect(sizeMap.has(broken)).toBe(false);
+  });
 });

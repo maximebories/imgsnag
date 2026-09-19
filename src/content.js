@@ -42,7 +42,7 @@
   };
 
   const BG_IMAGE_SELECTORS =
-    'div, span, section, article, header, footer, a, li, figure, i, [style*="background"]';
+    'div, span, section, article, header, footer, a, li, figure, i, button, main, dialog, [style*="background"], [style*="mask"]';
 
   const MIN_IMAGE_SIZE = 200;
   // Ceiling on simultaneous `new Image()` size probes. Each in-flight probe holds
@@ -626,18 +626,21 @@
     });
   }
 
-  function getDomImageSize(url) {
-    // Warden: Trust boundary - CSS.escape mitigates selector injection from page-controlled URLs
-    const el = document.querySelector(`img[src="${CSS.escape(url)}"]`);
-    if (el && el.naturalWidth > 0 && el.naturalHeight > 0) {
-      // Responsive images render their srcset-chosen candidate; only trust the
-      // natural size when the queried URL is actually the one being rendered
-      const activeUrl = el.currentSrc || el.src;
-      if (activeUrl === url) {
-        return { width: el.naturalWidth, height: el.naturalHeight };
+  // Image sizes are read from one pass over document.images, keyed on
+  // `currentSrc || src`. Keying on the *rendered* URL is what keeps responsive
+  // images honest: a srcset candidate that is not the one being displayed must
+  // not inherit the displayed candidate's natural dimensions.
+  function buildDomSizeMap() {
+    const sizeMap = new Map();
+    const imgs = document.images;
+    const len = imgs.length;
+    for (let i = 0; i < len; i++) {
+      const img = imgs[i];
+      if (img.naturalWidth > 0 && img.naturalHeight > 0) {
+        sizeMap.set(img.currentSrc || img.src, { width: img.naturalWidth, height: img.naturalHeight });
       }
     }
-    return null;
+    return sizeMap;
   }
 
   const pendingNetworkFilter = new Set();
@@ -651,18 +654,7 @@
   }
 
   async function filterImagesBySize(urls, providedSizeMap) {
-    let sizeMap = providedSizeMap;
-    if (!sizeMap) {
-      sizeMap = new Map();
-      const imgs = document.images;
-      const len = imgs.length;
-      for (let i = 0; i < len; i++) {
-        const img = imgs[i];
-        if (img.naturalWidth > 0 && img.naturalHeight > 0) {
-          sizeMap.set(img.currentSrc || img.src, { width: img.naturalWidth, height: img.naturalHeight });
-        }
-      }
-    }
+    const sizeMap = providedSizeMap || buildDomSizeMap();
 
     const arr = [...urls];
     const results = new Array(arr.length);
@@ -674,7 +666,12 @@
         results[index] = url;
         continue;
       }
-      const domSize = sizeMap.get(url) || getDomImageSize(url);
+      // No getDomImageSize() fallback: sizeMap was just built from
+      // document.images keyed on `currentSrc || src`, and getDomImageSize
+      // matches a strict subset of that (same element set, but it also
+      // requires the literal src *attribute* to equal the resolved URL).
+      // A miss here is a miss there too — the querySelector only cost time.
+      const domSize = sizeMap.get(url);
       if (domSize) {
         results[index] = passesSizeFilter(domSize) ? url : null;
         continue;
@@ -699,6 +696,10 @@
         const index = pendingIndexes[pendingPos++];
         const url = arr[index];
         const size = await getImageSize(url);
+        // Record the measurement so callers can read dimensions back off the
+        // map. Probed URLs are absent from document.images by definition, so
+        // without this they reach the popup as 0×0 and lose their size label.
+        if (size) sizeMap.set(url, size);
         results[index] = passesSizeFilter(size) ? url : null;
       }
     }
@@ -726,17 +727,7 @@
     const unknown = [...urls].filter((url) => !discoveredMedia.has(url));
     if (unknown.length === 0) return;
 
-    const sizeMap = type === 'image' ? new Map() : null;
-    if (sizeMap) {
-      const imgs = document.images;
-      const len = imgs.length;
-      for (let i = 0; i < len; i++) {
-        const img = imgs[i];
-        if (img.naturalWidth > 0 && img.naturalHeight > 0) {
-          sizeMap.set(img.currentSrc || img.src, { width: img.naturalWidth, height: img.naturalHeight });
-        }
-      }
-    }
+    const sizeMap = type === 'image' ? buildDomSizeMap() : null;
 
     let accepted;
     if (type === 'video') {
@@ -747,7 +738,7 @@
     }
 
     const items = accepted.map((url) => {
-      const size = type === 'image' ? (sizeMap.get(url) || getDomImageSize(url)) : null;
+      const size = type === 'image' ? sizeMap.get(url) : null;
       return { url, type, width: size?.width || 0, height: size?.height || 0 };
     });
 
@@ -1266,6 +1257,6 @@
   syncDragPreference();
   browser.storage.onChanged.addListener(() => syncDragPreference());
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { handleImg, handleSrcset, trackImageUrl, getDomImageSize, getCssMediaUrls, extractBgImageUrls, resolveUrl, isVideoUrl, isImageUrl, isSvgUrl, parseSrcset, pickBestFromSrcset, collectInlineSvgs, handleEmbed, passesSizeFilter, handleMeta, collectMediaUrls, handleSource, handlePicture, handleSvgImage, handleDataBg, extractRegexUrls, handleVideo, filterImagesBySize, SIZE_PROBE_POOL_SIZE, REGEX_SWEEP_FILTER };
+    module.exports = { handleImg, handleSrcset, trackImageUrl, buildDomSizeMap, getCssMediaUrls, extractBgImageUrls, resolveUrl, isVideoUrl, isImageUrl, isSvgUrl, parseSrcset, pickBestFromSrcset, collectInlineSvgs, handleEmbed, passesSizeFilter, handleMeta, collectMediaUrls, handleSource, handlePicture, handleSvgImage, handleDataBg, extractRegexUrls, handleVideo, filterImagesBySize, SIZE_PROBE_POOL_SIZE, REGEX_SWEEP_FILTER, processBgImageQueue };
   }
 })();

@@ -915,6 +915,66 @@ describe('collectMediaUrls initial scan unified traversal', () => {
     jest.restoreAllMocks();
   });
 
+  it('collectImages: adds button with background-image to idle queue', () => {
+    const { handleBackgroundImage } = require('../src/content.js');
+    const el = document.createElement('button');
+    el.className = 'icon-btn'; // satisfies fast-path
+    // handleBackgroundImage uses a private pendingBackgroundCheckQueue.
+    // Instead of querying the queue directly, we check if processBgImageQueue gets scheduled
+    // and extracts it via getCssMediaUrls which uses getComputedStyle.
+    const originalGetComputedStyle = window.getComputedStyle;
+    let computedStyleCalled = false;
+    window.getComputedStyle = jest.fn((element) => {
+      computedStyleCalled = true;
+      if (element === el) {
+        return {
+          backgroundImage: 'url("https://example.com/btn-bg.jpg")',
+          getPropertyValue: () => ''
+        };
+      }
+      return { backgroundImage: '', getPropertyValue: () => '' };
+    });
+
+    document.body.appendChild(el);
+    const { collectMediaUrls, processBgImageQueue } = require('../src/content.js');
+    collectMediaUrls();
+    processBgImageQueue(); // synchronous flush of the idle queue
+
+    expect(computedStyleCalled).toBe(true);
+
+    window.getComputedStyle = originalGetComputedStyle;
+    document.body.innerHTML = '';
+  });
+
+  it('collectImages: adds inline mask-image to idle queue even on unlisted tags', () => {
+    const { collectMediaUrls, processBgImageQueue, getCssMediaUrls } = require('../src/content.js');
+    document.body.innerHTML = `
+      <b style="mask-image: url('https://example.com/mask-bg.png');"></b>
+    `;
+
+    const originalGetComputedStyle = window.getComputedStyle;
+    let computedStyleCalled = false;
+    window.getComputedStyle = jest.fn((element) => {
+      computedStyleCalled = true;
+      if (element.tagName === 'B') {
+        return {
+          backgroundImage: '',
+          maskImage: 'url("https://example.com/mask-bg.png")',
+          getPropertyValue: (prop) => prop === 'mask-image' ? 'url("https://example.com/mask-bg.png")' : ''
+        };
+      }
+      return { backgroundImage: '', getPropertyValue: () => '' };
+    });
+
+    collectMediaUrls();
+    processBgImageQueue();
+
+    expect(computedStyleCalled).toBe(true);
+
+    window.getComputedStyle = originalGetComputedStyle;
+    document.body.innerHTML = '';
+  });
+
   it('collectImages: discovers extensionless URL on input type="image"', () => {
     const { collectMediaUrls } = require('../src/content.js');
     document.body.innerHTML = `

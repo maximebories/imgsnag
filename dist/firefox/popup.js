@@ -188,7 +188,7 @@
     const mod = navigator.platform.includes('Mac') ? 'Cmd' : 'Ctrl';
 
     counterEl.textContent = n > 0
-      ? `${n} ${browser.i18n.getMessage('popupSelected')}`
+      ? browser.i18n.getMessage('popupSelected', [n.toString()])
       : '';
     btnSelected.disabled = n === 0;
     btnSelected.textContent = `${browser.i18n.getMessage('popupDownloadSelected')} (${n})`;
