@@ -47,15 +47,6 @@
     "message": "Tout télécharger",
     "description": "Button label for downloading all captured media."
   },
-  "popupSelected": {
-    "message": "$COUNT$ sélectionné(s)",
-    "placeholders": {
-      "count": {
-        "content": "$1"
-      }
-    },
-    "description": "Message showing the number of selected items."
-  },
   "popupReload": {
     "message": "Rechargez la page et réessayez",
     "description": "Message shown when an error occurs and the page needs to be reloaded."
@@ -104,5 +95,23 @@
       }
     },
     "description": "Instructions on keyboard shortcuts shown in button tooltips."
+  },
+  "popupSelectedOne": {
+    "message": "$COUNT$ sélectionné",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    },
+    "description": "Selection counter, singular plural form. $COUNT$ is the number of selected items; it is not always literally 1 — in French 0 also takes this form."
+  },
+  "popupSelectedOther": {
+    "message": "$COUNT$ sélectionnés",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    },
+    "description": "Noun following the count of selected images (plural)."
   }
 }
