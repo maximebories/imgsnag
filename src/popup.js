@@ -187,9 +187,14 @@
     const hiddenCount = imageEntries.filter(e => e.cell.hidden).length;
     const mod = navigator.platform.includes('Mac') ? 'Cmd' : 'Ctrl';
 
-    counterEl.textContent = n > 0
-      ? `${n} ${browser.i18n.getMessage('popupSelected')}`
-      : '';
+    if (n > 0) {
+      const pr = new Intl.PluralRules(browser.i18n.getUILanguage());
+      const rule = pr.select(n);
+      const key = rule === 'one' ? 'popupSelectedOne' : 'popupSelectedOther';
+      counterEl.textContent = browser.i18n.getMessage(key, [n.toString()]);
+    } else {
+      counterEl.textContent = '';
+    }
     btnSelected.disabled = n === 0;
     btnSelected.textContent = `${browser.i18n.getMessage('popupDownloadSelected')} (${n})`;
     btnAll.textContent = `${browser.i18n.getMessage('popupDownloadAll')} (${total})`;
