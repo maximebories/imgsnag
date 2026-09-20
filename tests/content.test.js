@@ -1038,3 +1038,46 @@ describe('collectMediaUrls initial scan unified traversal', () => {
     expect(imageUrls.has('https://example.com/picture-fallback')).toBe(false);
   });
 });
+
+describe('BG_IMAGE_SELECTORS gate', () => {
+  // The static scan only ever passes elements matching this selector to
+  // getCssMediaUrls, so a URL the extractor *could* read is still invisible if
+  // the gate does not select its element. These assert on selector membership
+  // directly: that is the thing that changed, and it fails if the list narrows.
+  const { BG_IMAGE_SELECTORS } = require('../src/content.js');
+
+  const matches = (html) => {
+    document.body.innerHTML = html;
+    return document.body.firstElementChild.matches(BG_IMAGE_SELECTORS);
+  };
+
+  it('selects semantic tags that carry background images', () => {
+    expect(matches('<button class="icon-btn"></button>')).toBe(true);
+    expect(matches('<main id="app"></main>')).toBe(true);
+    expect(matches('<dialog class="modal"></dialog>')).toBe(true);
+  });
+
+  it('selects any tag carrying an inline mask-image', () => {
+    // <b> is not in the tag list; it is reached purely via [style*="mask"]
+    expect(matches('<b style="mask-image: url(\'https://example.com/m.png\')"></b>')).toBe(true);
+    expect(matches('<b style="-webkit-mask-image: url(\'https://example.com/m.png\')"></b>')).toBe(true);
+  });
+
+  it('selects any tag carrying an inline background', () => {
+    expect(matches('<b style="background-image: url(\'https://example.com/b.png\')"></b>')).toBe(true);
+  });
+
+  it('does not select unlisted tags with no styling hint', () => {
+    expect(matches('<b></b>')).toBe(false);
+    expect(matches('<p class="lead"></p>')).toBe(false);
+  });
+
+  it('does not select flex containers via a content substring', () => {
+    // Deliberate exclusion: [style*="content"] would match justify-content and
+    // align-content, forcing getComputedStyle on nearly every flex container.
+    // Inline styles cannot target pseudo-elements, so the missed `content:
+    // url(...)` case is unreachable anyway. Pins the trade-off.
+    expect(matches('<b style="justify-content: center"></b>')).toBe(false);
+    expect(matches('<p style="align-content: center"></p>')).toBe(false);
+  });
+});
