@@ -892,6 +892,56 @@ describe('trackImageUrl', () => {
     trackImageUrl('https://example.com/1920x1080/photo.jpg', set);
     expect([...set]).toEqual(['https://example.com/1920x1080/photo.jpg']);
   });
+
+  // RFC #223 stage 2 — the same synthesize-and-let-the-probe-cull-it bet as the
+  // WordPress suffix above, moved from the path to the query string.
+  it('synthesizes an original by stripping sizing query parameters', () => {
+    const set = new Set();
+    trackImageUrl('https://example.com/photo.jpg?w=320&h=240', set);
+    expect([...set]).toEqual([
+      'https://example.com/photo.jpg?w=320&h=240',
+      'https://example.com/photo.jpg'
+    ]);
+  });
+
+  it('strips only the sizing parameters and preserves the rest of the query', () => {
+    const set = new Set();
+    trackImageUrl('https://example.com/photo.jpg?token=abc&width=800&v=2', set);
+    expect([...set]).toEqual([
+      'https://example.com/photo.jpg?token=abc&width=800&v=2',
+      'https://example.com/photo.jpg?token=abc&v=2'
+    ]);
+  });
+
+  it('does not synthesize when no sizing parameter is present', () => {
+    const set = new Set();
+    trackImageUrl('https://example.com/photo.jpg?token=abc', set);
+    expect([...set]).toEqual(['https://example.com/photo.jpg?token=abc']);
+  });
+
+  it('does not treat a sizing name inside a longer parameter as a match', () => {
+    const set = new Set();
+    trackImageUrl('https://example.com/photo.jpg?sw=320', set);
+    expect([...set]).toEqual(['https://example.com/photo.jpg?sw=320']);
+  });
+
+  // Same reasoning as the WordPress SVG case: no probe means no cull, so a
+  // guessed SVG URL would reach the grid unverified.
+  it('does not strip sizing parameters from an SVG', () => {
+    const set = new Set();
+    trackImageUrl('https://example.com/logo.svg?w=320', set);
+    expect([...set]).toEqual(['https://example.com/logo.svg?w=320']);
+  });
+
+  it('applies both synthesis rules to a URL carrying each', () => {
+    const set = new Set();
+    trackImageUrl('https://example.com/photo-150x150.jpg?w=320', set);
+    expect([...set]).toEqual([
+      'https://example.com/photo-150x150.jpg?w=320',
+      'https://example.com/photo.jpg?w=320',
+      'https://example.com/photo-150x150.jpg'
+    ]);
+  });
 });
 
 describe('collectMediaUrls initial scan unified traversal', () => {
@@ -1036,5 +1086,48 @@ describe('collectMediaUrls initial scan unified traversal', () => {
 
     expect(imageUrls.has('https://example.com/elected.jpg')).toBe(true);
     expect(imageUrls.has('https://example.com/picture-fallback')).toBe(false);
+  });
+});
+
+describe('BG_IMAGE_SELECTORS gate', () => {
+  // The static scan only ever passes elements matching this selector to
+  // getCssMediaUrls, so a URL the extractor *could* read is still invisible if
+  // the gate does not select its element. These assert on selector membership
+  // directly: that is the thing that changed, and it fails if the list narrows.
+  const { BG_IMAGE_SELECTORS } = require('../src/content.js');
+
+  const matches = (html) => {
+    document.body.innerHTML = html;
+    return document.body.firstElementChild.matches(BG_IMAGE_SELECTORS);
+  };
+
+  it('selects semantic tags that carry background images', () => {
+    expect(matches('<button class="icon-btn"></button>')).toBe(true);
+    expect(matches('<main id="app"></main>')).toBe(true);
+    expect(matches('<dialog class="modal"></dialog>')).toBe(true);
+  });
+
+  it('selects any tag carrying an inline mask-image', () => {
+    // <b> is not in the tag list; it is reached purely via [style*="mask"]
+    expect(matches('<b style="mask-image: url(\'https://example.com/m.png\')"></b>')).toBe(true);
+    expect(matches('<b style="-webkit-mask-image: url(\'https://example.com/m.png\')"></b>')).toBe(true);
+  });
+
+  it('selects any tag carrying an inline background', () => {
+    expect(matches('<b style="background-image: url(\'https://example.com/b.png\')"></b>')).toBe(true);
+  });
+
+  it('does not select unlisted tags with no styling hint', () => {
+    expect(matches('<b></b>')).toBe(false);
+    expect(matches('<p class="lead"></p>')).toBe(false);
+  });
+
+  it('does not select flex containers via a content substring', () => {
+    // Deliberate exclusion: [style*="content"] would match justify-content and
+    // align-content, forcing getComputedStyle on nearly every flex container.
+    // Inline styles cannot target pseudo-elements, so the missed `content:
+    // url(...)` case is unreachable anyway. Pins the trade-off.
+    expect(matches('<b style="justify-content: center"></b>')).toBe(false);
+    expect(matches('<p style="align-content: center"></p>')).toBe(false);
   });
 });

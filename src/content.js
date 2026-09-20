@@ -13,6 +13,12 @@
   const WP_SUFFIX_FAST_RE = /-\d+x\d+\./;
   const WP_SUFFIX_RE = /-\d+x\d+(\.(?:jpe?g|png|webp|gif|avif))$/i;
 
+  // RFC #223 stage 2: CDNs serve scaled variants via sizing query params, so the
+  // stripped URL is often the original. Gated by a fast regex so the URL parse
+  // only happens for URLs that actually carry one.
+  const QUERY_SIZE_FAST_RE = /[?&](?:w|h|width|height)=\d+/i;
+  const SIZE_QUERY_PARAMS = ['w', 'h', 'width', 'height'];
+
   // Catches image URLs embedded in inline scripts or JSON-LD that DOM queries miss
   const IMAGE_URL_RE =
     /https?:(?:\\?\/){2}[^\s"'<>]+\.(?:jpe?g|gif|png|webp|svg|avif)(?:\?[^\s"'<>]*)?/gi;
@@ -42,7 +48,7 @@
   };
 
   const BG_IMAGE_SELECTORS =
-    'div, span, section, article, header, footer, a, li, figure, i, [style*="background"]';
+    'div, span, section, article, header, footer, a, li, figure, i, button, main, dialog, [style*="background"], [style*="mask"]';
 
   const MIN_IMAGE_SIZE = 200;
   // Ceiling on simultaneous `new Image()` size probes. Each in-flight probe holds
@@ -79,6 +85,13 @@
   // Inline-SVG capture (derived files, RFC #118 stage 1)
   const SVG_DATA_PREFIX = 'data:image/svg+xml;charset=utf-8,';
   const MAX_INLINE_SVG_CHARS = 2 * 1024 * 1024;
+  // Ceiling on the per-document media stores. These deliberately outlive DOM
+  // nodes (infinite scroll recycles them), so nothing else bounds their growth.
+  // Not an amplification defence — a page must spend more memory building the
+  // URLs than we spend holding them — but a content script on <all_urls> should
+  // not grow without limit on a page that scrolls forever. 10k is far above any
+  // real gallery and caps each store around 2MB per tab.
+  const MAX_TRACKED_MEDIA = 10000;
 
   // Persistent media store — survives DOM removal (infinite scroll recycling)
   const discoveredMedia = new Map();
@@ -107,6 +120,29 @@
           parsed.pathname = parsed.pathname.replace(WP_SUFFIX_RE, '$1');
           const synth = resolveUrl(parsed.href);
           if (synth && !synth.startsWith('data:')) urlSet.add(synth);
+        }
+      } catch {}
+    }
+    if (QUERY_SIZE_FAST_RE.test(url)) {
+      try {
+        const parsed = new URL(url);
+        // SVGs are exempt from the size filter, so a synthesized SVG URL would
+        // be admitted without ever being verified — a wrong guess would reach
+        // the popup as a broken item. Every other type gets culled by the
+        // network probe when the guess does not resolve, so only SVG is unsafe
+        // to guess at.
+        if (!parsed.pathname.toLowerCase().endsWith('.svg')) {
+          let stripped = false;
+          for (const param of SIZE_QUERY_PARAMS) {
+            if (parsed.searchParams.has(param)) {
+              parsed.searchParams.delete(param);
+              stripped = true;
+            }
+          }
+          if (stripped) {
+            const synth = resolveUrl(parsed.href);
+            if (synth && !synth.startsWith('data:')) urlSet.add(synth);
+          }
         }
       } catch {}
     }
@@ -678,7 +714,7 @@
       }
       // Lazy network fetch: if popup is closed, delay the expensive new Image() call
       if (!popupPort) {
-        pendingNetworkFilter.add(url);
+        if (pendingNetworkFilter.size < MAX_TRACKED_MEDIA) pendingNetworkFilter.add(url);
         results[index] = null;
         continue;
       }
@@ -724,6 +760,7 @@
   }
 
   async function addNewUrls(urls, type) {
+    if (discoveredMedia.size >= MAX_TRACKED_MEDIA) return;
     const unknown = [...urls].filter((url) => !discoveredMedia.has(url));
     if (unknown.length === 0) return;
 
@@ -744,6 +781,10 @@
 
     const added = [];
     for (const item of items) {
+      // Re-checked per item: `urls` can carry more than the headroom the
+      // entry guard saw, and the await above means another call may have
+      // filled the store in between.
+      if (discoveredMedia.size >= MAX_TRACKED_MEDIA) break;
       if (!discoveredMedia.has(item.url)) {
         discoveredMedia.set(item.url, item);
         added.push(item);
@@ -1082,6 +1123,7 @@
 
       // Capture inline SVGs now so they ride along in the init payload
       for (const item of collectInlineSvgs()) {
+        if (discoveredMedia.size >= MAX_TRACKED_MEDIA) break;
         if (!discoveredMedia.has(item.url)) discoveredMedia.set(item.url, item);
       }
 
@@ -1257,6 +1299,6 @@
   syncDragPreference();
   browser.storage.onChanged.addListener(() => syncDragPreference());
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { handleImg, handleSrcset, trackImageUrl, buildDomSizeMap, getCssMediaUrls, extractBgImageUrls, resolveUrl, isVideoUrl, isImageUrl, isSvgUrl, parseSrcset, pickBestFromSrcset, collectInlineSvgs, handleEmbed, passesSizeFilter, handleMeta, collectMediaUrls, handleSource, handlePicture, handleSvgImage, handleDataBg, extractRegexUrls, handleVideo, filterImagesBySize, SIZE_PROBE_POOL_SIZE, REGEX_SWEEP_FILTER };
+    module.exports = { handleImg, handleSrcset, trackImageUrl, buildDomSizeMap, getCssMediaUrls, extractBgImageUrls, resolveUrl, isVideoUrl, isImageUrl, isSvgUrl, parseSrcset, pickBestFromSrcset, collectInlineSvgs, handleEmbed, passesSizeFilter, handleMeta, collectMediaUrls, handleSource, handlePicture, handleSvgImage, handleDataBg, extractRegexUrls, handleVideo, filterImagesBySize, SIZE_PROBE_POOL_SIZE, REGEX_SWEEP_FILTER, BG_IMAGE_SELECTORS, addNewUrls, MAX_TRACKED_MEDIA };
   }
 })();
