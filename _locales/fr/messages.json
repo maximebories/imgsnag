@@ -17,11 +17,11 @@
   },
   "popupSelect": {
     "message": "Sélectionner",
-    "description": "Button label for toggling a checkbox on an image cell."
+    "description": "Tooltip for the checkbox to select a media cell."
   },
   "popupDeselect": {
     "message": "Désélectionner",
-    "description": "Button label for toggling off a checkbox on an image cell."
+    "description": "Tooltip for the checkbox to deselect a media cell."
   },
   "popupDownload": {
     "message": "Télécharger",
@@ -46,10 +46,6 @@
   "popupDownloadAll": {
     "message": "Tout télécharger",
     "description": "Button label for downloading all captured media."
-  },
-  "popupSelected": {
-    "message": "sélectionnée(s)",
-    "description": "Noun following the count of selected images (e.g., '3 selected')."
   },
   "popupReload": {
     "message": "Rechargez la page et réessayez",
@@ -99,5 +95,23 @@
       }
     },
     "description": "Instructions on keyboard shortcuts shown in button tooltips."
+  },
+  "popupSelectedOne": {
+    "message": "$COUNT$ sélectionné",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    },
+    "description": "Selection counter, singular plural form. $COUNT$ is the number of selected items; it is not always literally 1 — in French 0 also takes this form."
+  },
+  "popupSelectedOther": {
+    "message": "$COUNT$ sélectionnés",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    },
+    "description": "Noun following the count of selected images (plural)."
   }
 }
