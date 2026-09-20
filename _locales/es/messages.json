@@ -17,11 +17,11 @@
   },
   "popupSelect": {
     "message": "Seleccionar",
-    "description": "Button label for toggling a checkbox on an image cell."
+    "description": "Tooltip for the checkbox to select a media cell."
   },
   "popupDeselect": {
     "message": "Deseleccionar",
-    "description": "Button label for toggling off a checkbox on an image cell."
+    "description": "Tooltip for the checkbox to deselect a media cell."
   },
   "popupDownload": {
     "message": "Descargar",
@@ -48,8 +48,13 @@
     "description": "Button label for downloading all captured media."
   },
   "popupSelected": {
-    "message": "seleccionada(s)",
-    "description": "Noun following the count of selected images (e.g., '3 selected')."
+    "message": "$COUNT$ seleccionado(s)",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    },
+    "description": "Message showing the number of selected items."
   },
   "popupReload": {
     "message": "Recarga la página e inténtalo de nuevo",
