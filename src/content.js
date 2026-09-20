@@ -13,6 +13,12 @@
   const WP_SUFFIX_FAST_RE = /-\d+x\d+\./;
   const WP_SUFFIX_RE = /-\d+x\d+(\.(?:jpe?g|png|webp|gif|avif))$/i;
 
+  // RFC #223 stage 2: CDNs serve scaled variants via sizing query params, so the
+  // stripped URL is often the original. Gated by a fast regex so the URL parse
+  // only happens for URLs that actually carry one.
+  const QUERY_SIZE_FAST_RE = /[?&](?:w|h|width|height)=\d+/i;
+  const SIZE_QUERY_PARAMS = ['w', 'h', 'width', 'height'];
+
   // Catches image URLs embedded in inline scripts or JSON-LD that DOM queries miss
   const IMAGE_URL_RE =
     /https?:(?:\\?\/){2}[^\s"'<>]+\.(?:jpe?g|gif|png|webp|svg|avif)(?:\?[^\s"'<>]*)?/gi;
@@ -114,6 +120,29 @@
           parsed.pathname = parsed.pathname.replace(WP_SUFFIX_RE, '$1');
           const synth = resolveUrl(parsed.href);
           if (synth && !synth.startsWith('data:')) urlSet.add(synth);
+        }
+      } catch {}
+    }
+    if (QUERY_SIZE_FAST_RE.test(url)) {
+      try {
+        const parsed = new URL(url);
+        // SVGs are exempt from the size filter, so a synthesized SVG URL would
+        // be admitted without ever being verified — a wrong guess would reach
+        // the popup as a broken item. Every other type gets culled by the
+        // network probe when the guess does not resolve, so only SVG is unsafe
+        // to guess at.
+        if (!parsed.pathname.toLowerCase().endsWith('.svg')) {
+          let stripped = false;
+          for (const param of SIZE_QUERY_PARAMS) {
+            if (parsed.searchParams.has(param)) {
+              parsed.searchParams.delete(param);
+              stripped = true;
+            }
+          }
+          if (stripped) {
+            const synth = resolveUrl(parsed.href);
+            if (synth && !synth.startsWith('data:')) urlSet.add(synth);
+          }
         }
       } catch {}
     }

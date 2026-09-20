@@ -892,6 +892,56 @@ describe('trackImageUrl', () => {
     trackImageUrl('https://example.com/1920x1080/photo.jpg', set);
     expect([...set]).toEqual(['https://example.com/1920x1080/photo.jpg']);
   });
+
+  // RFC #223 stage 2 — the same synthesize-and-let-the-probe-cull-it bet as the
+  // WordPress suffix above, moved from the path to the query string.
+  it('synthesizes an original by stripping sizing query parameters', () => {
+    const set = new Set();
+    trackImageUrl('https://example.com/photo.jpg?w=320&h=240', set);
+    expect([...set]).toEqual([
+      'https://example.com/photo.jpg?w=320&h=240',
+      'https://example.com/photo.jpg'
+    ]);
+  });
+
+  it('strips only the sizing parameters and preserves the rest of the query', () => {
+    const set = new Set();
+    trackImageUrl('https://example.com/photo.jpg?token=abc&width=800&v=2', set);
+    expect([...set]).toEqual([
+      'https://example.com/photo.jpg?token=abc&width=800&v=2',
+      'https://example.com/photo.jpg?token=abc&v=2'
+    ]);
+  });
+
+  it('does not synthesize when no sizing parameter is present', () => {
+    const set = new Set();
+    trackImageUrl('https://example.com/photo.jpg?token=abc', set);
+    expect([...set]).toEqual(['https://example.com/photo.jpg?token=abc']);
+  });
+
+  it('does not treat a sizing name inside a longer parameter as a match', () => {
+    const set = new Set();
+    trackImageUrl('https://example.com/photo.jpg?sw=320', set);
+    expect([...set]).toEqual(['https://example.com/photo.jpg?sw=320']);
+  });
+
+  // Same reasoning as the WordPress SVG case: no probe means no cull, so a
+  // guessed SVG URL would reach the grid unverified.
+  it('does not strip sizing parameters from an SVG', () => {
+    const set = new Set();
+    trackImageUrl('https://example.com/logo.svg?w=320', set);
+    expect([...set]).toEqual(['https://example.com/logo.svg?w=320']);
+  });
+
+  it('applies both synthesis rules to a URL carrying each', () => {
+    const set = new Set();
+    trackImageUrl('https://example.com/photo-150x150.jpg?w=320', set);
+    expect([...set]).toEqual([
+      'https://example.com/photo-150x150.jpg?w=320',
+      'https://example.com/photo.jpg?w=320',
+      'https://example.com/photo-150x150.jpg'
+    ]);
+  });
 });
 
 describe('collectMediaUrls initial scan unified traversal', () => {
