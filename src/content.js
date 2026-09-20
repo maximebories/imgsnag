@@ -79,6 +79,13 @@
   // Inline-SVG capture (derived files, RFC #118 stage 1)
   const SVG_DATA_PREFIX = 'data:image/svg+xml;charset=utf-8,';
   const MAX_INLINE_SVG_CHARS = 2 * 1024 * 1024;
+  // Ceiling on the per-document media stores. These deliberately outlive DOM
+  // nodes (infinite scroll recycles them), so nothing else bounds their growth.
+  // Not an amplification defence — a page must spend more memory building the
+  // URLs than we spend holding them — but a content script on <all_urls> should
+  // not grow without limit on a page that scrolls forever. 10k is far above any
+  // real gallery and caps each store around 2MB per tab.
+  const MAX_TRACKED_MEDIA = 10000;
 
   // Persistent media store — survives DOM removal (infinite scroll recycling)
   const discoveredMedia = new Map();
@@ -678,7 +685,7 @@
       }
       // Lazy network fetch: if popup is closed, delay the expensive new Image() call
       if (!popupPort) {
-        pendingNetworkFilter.add(url);
+        if (pendingNetworkFilter.size < MAX_TRACKED_MEDIA) pendingNetworkFilter.add(url);
         results[index] = null;
         continue;
       }
@@ -724,6 +731,7 @@
   }
 
   async function addNewUrls(urls, type) {
+    if (discoveredMedia.size >= MAX_TRACKED_MEDIA) return;
     const unknown = [...urls].filter((url) => !discoveredMedia.has(url));
     if (unknown.length === 0) return;
 
@@ -744,6 +752,10 @@
 
     const added = [];
     for (const item of items) {
+      // Re-checked per item: `urls` can carry more than the headroom the
+      // entry guard saw, and the await above means another call may have
+      // filled the store in between.
+      if (discoveredMedia.size >= MAX_TRACKED_MEDIA) break;
       if (!discoveredMedia.has(item.url)) {
         discoveredMedia.set(item.url, item);
         added.push(item);
@@ -1082,6 +1094,7 @@
 
       // Capture inline SVGs now so they ride along in the init payload
       for (const item of collectInlineSvgs()) {
+        if (discoveredMedia.size >= MAX_TRACKED_MEDIA) break;
         if (!discoveredMedia.has(item.url)) discoveredMedia.set(item.url, item);
       }
 
@@ -1257,6 +1270,6 @@
   syncDragPreference();
   browser.storage.onChanged.addListener(() => syncDragPreference());
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { handleImg, handleSrcset, trackImageUrl, buildDomSizeMap, getCssMediaUrls, extractBgImageUrls, resolveUrl, isVideoUrl, isImageUrl, isSvgUrl, parseSrcset, pickBestFromSrcset, collectInlineSvgs, handleEmbed, passesSizeFilter, handleMeta, collectMediaUrls, handleSource, handlePicture, handleSvgImage, handleDataBg, extractRegexUrls, handleVideo, filterImagesBySize, SIZE_PROBE_POOL_SIZE, REGEX_SWEEP_FILTER, BG_IMAGE_SELECTORS };
+    module.exports = { handleImg, handleSrcset, trackImageUrl, buildDomSizeMap, getCssMediaUrls, extractBgImageUrls, resolveUrl, isVideoUrl, isImageUrl, isSvgUrl, parseSrcset, pickBestFromSrcset, collectInlineSvgs, handleEmbed, passesSizeFilter, handleMeta, collectMediaUrls, handleSource, handlePicture, handleSvgImage, handleDataBg, extractRegexUrls, handleVideo, filterImagesBySize, SIZE_PROBE_POOL_SIZE, REGEX_SWEEP_FILTER, BG_IMAGE_SELECTORS, addNewUrls, MAX_TRACKED_MEDIA };
   }
 })();
