@@ -13,6 +13,9 @@
   const WP_SUFFIX_FAST_RE = /-\d+x\d+\./;
   const WP_SUFFIX_RE = /-\d+x\d+(\.(?:jpe?g|png|webp|gif|avif))$/i;
 
+  // RFC #223 stage 2: synthesize original URLs by stripping sizing query params.
+  const QUERY_SIZE_FAST_RE = /[?&](?:w|h|width|height)=\d+/i;
+
   // Catches image URLs embedded in inline scripts or JSON-LD that DOM queries miss
   const IMAGE_URL_RE =
     /https?:(?:\\?\/){2}[^\s"'<>]+\.(?:jpe?g|gif|png|webp|svg|avif)(?:\?[^\s"'<>]*)?/gi;
@@ -107,6 +110,24 @@
           parsed.pathname = parsed.pathname.replace(WP_SUFFIX_RE, '$1');
           const synth = resolveUrl(parsed.href);
           if (synth && !synth.startsWith('data:')) urlSet.add(synth);
+        }
+      } catch {}
+    }
+    if (QUERY_SIZE_FAST_RE.test(url)) {
+      try {
+        const parsed = new URL(url);
+        if (!parsed.pathname.toLowerCase().endsWith('.svg')) {
+          let searchChanged = false;
+          ['w', 'h', 'width', 'height'].forEach(param => {
+            if (parsed.searchParams.has(param)) {
+              parsed.searchParams.delete(param);
+              searchChanged = true;
+            }
+          });
+          if (searchChanged) {
+            const synth = resolveUrl(parsed.href);
+            if (synth && !synth.startsWith('data:')) urlSet.add(synth);
+          }
         }
       } catch {}
     }
