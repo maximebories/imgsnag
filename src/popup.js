@@ -450,6 +450,6 @@
   document.addEventListener('DOMContentLoaded', init);
 
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { hammingDistance, pickDuplicateUrls, updateCounter, allUrls, selectedUrls };
+    module.exports = { hammingDistance, pickDuplicateUrls, updateCounter, allUrls, selectedUrls, wrapCell };
   }
 })();
