@@ -11,6 +11,7 @@ document.body.innerHTML = `
   <ul id="video-grid"></ul>
   <div id="bar">
     <span id="counter"></span>
+    <kbd id="shortcut-hint" class="shortcut" aria-hidden="true"></kbd>
     <span id="hidden-count"></span>
     <div class="actions">
       <button id="btn-selected"></button>
@@ -45,13 +46,13 @@ describe('Popup UI updates', () => {
     const btnSelected = document.getElementById('btn-selected');
     const btnAll = document.getElementById('btn-all');
 
-    expect(btnSelected.title).toBe('');
-    expect(btnAll.title).toContain('Ctrl');
+    expect(btnSelected.hasAttribute('aria-keyshortcuts')).toBe(false);
+    expect(btnAll.getAttribute('aria-keyshortcuts')).toBe('Ctrl+Enter');
 
     selectedUrls.add('1');
     updateCounter();
 
-    expect(btnSelected.title).toContain('Ctrl');
-    expect(btnAll.title).toBe('');
+    expect(btnSelected.getAttribute('aria-keyshortcuts')).toBe('Ctrl+Enter');
+    expect(btnAll.hasAttribute('aria-keyshortcuts')).toBe(false);
   });
 });

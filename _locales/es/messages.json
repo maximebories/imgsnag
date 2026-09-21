@@ -94,7 +94,7 @@
         "content": "$2"
       }
     },
-    "description": "Instructions on keyboard shortcuts shown in button tooltips."
+    "description": "Instructions on keyboard shortcuts shown as a visible hint."
   },
   "popupSelectedOne": {
     "message": "$COUNT$ seleccionado",
