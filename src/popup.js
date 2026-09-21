@@ -215,17 +215,19 @@
       counterEl.textContent = '';
     }
     btnSelected.disabled = n === 0;
-    btnSelected.textContent = `${browser.i18n.getMessage('popupDownloadSelected')} (${n})`;
-    btnAll.textContent = `${browser.i18n.getMessage('popupDownloadAll')} (${total})`;
+    const selText = `${browser.i18n.getMessage('popupDownloadSelected')} (${n})`;
+    const allText = `${browser.i18n.getMessage('popupDownloadAll')} (${total})`;
     // Ctrl/Cmd+Enter activates exactly one of these two buttons, so only that
-    // one advertises the shortcut — otherwise the idle button's tooltip
-    // promises a bulk download the shortcut will not actually perform.
-    btnSelected.title = n > 0
-      ? browser.i18n.getMessage('popupShortcutHint', [btnSelected.textContent, mod])
-      : '';
-    btnAll.title = n > 0
-      ? ''
-      : browser.i18n.getMessage('popupShortcutHint', [btnAll.textContent, mod]);
+    // one advertises the shortcut — otherwise the idle button promises
+    // a bulk download the shortcut will not actually perform.
+    btnSelected.textContent = n > 0
+      ? browser.i18n.getMessage('popupShortcutHint', [selText, mod])
+      : selText;
+    btnAll.textContent = n > 0
+      ? allText
+      : browser.i18n.getMessage('popupShortcutHint', [allText, mod]);
+    btnSelected.title = '';
+    btnAll.title = '';
 
     if (hiddenCount > 0) {
       hiddenCountEl.textContent = browser.i18n.getMessage('popupHiddenCount', [hiddenCount.toString()]);

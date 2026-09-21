@@ -45,13 +45,13 @@ describe('Popup UI updates', () => {
     const btnSelected = document.getElementById('btn-selected');
     const btnAll = document.getElementById('btn-all');
 
-    expect(btnSelected.title).toBe('');
-    expect(btnAll.title).toContain('Ctrl');
+    expect(btnSelected.textContent).not.toContain('Ctrl');
+    expect(btnAll.textContent).toContain('Ctrl');
 
     selectedUrls.add('1');
     updateCounter();
 
-    expect(btnSelected.title).toContain('Ctrl');
-    expect(btnAll.title).toBe('');
+    expect(btnSelected.textContent).toContain('Ctrl');
+    expect(btnAll.textContent).not.toContain('Ctrl');
   });
 });
