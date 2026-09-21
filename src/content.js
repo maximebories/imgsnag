@@ -404,7 +404,7 @@
       const setUsable = inPicture || (hasSet && isRealMediaUrl(
         pickBestFromSrcset(img.getAttribute('srcset')) || pickBestFromSrcset(img.getAttribute('data-srcset'))
       ));
-      if (img.src && !setUsable) trackImage(img.src);
+      if (img.getAttribute('src') && !setUsable) trackImage(img.getAttribute('src'));
       if (img.hasAttribute('data-src')) trackImage(img.getAttribute('data-src'));
       if (img.hasAttribute('data-lazy-src')) trackImage(img.getAttribute('data-lazy-src'));
       if (img.hasAttribute('data-original')) trackImage(img.getAttribute('data-original'));
@@ -630,6 +630,40 @@
     return items;
   }
 
+  // <noscript> fallback images (RFC #298 stage 1)
+  // Evaluated on popup connect because it parses DOM. The HTML parser leaves
+  // <noscript> content as raw text; we parse it into an inert Document to run
+  // the structural sweep over it safely, without triggering fetches.
+  function collectNoscriptImages() {
+    const imageUrls = new Set();
+    const videoUrls = new Set();
+    const parser = new DOMParser();
+
+    document.querySelectorAll('noscript').forEach((noscript) => {
+      const text = noscript.textContent;
+      if (!text || (!/<img/i.test(text) && !/<picture/i.test(text) && !/<source/i.test(text))) return;
+
+      let doc;
+      try {
+        doc = parser.parseFromString(text, 'text/html');
+      } catch {
+        return;
+      }
+
+      // Re-use the existing mutation observer handlers on the inert DOM.
+      // We don't sweep text nodes (extractRegexUrls) because the TreeWalker
+      // in the live document already sweeps the raw <noscript> text node.
+      doc.querySelectorAll('*').forEach((el) => {
+        handleImg(el, imageUrls);
+        handleSrcset(el, imageUrls);
+        handleSource(el, imageUrls, videoUrls);
+        handlePicture(el, imageUrls);
+      });
+    });
+
+    return { imageUrls, videoUrls };
+  }
+
   function collectMediaUrls() {
     const imageUrls = new Set();
     const videoUrls = new Set();
@@ -810,7 +844,7 @@
       const attrs = ['src', 'data-src', 'data-lazy-src', 'data-original'];
       for (const attr of attrs) {
         let val;
-        if (attr === 'src') val = (hasSet && realSet) ? null : el.src;
+        if (attr === 'src') val = (hasSet && realSet) ? null : el.getAttribute('src');
         else val = el.hasAttribute(attr) ? el.getAttribute(attr) : null;
         if (val) {
           trackImageUrl(val, imageSet);
@@ -1127,6 +1161,11 @@
         if (!discoveredMedia.has(item.url)) discoveredMedia.set(item.url, item);
       }
 
+      // Capture <noscript> fallback images (RFC #298 stage 1)
+      const noscriptMedia = collectNoscriptImages();
+      if (noscriptMedia.imageUrls.size > 0) addNewUrls(noscriptMedia.imageUrls, 'image');
+      if (noscriptMedia.videoUrls.size > 0) addNewUrls(noscriptMedia.videoUrls, 'video');
+
       port.postMessage({ action: 'init', images: [...discoveredMedia.values()] });
 
       // Flush the background image check queue synchronously so the grid is complete
@@ -1299,6 +1338,6 @@
   syncDragPreference();
   browser.storage.onChanged.addListener(() => syncDragPreference());
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { handleImg, handleSrcset, trackImageUrl, buildDomSizeMap, getCssMediaUrls, extractBgImageUrls, resolveUrl, isVideoUrl, isImageUrl, isSvgUrl, parseSrcset, pickBestFromSrcset, collectInlineSvgs, handleEmbed, passesSizeFilter, handleMeta, collectMediaUrls, handleSource, handlePicture, handleSvgImage, handleDataBg, extractRegexUrls, handleVideo, filterImagesBySize, SIZE_PROBE_POOL_SIZE, REGEX_SWEEP_FILTER, BG_IMAGE_SELECTORS, addNewUrls, MAX_TRACKED_MEDIA };
+    module.exports = { handleImg, handleSrcset, trackImageUrl, buildDomSizeMap, getCssMediaUrls, extractBgImageUrls, resolveUrl, isVideoUrl, isImageUrl, isSvgUrl, parseSrcset, pickBestFromSrcset, collectInlineSvgs, collectNoscriptImages, handleEmbed, passesSizeFilter, handleMeta, collectMediaUrls, handleSource, handlePicture, handleSvgImage, handleDataBg, extractRegexUrls, handleVideo, filterImagesBySize, SIZE_PROBE_POOL_SIZE, REGEX_SWEEP_FILTER, BG_IMAGE_SELECTORS, addNewUrls, MAX_TRACKED_MEDIA };
   }
 })();
