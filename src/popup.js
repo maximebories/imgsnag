@@ -171,10 +171,8 @@
     browser.i18n.getMessage('popupReload');
   document.getElementById('video-header-text').textContent =
     browser.i18n.getMessage('popupVideos');
-  btnSelected.textContent =
-    browser.i18n.getMessage('popupDownloadSelected');
-  btnAll.textContent =
-    browser.i18n.getMessage('popupDownloadAll');
+  btnSelected.textContent = browser.i18n.getMessage('popupDownloadSelected', ['0']);
+  btnAll.textContent = browser.i18n.getMessage('popupDownloadAll', ['0']);
   document.documentElement.lang = browser.i18n.getUILanguage();
   document.title = browser.i18n.getMessage('buttonTip');
 
@@ -215,8 +213,8 @@
       counterEl.textContent = '';
     }
     btnSelected.disabled = n === 0;
-    btnSelected.textContent = `${browser.i18n.getMessage('popupDownloadSelected')} (${n})`;
-    btnAll.textContent = `${browser.i18n.getMessage('popupDownloadAll')} (${total})`;
+    btnSelected.textContent = browser.i18n.getMessage('popupDownloadSelected', [n.toString()]);
+    btnAll.textContent = browser.i18n.getMessage('popupDownloadAll', [total.toString()]);
     // Ctrl/Cmd+Enter activates exactly one of these two buttons, so only that
     // one advertises the shortcut — otherwise the idle button's tooltip
     // promises a bulk download the shortcut will not actually perform.
@@ -308,7 +306,7 @@
 
     const actionBtn = document.createElement('button');
     actionBtn.className = 'cell-action';
-    const fullDownloadLabel = `${browser.i18n.getMessage('popupDownload')} ${fullFilename}${dimSuffix}`;
+    const fullDownloadLabel = browser.i18n.getMessage('popupDownload', [`${fullFilename}${dimSuffix}`]);
     actionBtn.setAttribute('aria-label', fullDownloadLabel);
     actionBtn.title = fullDownloadLabel;
 
@@ -317,8 +315,8 @@
     check.setAttribute('role', 'checkbox');
     check.setAttribute('aria-checked', 'false');
     const optionName = `${fullFilename}${dimSuffix}`;
-    const fullSelectLabel = `${browser.i18n.getMessage('popupSelect')} ${optionName}`;
-    const fullDeselectLabel = `${browser.i18n.getMessage('popupDeselect')} ${optionName}`;
+    const fullSelectLabel = browser.i18n.getMessage('popupSelect', [optionName]);
+    const fullDeselectLabel = browser.i18n.getMessage('popupDeselect', [optionName]);
     check.setAttribute('aria-label', optionName);
     check.title = fullSelectLabel;
 
