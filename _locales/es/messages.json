@@ -16,16 +16,31 @@
     "description": "Status message shown when options are saved."
   },
   "popupSelect": {
-    "message": "Seleccionar",
-    "description": "Tooltip for the checkbox to select a media cell."
+    "message": "Seleccionar $FILENAME$",
+    "description": "Tooltip for the checkbox to select a media cell.",
+    "placeholders": {
+      "filename": {
+        "content": "$1"
+      }
+    }
   },
   "popupDeselect": {
-    "message": "Deseleccionar",
-    "description": "Tooltip for the checkbox to deselect a media cell."
+    "message": "Deseleccionar $FILENAME$",
+    "description": "Tooltip for the checkbox to deselect a media cell.",
+    "placeholders": {
+      "filename": {
+        "content": "$1"
+      }
+    }
   },
   "popupDownload": {
-    "message": "Descargar",
-    "description": "Action button tooltip for downloading a specific image."
+    "message": "Descargar $FILENAME$",
+    "description": "Action button tooltip for downloading a specific image.",
+    "placeholders": {
+      "filename": {
+        "content": "$1"
+      }
+    }
   },
   "popupLoading": {
     "message": "Escaneando página...",
@@ -40,12 +55,22 @@
     "description": "Header for the video section in the popup."
   },
   "popupDownloadSelected": {
-    "message": "Descargar seleccionadas",
-    "description": "Button label for downloading only the selected media."
+    "message": "Descargar seleccionadas ($COUNT$)",
+    "description": "Button label for downloading only the selected media.",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
   },
   "popupDownloadAll": {
-    "message": "Descargar todo",
-    "description": "Button label for downloading all captured media."
+    "message": "Descargar todo ($COUNT$)",
+    "description": "Button label for downloading all captured media.",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
   },
   "popupReload": {
     "message": "Recarga la página e inténtalo de nuevo",
