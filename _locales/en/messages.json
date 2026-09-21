@@ -16,16 +16,31 @@
     "description": "Status message shown when options are saved."
   },
   "popupSelect": {
-    "message": "Select",
-    "description": "Tooltip for the checkbox to select a media cell."
+    "message": "Select $FILENAME$",
+    "description": "Tooltip for the checkbox to select a media cell.",
+    "placeholders": {
+      "filename": {
+        "content": "$1"
+      }
+    }
   },
   "popupDeselect": {
-    "message": "Deselect",
-    "description": "Tooltip for the checkbox to deselect a media cell."
+    "message": "Deselect $FILENAME$",
+    "description": "Tooltip for the checkbox to deselect a media cell.",
+    "placeholders": {
+      "filename": {
+        "content": "$1"
+      }
+    }
   },
   "popupDownload": {
-    "message": "Download",
-    "description": "Action button tooltip for downloading a specific image."
+    "message": "Download $FILENAME$",
+    "description": "Action button tooltip for downloading a specific image.",
+    "placeholders": {
+      "filename": {
+        "content": "$1"
+      }
+    }
   },
   "popupLoading": {
     "message": "Scanning page...",
@@ -40,21 +55,22 @@
     "description": "Header for the video section in the popup."
   },
   "popupDownloadSelected": {
-    "message": "Download selected",
-    "description": "Button label for downloading only the selected media."
-  },
-  "popupDownloadAll": {
-    "message": "Download all",
-    "description": "Button label for downloading all captured media."
-  },
-  "popupSelected": {
-    "message": "$COUNT$ selected",
+    "message": "Download selected ($COUNT$)",
+    "description": "Button label for downloading only the selected media.",
     "placeholders": {
       "count": {
         "content": "$1"
       }
-    },
-    "description": "Message showing the number of selected items."
+    }
+  },
+  "popupDownloadAll": {
+    "message": "Download all ($COUNT$)",
+    "description": "Button label for downloading all captured media.",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
   },
   "popupReload": {
     "message": "Reload the page and try again",
@@ -104,5 +120,23 @@
       }
     },
     "description": "Instructions on keyboard shortcuts shown in button tooltips."
+  },
+  "popupSelectedOne": {
+    "message": "$COUNT$ selected",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    },
+    "description": "Selection counter, singular plural form. $COUNT$ is the number of selected items; it is not always literally 1 — the form is chosen by Intl.PluralRules for the UI language."
+  },
+  "popupSelectedOther": {
+    "message": "$COUNT$ selected",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    },
+    "description": "Noun following the count of selected images (plural)."
   }
 }

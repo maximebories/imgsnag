@@ -181,18 +181,43 @@
   function show(el) { el.classList.add('visible'); }
   function hide(el) { el.classList.remove('visible'); }
 
+  // chrome.i18n has no ICU `plural` support, so the plural category is selected
+  // here and mapped onto one key per form. Memoised on the language tag:
+  // updateCounter runs on every checkbox toggle and an Intl constructor is far
+  // too expensive to rebuild per click. Keyed (rather than built once) so a
+  // locale change still re-selects — and so the memo cannot silently outlive it.
+  let pluralRulesCache = null;
+  function pluralRules() {
+    const lang = browser.i18n.getUILanguage();
+    if (!pluralRulesCache || pluralRulesCache.lang !== lang) {
+      let rules;
+      try {
+        rules = new Intl.PluralRules(lang);
+      } catch {
+        // An unparseable tag must not take the whole counter down with it
+        rules = new Intl.PluralRules();
+      }
+      pluralRulesCache = { lang, rules };
+    }
+    return pluralRulesCache.rules;
+  }
+
   function updateCounter() {
     const n = selectedUrls.size;
     const total = allUrls.size;
     const hiddenCount = imageEntries.filter(e => e.cell.hidden).length;
     const mod = navigator.platform.includes('Mac') ? 'Cmd' : 'Ctrl';
 
-    counterEl.textContent = n > 0
-      ? browser.i18n.getMessage('popupSelected', [n.toString()])
-      : '';
+    if (n > 0) {
+      const key = pluralRules().select(n) === 'one' ? 'popupSelectedOne' : 'popupSelectedOther';
+      counterEl.textContent = browser.i18n.getMessage(key, [n.toString()]);
+    } else {
+      counterEl.textContent = '';
+    }
     btnSelected.disabled = n === 0;
-    btnSelected.textContent = `${browser.i18n.getMessage('popupDownloadSelected')} (${n})`;
-    btnAll.textContent = `${browser.i18n.getMessage('popupDownloadAll')} (${total})`;
+
+    btnSelected.textContent = browser.i18n.getMessage('popupDownloadSelected', [n.toString()]);
+    btnAll.textContent = browser.i18n.getMessage('popupDownloadAll', [total.toString()]);
     // Ctrl/Cmd+Enter activates exactly one of these two buttons, so only that
     // one advertises the shortcut — otherwise the idle button's tooltip
     // promises a bulk download the shortcut will not actually perform.
@@ -284,7 +309,7 @@
 
     const actionBtn = document.createElement('button');
     actionBtn.className = 'cell-action';
-    const fullDownloadLabel = `${browser.i18n.getMessage('popupDownload')} ${fullFilename}${dimSuffix}`;
+    const fullDownloadLabel = browser.i18n.getMessage('popupDownload', [`${fullFilename}${dimSuffix}`]);
     actionBtn.setAttribute('aria-label', fullDownloadLabel);
     actionBtn.title = fullDownloadLabel;
 
@@ -293,8 +318,8 @@
     check.setAttribute('role', 'checkbox');
     check.setAttribute('aria-checked', 'false');
     const optionName = `${fullFilename}${dimSuffix}`;
-    const fullSelectLabel = `${browser.i18n.getMessage('popupSelect')} ${optionName}`;
-    const fullDeselectLabel = `${browser.i18n.getMessage('popupDeselect')} ${optionName}`;
+    const fullSelectLabel = browser.i18n.getMessage('popupSelect', [optionName]);
+    const fullDeselectLabel = browser.i18n.getMessage('popupDeselect', [optionName]);
     check.setAttribute('aria-label', optionName);
     check.title = fullSelectLabel;
 
@@ -450,6 +475,6 @@
   document.addEventListener('DOMContentLoaded', init);
 
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { hammingDistance, pickDuplicateUrls, updateCounter, allUrls, selectedUrls };
+    module.exports = { hammingDistance, pickDuplicateUrls, updateCounter, allUrls, selectedUrls, wrapCell };
   }
 })();
