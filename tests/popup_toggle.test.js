@@ -23,8 +23,8 @@ global.browser = {
   i18n: {
     getUILanguage: () => 'en',
     getMessage: (k, arr) => {
-      if (k === 'popupSelect') return 'Select';
-      if (k === 'popupDeselect') return 'Deselect';
+      if (k === 'popupSelect') return arr ? 'Select ' + arr[0] : 'Select';
+      if (k === 'popupDeselect') return arr ? 'Deselect ' + arr[0] : 'Deselect';
       if (k === 'popupMediaFallback') return 'media';
       if (k === 'popupInlineSvg') return 'imgsnag-inline.svg';
       return arr ? arr.join(',') : k;
