@@ -869,7 +869,8 @@
 
   function processBgImageQueue(deadline) {
     const imageUrls = new Set();
-    const timeRemaining = deadline ? () => deadline.timeRemaining() : () => 50;
+    const start = performance.now();
+    const timeRemaining = (deadline && typeof deadline.timeRemaining === 'function') ? () => deadline.timeRemaining() : () => Math.max(0, 50 - (performance.now() - start));
 
     let processed = 0;
     while (processed < pendingBackgroundCheckQueue.length && timeRemaining() > 0) {
