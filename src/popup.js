@@ -226,7 +226,8 @@
       : browser.i18n.getMessage('popupShortcutHint', [btnAll.textContent, mod]);
 
     if (hiddenCount > 0) {
-      hiddenCountEl.textContent = browser.i18n.getMessage('popupHiddenCount', [hiddenCount.toString()]);
+      const hiddenKey = pluralRules().select(hiddenCount) === 'one' ? 'popupHiddenCountOne' : 'popupHiddenCountOther';
+      hiddenCountEl.textContent = browser.i18n.getMessage(hiddenKey, [hiddenCount.toString()]);
       show(hiddenCountEl);
     } else {
       hide(hiddenCountEl);

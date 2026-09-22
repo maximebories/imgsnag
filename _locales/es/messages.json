@@ -100,15 +100,6 @@
     "message": "imgsnag-inline.svg",
     "description": "Filename shown in the cell label for a captured inline SVG. Must match the real download filename in background.js — do not translate."
   },
-  "popupHiddenCount": {
-    "message": "$COUNT$ variantes ocultas",
-    "placeholders": {
-      "count": {
-        "content": "$1"
-      }
-    },
-    "description": "Message showing the number of smaller duplicate images collapsed from the UI."
-  },
   "popupShortcutHint": {
     "message": "$ACTION$ ($MODIFIER$+Intro)",
     "placeholders": {
@@ -138,5 +129,23 @@
       }
     },
     "description": "Noun following the count of selected images (plural)."
+  },
+  "popupHiddenCountOne": {
+    "message": "$COUNT$ variante oculta",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    },
+    "description": "Message showing the number of smaller duplicate images collapsed from the UI (singular form)."
+  },
+  "popupHiddenCountOther": {
+    "message": "$COUNT$ variantes ocultas",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    },
+    "description": "Message showing the number of smaller duplicate images collapsed from the UI (plural form)."
   }
 }
