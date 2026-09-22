@@ -235,6 +235,7 @@
         display: none;
         align-items: center;
         justify-content: space-between;
+        flex-wrap: wrap;
         padding: 8px;
         background: #fff;
         border-top: 1px solid #e0e0e0;
@@ -251,7 +252,19 @@
 
       .actions {
         display: flex;
+        align-items: center;
         gap: 6px;
+      }
+
+      kbd#shortcut-hint {
+        font-family: inherit;
+        font-size: 11px;
+        color: #666;
+        background: #f3f4f6;
+        border: 1px solid #d1d5db;
+        border-radius: 4px;
+        padding: 2px 6px;
+        white-space: nowrap;
       }
 
       .actions button {
@@ -297,6 +310,11 @@
         #btn-all:hover, #btn-all:focus-visible { background: #4b5563; }
         #empty .hint { color: #a3a3a3; }
         .cell .placeholder { color: #bbb; }
+        kbd#shortcut-hint {
+          color: #a3a3a3;
+          background: #374151;
+          border-color: #4b5563;
+        }
       }
 
       @media (prefers-reduced-motion: reduce) {
@@ -344,6 +362,7 @@
       <div class="actions">
         <button id="btn-selected" disabled></button>
         <button id="btn-all"></button>
+        <kbd id="shortcut-hint" aria-hidden="true" style="display: none;"></kbd>
       </div>
     </div>
 

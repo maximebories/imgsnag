@@ -109,17 +109,14 @@
     },
     "description": "Message showing the number of smaller duplicate images collapsed from the UI."
   },
-  "popupShortcutHint": {
-    "message": "$ACTION$ ($MODIFIER$+Enter)",
+  "popupShortcutKbd": {
+    "message": "$MODIFIER$+Enter",
     "placeholders": {
-      "action": {
-        "content": "$1"
-      },
       "modifier": {
-        "content": "$2"
+        "content": "$1"
       }
     },
-    "description": "Instructions on keyboard shortcuts shown in button tooltips."
+    "description": "Visible keyboard shortcut hint shown next to the active download button."
   },
   "popupSelectedOne": {
     "message": "$COUNT$ selected",

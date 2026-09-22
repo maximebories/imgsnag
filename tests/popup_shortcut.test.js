@@ -13,6 +13,7 @@ document.body.innerHTML = `
     <span id="counter"></span>
     <span id="hidden-count"></span>
     <div class="actions">
+      <kbd id="shortcut-hint" aria-hidden="true" style="display: none;"></kbd>
       <button id="btn-selected"></button>
       <button id="btn-all"></button>
     </div>
@@ -44,14 +45,18 @@ describe('Popup UI updates', () => {
 
     const btnSelected = document.getElementById('btn-selected');
     const btnAll = document.getElementById('btn-all');
+    const shortcutHintEl = document.getElementById('shortcut-hint');
 
-    expect(btnSelected.title).toBe('');
-    expect(btnAll.title).toContain('Ctrl');
+    // Expected visual text for Windows based on our mocked i18n
+    expect(btnSelected.getAttribute('aria-keyshortcuts')).toBeNull();
+    expect(btnAll.getAttribute('aria-keyshortcuts')).toBe('Ctrl+Enter');
+    expect(shortcutHintEl.textContent).toContain('Ctrl');
 
     selectedUrls.add('1');
     updateCounter();
 
-    expect(btnSelected.title).toContain('Ctrl');
-    expect(btnAll.title).toBe('');
+    expect(btnSelected.getAttribute('aria-keyshortcuts')).toBe('Ctrl+Enter');
+    expect(btnAll.getAttribute('aria-keyshortcuts')).toBeNull();
+    expect(shortcutHintEl.textContent).toContain('Ctrl');
   });
 });
