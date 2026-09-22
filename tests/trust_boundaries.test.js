@@ -75,8 +75,8 @@ describe('Content script trust boundaries (e.isTrusted)', () => {
       target: {
         tagName: 'IMG',
         src: 'https://example.com/image.jpg',
-        hasAttribute: () => false,
-        getAttribute: () => null
+        hasAttribute: (attr) => attr === 'src',
+        getAttribute: (attr) => attr === 'src' ? 'https://example.com/image.jpg' : null
       }
     });
 
@@ -89,8 +89,8 @@ describe('Content script trust boundaries (e.isTrusted)', () => {
       target: {
         tagName: 'IMG',
         src: 'https://example.com/image.jpg',
-        hasAttribute: () => false,
-        getAttribute: () => null
+        hasAttribute: (attr) => attr === 'src',
+        getAttribute: (attr) => attr === 'src' ? 'https://example.com/image.jpg' : null
       }
     });
 

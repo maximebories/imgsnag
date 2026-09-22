@@ -68,7 +68,7 @@
   const SOURCE_URL_ATTRS = ['src', 'data-src', 'data-lazy-src', 'data-original'];
   const DATA_BG_ATTRS = ['data-bg', 'data-bg-src', 'data-background', 'data-background-image'];
   // Tags worth an attribute sweep when they turn up in a MutationObserver batch
-  const TAG_SET = new Set(['IMG', 'VIDEO', 'SOURCE', 'PICTURE', 'DIV', 'SPAN', 'SECTION', 'ARTICLE', 'HEADER', 'FOOTER', 'A', 'LI', 'FIGURE', 'I', 'META', 'LINK', 'OBJECT', 'EMBED', 'IFRAME', 'image', 'IMAGE', 'INPUT']);
+  const TAG_SET = new Set(['IMG', 'VIDEO', 'SOURCE', 'PICTURE', 'DIV', 'SPAN', 'SECTION', 'ARTICLE', 'HEADER', 'FOOTER', 'A', 'LI', 'FIGURE', 'I', 'META', 'LINK', 'OBJECT', 'EMBED', 'IFRAME', 'image', 'IMAGE', 'INPUT', 'NOSCRIPT']);
 
   // <input type="image"> renders and resolves its src exactly like an <img>, so every
   // path that reads an <img> treats it the same way. `el.type` is the IDL attribute,
@@ -404,7 +404,7 @@
       const setUsable = inPicture || (hasSet && isRealMediaUrl(
         pickBestFromSrcset(img.getAttribute('srcset')) || pickBestFromSrcset(img.getAttribute('data-srcset'))
       ));
-      if (img.src && !setUsable) trackImage(img.src);
+      if (img.hasAttribute('src') && !setUsable) trackImage(img.getAttribute('src'));
       if (img.hasAttribute('data-src')) trackImage(img.getAttribute('data-src'));
       if (img.hasAttribute('data-lazy-src')) trackImage(img.getAttribute('data-lazy-src'));
       if (img.hasAttribute('data-original')) trackImage(img.getAttribute('data-original'));
@@ -648,6 +648,10 @@
     collectImages(trackImage);
     collectVideos(trackVideo);
 
+    document.querySelectorAll('noscript').forEach((noscript) => {
+      handleNoscript(noscript, imageUrls, videoUrls);
+    });
+
     return { imageUrls, videoUrls };
   }
 
@@ -810,7 +814,7 @@
       const attrs = ['src', 'data-src', 'data-lazy-src', 'data-original'];
       for (const attr of attrs) {
         let val;
-        if (attr === 'src') val = (hasSet && realSet) ? null : el.src;
+        if (attr === 'src') val = (hasSet && realSet) ? null : el.getAttribute('src');
         else val = el.hasAttribute(attr) ? el.getAttribute(attr) : null;
         if (val) {
           trackImageUrl(val, imageSet);
@@ -1007,6 +1011,25 @@
     }
   }
 
+  function handleNoscript(el, imageSet, videoSet) {
+    if (el.tagName === 'NOSCRIPT') {
+      const text = el.textContent;
+      if (!text) return;
+      let doc;
+      try {
+        const parser = new DOMParser();
+        doc = parser.parseFromString(text, 'text/html');
+      } catch {
+        return;
+      }
+      const walker = doc.createTreeWalker(doc, NodeFilter.SHOW_ELEMENT, null);
+      let child;
+      while ((child = walker.nextNode())) {
+        extractUrlsFromElement(child, imageSet, videoSet);
+      }
+    }
+  }
+
   function extractUrlsFromElement(el, imageSet, videoSet) {
     handleImg(el, imageSet);
     handleSrcset(el, imageSet);
@@ -1018,6 +1041,7 @@
     handleEmbed(el, imageSet);
     handlePicture(el, imageSet);
     handleSvgImage(el, imageSet);
+    handleNoscript(el, imageSet, videoSet);
   }
 
   // Observers — continuous media tracking
@@ -1182,14 +1206,14 @@
   function getTargetUrlsForElement(el) {
     const urls = [];
 
-    if (isImgLike(el) && el.src) {
-      const url = resolveUrl(el.src);
+    if (isImgLike(el) && el.hasAttribute('src')) {
+      const url = resolveUrl(el.getAttribute('src'));
       if (url && !url.startsWith('data:')) urls.push(url);
       return urls;
     }
 
     if (el.tagName === 'VIDEO') {
-      const url = resolveUrl(el.src || el.querySelector('source')?.src);
+      const url = resolveUrl(el.getAttribute('src') || el.querySelector('source')?.getAttribute('src'));
       if (url && !url.startsWith('data:')) urls.push(url);
       return urls;
     }
@@ -1213,7 +1237,7 @@
         const attrs = ['data-src', 'data-lazy-src', 'data-original', 'src'];
         for (const attr of attrs) {
           let val;
-          if (attr === 'src') val = el.src;
+          if (attr === 'src') val = el.getAttribute('src');
           else val = el.hasAttribute(attr) ? el.getAttribute(attr) : null;
           if (val) {
             const url = resolveUrl(val);
@@ -1234,7 +1258,7 @@
       }
 
       if (el.tagName === 'VIDEO') {
-        const url = resolveUrl(el.src || el.querySelector('source')?.src);
+        const url = resolveUrl(el.getAttribute('src') || el.querySelector('source')?.getAttribute('src'));
         if (url && !url.startsWith('data:') && !downloadedUrls.has(url)) {
           downloadedUrls.add(url);
           sendToBackground({ action: 'download_image', url });
@@ -1275,7 +1299,7 @@
       const attrs = ['data-src', 'data-lazy-src', 'data-original', 'src'];
       for (const attr of attrs) {
         let val;
-        if (attr === 'src') val = e.target.src;
+        if (attr === 'src') val = e.target.getAttribute('src');
         else val = e.target.hasAttribute(attr) ? e.target.getAttribute(attr) : null;
         if (val) {
           const url = resolveUrl(val);
@@ -1299,6 +1323,6 @@
   syncDragPreference();
   browser.storage.onChanged.addListener(() => syncDragPreference());
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { handleImg, handleSrcset, trackImageUrl, buildDomSizeMap, getCssMediaUrls, extractBgImageUrls, resolveUrl, isVideoUrl, isImageUrl, isSvgUrl, parseSrcset, pickBestFromSrcset, collectInlineSvgs, handleEmbed, passesSizeFilter, handleMeta, collectMediaUrls, handleSource, handlePicture, handleSvgImage, handleDataBg, extractRegexUrls, handleVideo, filterImagesBySize, SIZE_PROBE_POOL_SIZE, REGEX_SWEEP_FILTER, BG_IMAGE_SELECTORS, addNewUrls, MAX_TRACKED_MEDIA };
+    module.exports = { handleImg, handleSrcset, trackImageUrl, buildDomSizeMap, getCssMediaUrls, extractBgImageUrls, resolveUrl, isVideoUrl, isImageUrl, isSvgUrl, parseSrcset, pickBestFromSrcset, collectInlineSvgs, handleEmbed, passesSizeFilter, handleMeta, collectMediaUrls, handleSource, handlePicture, handleSvgImage, handleDataBg, handleNoscript, extractRegexUrls, handleVideo, filterImagesBySize, SIZE_PROBE_POOL_SIZE, REGEX_SWEEP_FILTER, BG_IMAGE_SELECTORS, addNewUrls, MAX_TRACKED_MEDIA };
   }
 })();
