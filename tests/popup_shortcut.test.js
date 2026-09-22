@@ -13,6 +13,7 @@ document.body.innerHTML = `
     <span id="counter"></span>
     <span id="hidden-count"></span>
     <div class="actions">
+      <kbd id="shortcut-hint" aria-hidden="true" style="display: none;"></kbd>
       <button id="btn-selected"></button>
       <button id="btn-all"></button>
     </div>
@@ -44,14 +45,21 @@ describe('Popup UI updates', () => {
 
     const btnSelected = document.getElementById('btn-selected');
     const btnAll = document.getElementById('btn-all');
+    const shortcutHintEl = document.getElementById('shortcut-hint');
 
-    expect(btnSelected.title).toBe('');
-    expect(btnAll.title).toContain('Ctrl');
+    // The <kbd> carries the localized display text ("Ctrl+Enter" here, via the
+    // mocked i18n); aria-keyshortcuts carries DOM key names and must stay
+    // "Control+Enter" in every locale — the two are deliberately not the same
+    // string.
+    expect(btnSelected.getAttribute('aria-keyshortcuts')).toBeNull();
+    expect(btnAll.getAttribute('aria-keyshortcuts')).toBe('Control+Enter');
+    expect(shortcutHintEl.textContent).toContain('Ctrl');
 
     selectedUrls.add('1');
     updateCounter();
 
-    expect(btnSelected.title).toContain('Ctrl');
-    expect(btnAll.title).toBe('');
+    expect(btnSelected.getAttribute('aria-keyshortcuts')).toBe('Control+Enter');
+    expect(btnAll.getAttribute('aria-keyshortcuts')).toBeNull();
+    expect(shortcutHintEl.textContent).toContain('Ctrl');
   });
 });

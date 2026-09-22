@@ -100,17 +100,14 @@
     "message": "imgsnag-inline.svg",
     "description": "Filename shown in the cell label for a captured inline SVG. Must match the real download filename in background.js — do not translate."
   },
-  "popupShortcutHint": {
-    "message": "$ACTION$ ($MODIFIER$+Enter)",
+  "popupShortcutKbd": {
+    "message": "$MODIFIER$+Enter",
     "placeholders": {
-      "action": {
-        "content": "$1"
-      },
       "modifier": {
-        "content": "$2"
+        "content": "$1"
       }
     },
-    "description": "Instructions on keyboard shortcuts shown in button tooltips."
+    "description": "Visible keyboard shortcut hint shown next to the active download button."
   },
   "popupSelectedOne": {
     "message": "$COUNT$ selected",

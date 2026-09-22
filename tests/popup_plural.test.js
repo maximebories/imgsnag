@@ -13,6 +13,7 @@ document.body.innerHTML = `
     <span id="counter"></span>
     <span id="hidden-count"></span>
     <div class="actions">
+      <kbd id="shortcut-hint" aria-hidden="true" style="display: none;"></kbd>
       <button id="btn-selected"></button>
       <button id="btn-all"></button>
     </div>
