@@ -157,6 +157,7 @@
   const counterEl = document.getElementById('counter');
   const btnSelected = document.getElementById('btn-selected');
   const btnAll = document.getElementById('btn-all');
+  const shortcutHintEl = document.getElementById('shortcut-hint');
 
   // i18n
   document.documentElement.lang = browser.i18n.getUILanguage();
@@ -204,7 +205,8 @@
     const n = selectedUrls.size;
     const total = allUrls.size;
     const hiddenCount = imageEntries.filter(e => e.cell.hidden).length;
-    const mod = navigator.platform.includes('Mac') ? 'Cmd' : 'Ctrl';
+    const isMac = navigator.platform.includes('Mac');
+    const mod = isMac ? 'Cmd' : 'Ctrl';
 
     if (n > 0) {
       const key = pluralRules().select(n) === 'one' ? 'popupSelectedOne' : 'popupSelectedOther';
@@ -215,18 +217,33 @@
     btnSelected.disabled = n === 0;
     btnSelected.textContent = browser.i18n.getMessage('popupDownloadSelected', [n.toString()]);
     btnAll.textContent = browser.i18n.getMessage('popupDownloadAll', [total.toString()]);
+
+    // Update the visual shortcut hint and move it next to the active button
+    const shortcutText = browser.i18n.getMessage('popupShortcutKbd', [mod]);
+    shortcutHintEl.textContent = shortcutText;
+    shortcutHintEl.style.display = 'inline-block';
+
     // Ctrl/Cmd+Enter activates exactly one of these two buttons, so only that
-    // one advertises the shortcut — otherwise the idle button's tooltip
-    // promises a bulk download the shortcut will not actually perform.
-    btnSelected.title = n > 0
-      ? browser.i18n.getMessage('popupShortcutHint', [btnSelected.textContent, mod])
-      : '';
-    btnAll.title = n > 0
-      ? ''
-      : browser.i18n.getMessage('popupShortcutHint', [btnAll.textContent, mod]);
+    // one carries the shortcut — the hint moves to whichever it is.
+    //
+    // The <kbd> text is localized display ("Cmd+Entrée"); aria-keyshortcuts is
+    // not. Its value is a machine-readable key sequence built from DOM key
+    // names, so "Meta"/"Control" and an untranslated "Enter" are the only
+    // tokens AT will match. Never feed it the visible string.
+    const keyShortcut = isMac ? 'Meta+Enter' : 'Control+Enter';
+    if (n > 0) {
+      btnSelected.setAttribute('aria-keyshortcuts', keyShortcut);
+      btnAll.removeAttribute('aria-keyshortcuts');
+      btnSelected.after(shortcutHintEl);
+    } else {
+      btnAll.setAttribute('aria-keyshortcuts', keyShortcut);
+      btnSelected.removeAttribute('aria-keyshortcuts');
+      btnAll.after(shortcutHintEl);
+    }
 
     if (hiddenCount > 0) {
-      hiddenCountEl.textContent = browser.i18n.getMessage('popupHiddenCount', [hiddenCount.toString()]);
+      const hiddenKey = pluralRules().select(hiddenCount) === 'one' ? 'popupHiddenCountOne' : 'popupHiddenCountOther';
+      hiddenCountEl.textContent = browser.i18n.getMessage(hiddenKey, [hiddenCount.toString()]);
       show(hiddenCountEl);
     } else {
       hide(hiddenCountEl);

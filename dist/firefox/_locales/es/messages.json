@@ -100,26 +100,14 @@
     "message": "imgsnag-inline.svg",
     "description": "Filename shown in the cell label for a captured inline SVG. Must match the real download filename in background.js — do not translate."
   },
-  "popupHiddenCount": {
-    "message": "$COUNT$ variantes ocultas",
+  "popupShortcutKbd": {
+    "message": "$MODIFIER$+Intro",
     "placeholders": {
-      "count": {
-        "content": "$1"
-      }
-    },
-    "description": "Message showing the number of smaller duplicate images collapsed from the UI."
-  },
-  "popupShortcutHint": {
-    "message": "$ACTION$ ($MODIFIER$+Intro)",
-    "placeholders": {
-      "action": {
-        "content": "$1"
-      },
       "modifier": {
-        "content": "$2"
+        "content": "$1"
       }
     },
-    "description": "Instructions on keyboard shortcuts shown in button tooltips."
+    "description": "Visible keyboard shortcut hint shown next to the active download button."
   },
   "popupSelectedOne": {
     "message": "$COUNT$ seleccionado",
@@ -138,5 +126,23 @@
       }
     },
     "description": "Noun following the count of selected images (plural)."
+  },
+  "popupHiddenCountOne": {
+    "message": "$COUNT$ variante oculta",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    },
+    "description": "Message showing the number of smaller duplicate images collapsed from the UI (singular form)."
+  },
+  "popupHiddenCountOther": {
+    "message": "$COUNT$ variantes ocultas",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    },
+    "description": "Message showing the number of smaller duplicate images collapsed from the UI (plural form)."
   }
 }
