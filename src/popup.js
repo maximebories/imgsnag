@@ -157,6 +157,7 @@
   const counterEl = document.getElementById('counter');
   const btnSelected = document.getElementById('btn-selected');
   const btnAll = document.getElementById('btn-all');
+  const shortcutHintEl = document.getElementById('shortcut-hint');
 
   // i18n
   document.documentElement.lang = browser.i18n.getUILanguage();
@@ -215,15 +216,26 @@
     btnSelected.disabled = n === 0;
     btnSelected.textContent = browser.i18n.getMessage('popupDownloadSelected', [n.toString()]);
     btnAll.textContent = browser.i18n.getMessage('popupDownloadAll', [total.toString()]);
-    // Ctrl/Cmd+Enter activates exactly one of these two buttons, so only that
-    // one advertises the shortcut — otherwise the idle button's tooltip
-    // promises a bulk download the shortcut will not actually perform.
-    btnSelected.title = n > 0
-      ? browser.i18n.getMessage('popupShortcutHint', [btnSelected.textContent, mod])
-      : '';
-    btnAll.title = n > 0
-      ? ''
-      : browser.i18n.getMessage('popupShortcutHint', [btnAll.textContent, mod]);
+
+    // Update the visual shortcut hint and move it next to the active button
+    const shortcutText = browser.i18n.getMessage('popupShortcutKbd', [mod]);
+    shortcutHintEl.textContent = shortcutText;
+    shortcutHintEl.style.display = 'inline-block';
+
+    // Assign aria-keyshortcuts and position the hint based on the active button
+    // The value is a machine-readable key sequence for AT. 'Meta' corresponds to Cmd/Win,
+    // and 'Control' corresponds to Ctrl.
+    const ariaMod = navigator.platform.includes('Mac') ? 'Meta' : 'Control';
+
+    if (n > 0) {
+      btnSelected.setAttribute('aria-keyshortcuts', `${ariaMod}+Enter`);
+      btnAll.removeAttribute('aria-keyshortcuts');
+      btnSelected.after(shortcutHintEl);
+    } else {
+      btnAll.setAttribute('aria-keyshortcuts', `${ariaMod}+Enter`);
+      btnSelected.removeAttribute('aria-keyshortcuts');
+      btnAll.after(shortcutHintEl);
+    }
 
     if (hiddenCount > 0) {
       hiddenCountEl.textContent = browser.i18n.getMessage('popupHiddenCount', [hiddenCount.toString()]);
