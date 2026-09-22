@@ -17,7 +17,7 @@ global.browser = {
 };
 
 // Require the content script which executes the IIFE
-const { isVideoUrl, isImageUrl, isSvgUrl, collectInlineSvgs } = require('./content');
+const { isVideoUrl, isImageUrl, isSvgUrl, collectInlineSvgs, collectNoscriptImages } = require('./content');
 
 describe('isVideoUrl', () => {
   describe('valid video URLs', () => {
@@ -412,5 +412,44 @@ describe('buildDomSizeMap', () => {
     });
 
     expect(buildDomSizeMap().has('https://example.com/pending.jpg')).toBe(false);
+  });
+});
+
+
+describe('collectNoscriptImages', () => {
+  beforeEach(() => {
+    document.body.innerHTML = '';
+  });
+
+  it('parses noscript elements and returns media URLs inertly', () => {
+    const noscript = document.createElement('noscript');
+    noscript.textContent = '<img src="/image.jpg" /><picture><source srcset="/image2.webp" type="image/webp"></picture>';
+    document.body.appendChild(noscript);
+
+    const { imageUrls, videoUrls } = collectNoscriptImages();
+    expect(imageUrls.size).toBe(2);
+    expect(imageUrls.has('http://localhost/image.jpg')).toBe(true);
+    expect(imageUrls.has('http://localhost/image2.webp')).toBe(true);
+    expect(videoUrls.size).toBe(0);
+  });
+
+  it('collects lazy loaded variants in noscript', () => {
+    const noscript = document.createElement('noscript');
+    noscript.textContent = '<img data-src="https://example.com/lazy.jpg" /><video><source data-lazy-src="https://example.com/video.mp4" /></video>';
+    document.body.appendChild(noscript);
+
+    const { imageUrls, videoUrls } = collectNoscriptImages();
+    expect(imageUrls.has('https://example.com/lazy.jpg')).toBe(true);
+    expect(videoUrls.has('https://example.com/video.mp4')).toBe(true);
+  });
+
+  it('skips noscript without media tags', () => {
+    const noscript = document.createElement('noscript');
+    noscript.textContent = '<div>Just some text and <a href="https://example.com/link.html">link</a></div>';
+    document.body.appendChild(noscript);
+
+    const { imageUrls, videoUrls } = collectNoscriptImages();
+    expect(imageUrls.size).toBe(0);
+    expect(videoUrls.size).toBe(0);
   });
 });

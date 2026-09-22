@@ -987,6 +987,33 @@ describe('collectMediaUrls initial scan unified traversal', () => {
     expect(imageSet.has('https://example.com/dynamic-button')).toBe(true);
   });
 
+  it('handleImg: live nodes honour <base href>, inert <noscript> nodes resolve against the page URL', () => {
+    const { handleImg } = require('../src/content.js');
+    const base = document.createElement('base');
+    base.href = 'https://cdn.example.com/assets/';
+    document.head.appendChild(base);
+
+    // A live node keeps the IDL `.src`, which the parser resolved against <base>.
+    const live = document.createElement('img');
+    live.setAttribute('src', 'photo.jpg');
+    document.body.appendChild(live);
+    const liveSet = new Set();
+    handleImg(live, liveSet);
+    expect(liveSet.has('https://cdn.example.com/assets/photo.jpg')).toBe(true);
+
+    // A node parsed out of <noscript> sits in a document based on about:blank,
+    // so `.src` is unusable there — the raw attribute goes through resolveUrl.
+    const inert = new DOMParser()
+      .parseFromString('<img src="fallback.jpg">', 'text/html')
+      .querySelector('img');
+    const inertSet = new Set();
+    handleImg(inert, inertSet);
+    expect(inertSet.has('http://localhost/fallback.jpg')).toBe(true);
+
+    document.body.innerHTML = '';
+    base.remove();
+  });
+
   it('collectVideos: rejects og:video when og:video:type is text/html', () => {
     const { collectMediaUrls } = require('../src/content.js');
     document.head.innerHTML = `
