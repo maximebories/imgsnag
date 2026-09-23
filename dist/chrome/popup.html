@@ -244,7 +244,14 @@
       }
       #bar.visible { display: flex; }
 
+      /* The counter is the one item in the bar that may lose width: its count
+         is repeated in #btn-selected's label, and aria-live still announces
+         the full text. A 0% basis keeps it from forcing #bar onto two lines. */
       #counter {
+        flex: 1 1 0%;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
         font-size: 12px;
         color: #666;
         white-space: nowrap;

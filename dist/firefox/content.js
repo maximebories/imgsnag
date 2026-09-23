@@ -151,7 +151,7 @@
   function resolveUrl(url) {
     if (!url) return null;
     try {
-      const parsed = new URL(url, location.href);
+      const parsed = new URL(url, document.baseURI);
       // Warden: Restrict to safe protocols to prevent exfiltration / local file access
       const p = parsed.protocol;
       if (p !== 'http:' && p !== 'https:' && p !== 'blob:' && p !== 'data:') {
@@ -844,11 +844,11 @@
       const attrs = ['src', 'data-src', 'data-lazy-src', 'data-original'];
       for (const attr of attrs) {
         let val;
-        // `.src` is the resolved IDL form and it honours a page's <base href>,
-        // which resolveUrl (base: location.href) does not — so live nodes keep
-        // it. Nodes parsed out of a <noscript> text node live in an inert
-        // document whose base is about:blank, where `.src` is useless; there we
-        // read the raw attribute and let resolveUrl apply the page's own base.
+        // `.src` is the resolved IDL form, already resolved against the page's
+        // <base href>, so live nodes keep it. Nodes parsed out of a <noscript>
+        // text node live in an inert document whose base is about:blank, where
+        // `.src` is useless; there we read the raw attribute and let resolveUrl
+        // apply the live page's base (document.baseURI).
         if (attr === 'src') {
           if (hasSet && realSet) val = null;
           else val = el.ownerDocument === document ? el.src : el.getAttribute('src');
