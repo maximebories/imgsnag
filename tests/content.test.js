@@ -1002,13 +1002,14 @@ describe('collectMediaUrls initial scan unified traversal', () => {
     expect(liveSet.has('https://cdn.example.com/assets/photo.jpg')).toBe(true);
 
     // A node parsed out of <noscript> sits in a document based on about:blank,
-    // so `.src` is unusable there — the raw attribute goes through resolveUrl.
+    // so `.src` is unusable there — the raw attribute goes through resolveUrl,
+    // which now respects the page's <base href>.
     const inert = new DOMParser()
       .parseFromString('<img src="fallback.jpg">', 'text/html')
       .querySelector('img');
     const inertSet = new Set();
     handleImg(inert, inertSet);
-    expect(inertSet.has('http://localhost/fallback.jpg')).toBe(true);
+    expect(inertSet.has('https://cdn.example.com/assets/fallback.jpg')).toBe(true);
 
     document.body.innerHTML = '';
     base.remove();
@@ -1156,5 +1157,31 @@ describe('BG_IMAGE_SELECTORS gate', () => {
     // url(...)` case is unreachable anyway. Pins the trade-off.
     expect(matches('<b style="justify-content: center"></b>')).toBe(false);
     expect(matches('<p style="align-content: center"></p>')).toBe(false);
+  });
+});
+
+describe('resolveUrl', () => {
+  const { resolveUrl } = require('../src/content.js');
+
+  function withBase(href, fn) {
+    const base = document.createElement('base');
+    base.href = href;
+    document.head.appendChild(base);
+    try { fn(); } finally { base.remove(); }
+  }
+
+  it('resolves relative URLs against the page <base href> rather than location.href', () => {
+    withBase('https://example.com/assets/', () => {
+      expect(location.href).not.toBe('https://example.com/assets/');
+      expect(resolveUrl('image.jpg')).toBe('https://example.com/assets/image.jpg');
+      expect(resolveUrl('/top.jpg')).toBe('https://example.com/top.jpg');
+    });
+  });
+
+  it('keeps the protocol allowlist when a hostile page points <base> at file:', () => {
+    // The base is page-controlled input; the allowlist runs after resolution.
+    withBase('file:///etc/', () => {
+      expect(resolveUrl('passwd')).toBeNull();
+    });
   });
 });
