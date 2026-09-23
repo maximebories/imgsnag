@@ -1002,13 +1002,14 @@ describe('collectMediaUrls initial scan unified traversal', () => {
     expect(liveSet.has('https://cdn.example.com/assets/photo.jpg')).toBe(true);
 
     // A node parsed out of <noscript> sits in a document based on about:blank,
-    // so `.src` is unusable there — the raw attribute goes through resolveUrl.
+    // so `.src` is unusable there — the raw attribute goes through resolveUrl,
+    // which now respects the page's <base href>.
     const inert = new DOMParser()
       .parseFromString('<img src="fallback.jpg">', 'text/html')
       .querySelector('img');
     const inertSet = new Set();
     handleImg(inert, inertSet);
-    expect(inertSet.has('http://localhost/fallback.jpg')).toBe(true);
+    expect(inertSet.has('https://cdn.example.com/assets/fallback.jpg')).toBe(true);
 
     document.body.innerHTML = '';
     base.remove();
@@ -1156,5 +1157,36 @@ describe('BG_IMAGE_SELECTORS gate', () => {
     // url(...)` case is unreachable anyway. Pins the trade-off.
     expect(matches('<b style="justify-content: center"></b>')).toBe(false);
     expect(matches('<p style="align-content: center"></p>')).toBe(false);
+  });
+});
+
+describe('resolveUrl', () => {
+  const { resolveUrl } = require('../src/content.js');
+
+  it('resolves relative URLs against document.baseURI rather than location.href', () => {
+    // Save original values
+    const originalBaseURI = document.baseURI;
+
+    try {
+      // Simulate a page with <base href> different from location
+      Object.defineProperty(document, 'baseURI', {
+        value: 'https://example.com/assets/',
+        configurable: true
+      });
+      // Ensure we know location.href is not the base
+      expect(location.href).not.toBe('https://example.com/assets/');
+
+      const resolved = resolveUrl('image.jpg');
+      expect(resolved).toBe('https://example.com/assets/image.jpg');
+
+      const absolute = resolveUrl('/top.jpg');
+      expect(absolute).toBe('https://example.com/top.jpg');
+    } finally {
+      // Restore
+      Object.defineProperty(document, 'baseURI', {
+        value: originalBaseURI,
+        configurable: true
+      });
+    }
   });
 });

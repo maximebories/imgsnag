@@ -151,7 +151,7 @@
   function resolveUrl(url) {
     if (!url) return null;
     try {
-      const parsed = new URL(url, location.href);
+      const parsed = new URL(url, document.baseURI);
       // Warden: Restrict to safe protocols to prevent exfiltration / local file access
       const p = parsed.protocol;
       if (p !== 'http:' && p !== 'https:' && p !== 'blob:' && p !== 'data:') {
