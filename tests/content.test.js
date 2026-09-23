@@ -1086,6 +1086,30 @@ describe('collectMediaUrls initial scan unified traversal', () => {
     expect(imageUrls.has('https://example.com/style.jpg')).toBe(true);
   });
 
+  it('extracts untethered URLs from non-skipped attributes and ignores skipped ones', () => {
+    document.body.innerHTML = `
+      <div
+        id="https://example.com/skipped-id.jpg"
+        class="https://example.com/skipped-class.jpg"
+        role="https://example.com/skipped-role.jpg"
+        aria-label="https://example.com/skipped-aria.jpg"
+        data-custom="https://example.com/found-data.jpg"
+        title="Check out https://example.com/found-title.jpg"
+      ></div>
+    `;
+
+    const { collectMediaUrls } = require('../src/content.js');
+    const { imageUrls } = collectMediaUrls();
+
+    expect(imageUrls.has('https://example.com/found-data.jpg')).toBe(true);
+    expect(imageUrls.has('https://example.com/found-title.jpg')).toBe(true);
+
+    expect(imageUrls.has('https://example.com/skipped-id.jpg')).toBe(false);
+    expect(imageUrls.has('https://example.com/skipped-class.jpg')).toBe(false);
+    expect(imageUrls.has('https://example.com/skipped-role.jpg')).toBe(false);
+    expect(imageUrls.has('https://example.com/skipped-aria.jpg')).toBe(false);
+  });
+
   // Both URLs below are deliberately extensionless: the regex attribute sweep
   // only extracts URLs that look like media, so an extensionless src is visible
   // to these assertions only if the <img> path itself tracked it.

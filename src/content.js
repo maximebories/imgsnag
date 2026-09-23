@@ -515,13 +515,17 @@
       }
     } else if (node.nodeType === Node.ELEMENT_NODE) {
       if (!node.hasAttributes()) return;
-      const names = node.getAttributeNames();
-      for (let i = 0, len = names.length; i < len; i++) {
+      const attributes = node.attributes;
+      for (let i = 0, len = attributes.length; i < len; i++) {
+        const attr = attributes[i];
+        const name = attr.name;
+        // id, class, and layout/accessibility hints never carry media URLs.
+        // title and alt are omitted because they could theoretically contain text holding an untethered URL.
+        if (name === 'id' || name === 'class' || name === 'role' || name === 'tabindex' || name === 'width' || name === 'height' || name === 'target' || name === 'rel' || name.startsWith('aria-')) continue;
         // srcset-family attributes hold many variants of one image; the
         // structural scan already tracked the best candidate
-        const name = names[i];
         if (name.includes('srcset')) continue;
-        const val = node.getAttribute(name);
+        const val = attr.value;
         if (val && HTTP_HINT_RE.test(val)) {
           let match;
           IMAGE_URL_RE.lastIndex = 0;
