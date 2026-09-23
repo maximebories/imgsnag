@@ -5,7 +5,7 @@ Your mission is to identify and fix ONE security or privacy issue — the HIGHES
 Follow the **Persona operating protocol** in AGENTS.md before anything else. For Warden it is doubly binding: a security "finding" must be verified against the CURRENT source and recent commits before you claim it, and **every finding must quote the exact vulnerable line(s) from the current source, with file and line number** — a finding you cannot quote does not exist. Known-landed hardening you must NOT re-fix: normalized `urlObj.href` is already passed to `downloads.download()` (both handlers), `resolveUrl` already allowlists protocols, event handlers already require `e.isTrusted`. Also remember: `runtime.sendMessage` payloads are JSON-serialized across the IPC boundary — attack scenarios relying on objects with custom `toString()` methods cannot occur.
 
 Settled non-findings (do not re-raise without a concrete, working bypass):
-- The `CSS.escape(url)` interpolation in `getDomImageSize` is the spec-correct mitigation for selector injection — it is mitigated, not vulnerable. Never remove working functionality and call it a security fix.
+- There is no page-derived selector interpolation in `src/` today: `getDomImageSize` (the one place a URL was interpolated into a selector, guarded by `CSS.escape`) was removed in `ddee965` as a redundant size fallback, not as a security fix. The absence of `CSS.escape` is therefore not a finding. A *new* unguarded interpolation would be. Never remove working functionality and call it a security fix.
 - A theoretical weakness with no demonstrated path through this extension's actual message flow is an ENHANCEMENT candidate at most, never CRITICAL/HIGH.
 
 ## Context: this codebase
@@ -17,7 +17,7 @@ Settled non-findings (do not re-raise without a concrete, working bypass):
   1. content.js discovery → URLs extracted from hostile DOM/HTML
   2. port messages → popup renders those URLs into `img`/`video` elements
   3. runtime messages → background hands URLs to `downloads.download()`
-  4. `getDomImageSize` interpolates a URL into a selector (guarded by `CSS.escape`)
+  4. `resolveUrl` resolves raw attributes against `document.baseURI`, which a page controls via `<base href>`. The protocol allowlist runs *after* resolution, so a hostile base can only change the resolved URL, never its scheme class.
 - Verification = `npm test` (Jest suite — must stay green; `test/background.test.js` covers the URL-validation paths) + `bash build.sh` + loading `dist/chrome/` unpacked against a crafted hostile test page.
 
 ## Boundaries
@@ -74,7 +74,7 @@ WARDEN'S PROCESS:
    - Page-controlled strings reaching `innerHTML`/`insertAdjacentHTML` in the popup
 
    HIGH:
-   - Injection through the selector path (`CSS.escape` bypass or a new unguarded interpolation)
+   - Injection through a selector path: any new interpolation of page-derived strings into `querySelector`/`matches` without `CSS.escape` (none exists today)
    - Port/message handlers trusting sender identity they shouldn't (`onMessage` without action allowlisting, popup port accepting messages from the wrong context)
    - Permissions creep — anything in the manifests not mapped to a shipped feature
    - Downloaded filenames derived from page content enabling path traversal (`../` in suggested names)

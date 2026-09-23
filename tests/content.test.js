@@ -987,6 +987,34 @@ describe('collectMediaUrls initial scan unified traversal', () => {
     expect(imageSet.has('https://example.com/dynamic-button')).toBe(true);
   });
 
+  it('handleImg: live nodes honour <base href>, inert <noscript> nodes resolve against the page URL', () => {
+    const { handleImg } = require('../src/content.js');
+    const base = document.createElement('base');
+    base.href = 'https://cdn.example.com/assets/';
+    document.head.appendChild(base);
+
+    // A live node keeps the IDL `.src`, which the parser resolved against <base>.
+    const live = document.createElement('img');
+    live.setAttribute('src', 'photo.jpg');
+    document.body.appendChild(live);
+    const liveSet = new Set();
+    handleImg(live, liveSet);
+    expect(liveSet.has('https://cdn.example.com/assets/photo.jpg')).toBe(true);
+
+    // A node parsed out of <noscript> sits in a document based on about:blank,
+    // so `.src` is unusable there — the raw attribute goes through resolveUrl,
+    // which now respects the page's <base href>.
+    const inert = new DOMParser()
+      .parseFromString('<img src="fallback.jpg">', 'text/html')
+      .querySelector('img');
+    const inertSet = new Set();
+    handleImg(inert, inertSet);
+    expect(inertSet.has('https://cdn.example.com/assets/fallback.jpg')).toBe(true);
+
+    document.body.innerHTML = '';
+    base.remove();
+  });
+
   it('collectVideos: rejects og:video when og:video:type is text/html', () => {
     const { collectMediaUrls } = require('../src/content.js');
     document.head.innerHTML = `
@@ -1129,5 +1157,31 @@ describe('BG_IMAGE_SELECTORS gate', () => {
     // url(...)` case is unreachable anyway. Pins the trade-off.
     expect(matches('<b style="justify-content: center"></b>')).toBe(false);
     expect(matches('<p style="align-content: center"></p>')).toBe(false);
+  });
+});
+
+describe('resolveUrl', () => {
+  const { resolveUrl } = require('../src/content.js');
+
+  function withBase(href, fn) {
+    const base = document.createElement('base');
+    base.href = href;
+    document.head.appendChild(base);
+    try { fn(); } finally { base.remove(); }
+  }
+
+  it('resolves relative URLs against the page <base href> rather than location.href', () => {
+    withBase('https://example.com/assets/', () => {
+      expect(location.href).not.toBe('https://example.com/assets/');
+      expect(resolveUrl('image.jpg')).toBe('https://example.com/assets/image.jpg');
+      expect(resolveUrl('/top.jpg')).toBe('https://example.com/top.jpg');
+    });
+  });
+
+  it('keeps the protocol allowlist when a hostile page points <base> at file:', () => {
+    // The base is page-controlled input; the allowlist runs after resolution.
+    withBase('file:///etc/', () => {
+      expect(resolveUrl('passwd')).toBeNull();
+    });
   });
 });

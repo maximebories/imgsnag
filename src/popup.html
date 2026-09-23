@@ -235,6 +235,7 @@
         display: none;
         align-items: center;
         justify-content: space-between;
+        flex-wrap: wrap;
         padding: 8px;
         background: #fff;
         border-top: 1px solid #e0e0e0;
@@ -243,15 +244,41 @@
       }
       #bar.visible { display: flex; }
 
+      /* The counter is the one item in the bar that may lose width: its count
+         is repeated in #btn-selected's label, and aria-live still announces
+         the full text. A 0% basis keeps it from forcing #bar onto two lines. */
       #counter {
+        flex: 1 1 0%;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
         font-size: 12px;
         color: #666;
         white-space: nowrap;
       }
 
+      /* Both levels wrap. #bar wrapping only moves .actions onto its own line;
+         the row itself holds two nowrap buttons plus the shortcut hint, which
+         in fr and es is wider than the 400px popup on its own. body is
+         overflow:hidden, so without this the overflow is clipped silently
+         rather than wrapped — a button with no visible sign it was cut. */
       .actions {
         display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        justify-content: flex-end;
         gap: 6px;
+      }
+
+      kbd#shortcut-hint {
+        font-family: inherit;
+        font-size: 11px;
+        color: #666;
+        background: #f3f4f6;
+        border: 1px solid #d1d5db;
+        border-radius: 4px;
+        padding: 2px 6px;
+        white-space: nowrap;
       }
 
       .actions button {
@@ -297,6 +324,11 @@
         #btn-all:hover, #btn-all:focus-visible { background: #4b5563; }
         #empty .hint { color: #a3a3a3; }
         .cell .placeholder { color: #bbb; }
+        kbd#shortcut-hint {
+          color: #a3a3a3;
+          background: #374151;
+          border-color: #4b5563;
+        }
       }
 
       @media (prefers-reduced-motion: reduce) {
@@ -344,6 +376,7 @@
       <div class="actions">
         <button id="btn-selected" disabled></button>
         <button id="btn-all"></button>
+        <kbd id="shortcut-hint" aria-hidden="true" style="display: none;"></kbd>
       </div>
     </div>
 
