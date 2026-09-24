@@ -228,7 +228,7 @@
     const urls = [];
     try {
       const rawStyle = el.getAttribute('style') || '';
-      const hasExternalStyling = el.className || el.id;
+      const hasExternalStyling = el.hasAttribute('class') || el.id;
       const hasInlineMaskOrContent = rawStyle.includes('mask') || rawStyle.includes('content');
 
       const canSkipComputed = !useDisplayAccurate && !hasExternalStyling && !hasInlineMaskOrContent;
@@ -474,7 +474,7 @@
     // CSS background-image on likely container elements
     document.querySelectorAll(BG_IMAGE_SELECTORS).forEach((el) => {
       // Fast path: skip elements with no styling hints to avoid expensive getComputedStyle calls
-      if (!el.className && !el.id && !el.getAttribute('style')) return;
+      if (!el.hasAttribute('class') && !el.id && !el.getAttribute('style')) return;
 
       pendingBackgroundCheckQueue.push(el);
       if (!isBgCheckScheduled) {
@@ -1000,7 +1000,7 @@
 
   function handleBackgroundImage(el, imageSet) {
     // Fast path: skip elements with no styling hints to avoid expensive getComputedStyle calls
-    if (el.className || el.id || el.getAttribute('style')) {
+    if (el.hasAttribute('class') || el.id || el.getAttribute('style')) {
       pendingBackgroundCheckQueue.push(el);
       if (!isBgCheckScheduled) {
         isBgCheckScheduled = true;
