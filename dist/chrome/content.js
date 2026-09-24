@@ -634,6 +634,35 @@
   // Evaluated on popup connect because it parses DOM. The HTML parser leaves
   // <noscript> content as raw text; we parse it into an inert Document to run
   // the structural sweep over it safely, without triggering fetches.
+  function collectTemplateImages() {
+    const imageUrls = new Set();
+    const videoUrls = new Set();
+    document.querySelectorAll('template').forEach((template) => {
+      // templates contain inert DocumentFragments (.content) that are invisible
+      // to document.images and standard querySelectorAll sweeps in collectImages.
+      const walker = document.createTreeWalker(
+        template.content,
+        NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT,
+        REGEX_SWEEP_FILTER
+      );
+      let el;
+      const trackImage = (url) => trackImageUrl(url, imageUrls);
+      while ((el = walker.nextNode())) {
+        extractRegexUrls(el, trackImage);
+        if (el.nodeType !== Node.ELEMENT_NODE) continue;
+        extractUrlsFromElement(el, imageUrls, videoUrls);
+
+        // CSS background-images in style attribute of inert nodes are not natively
+        // captured by the background-image queue because getComputedStyle does not apply
+        // to them. However, we can quickly extract inline background-images.
+        for (const raw of getCssMediaUrls(el)) {
+          trackImage(raw);
+        }
+      }
+    });
+    return { imageUrls, videoUrls };
+  }
+
   function collectNoscriptImages() {
     const imageUrls = new Set();
     const videoUrls = new Set();
@@ -1181,6 +1210,11 @@
       if (noscriptMedia.imageUrls.size > 0) addNewUrls(noscriptMedia.imageUrls, 'image');
       if (noscriptMedia.videoUrls.size > 0) addNewUrls(noscriptMedia.videoUrls, 'video');
 
+      // Capture <template> inert contents
+      const templateMedia = collectTemplateImages();
+      if (templateMedia.imageUrls.size > 0) addNewUrls(templateMedia.imageUrls, 'image');
+      if (templateMedia.videoUrls.size > 0) addNewUrls(templateMedia.videoUrls, 'video');
+
       port.postMessage({ action: 'init', images: [...discoveredMedia.values()] });
 
       // Flush the background image check queue synchronously so the grid is complete
@@ -1353,6 +1387,6 @@
   syncDragPreference();
   browser.storage.onChanged.addListener(() => syncDragPreference());
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { handleImg, handleSrcset, trackImageUrl, buildDomSizeMap, getCssMediaUrls, extractBgImageUrls, resolveUrl, isVideoUrl, isImageUrl, isSvgUrl, parseSrcset, pickBestFromSrcset, collectInlineSvgs, collectNoscriptImages, handleEmbed, passesSizeFilter, handleMeta, collectMediaUrls, handleSource, handlePicture, handleSvgImage, handleDataBg, extractRegexUrls, handleVideo, filterImagesBySize, SIZE_PROBE_POOL_SIZE, REGEX_SWEEP_FILTER, BG_IMAGE_SELECTORS, addNewUrls, MAX_TRACKED_MEDIA };
+    module.exports = { handleImg, handleSrcset, trackImageUrl, buildDomSizeMap, getCssMediaUrls, extractBgImageUrls, resolveUrl, isVideoUrl, isImageUrl, isSvgUrl, parseSrcset, pickBestFromSrcset, collectInlineSvgs, collectNoscriptImages, collectTemplateImages, handleEmbed, passesSizeFilter, handleMeta, collectMediaUrls, handleSource, handlePicture, handleSvgImage, handleDataBg, extractRegexUrls, handleVideo, filterImagesBySize, SIZE_PROBE_POOL_SIZE, REGEX_SWEEP_FILTER, BG_IMAGE_SELECTORS, addNewUrls, MAX_TRACKED_MEDIA };
   }
 })();
