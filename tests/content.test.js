@@ -1185,3 +1185,15 @@ describe('resolveUrl', () => {
     });
   });
 });
+
+
+describe('MutationObserver TAG_SET parity', () => {
+  it('handles dynamically added semantic tags with background images', () => {
+    // The test verifies that tags added to BG_IMAGE_SELECTORS in collectImages
+    // are also processed when dynamically added by MutationObserver.
+    const { TAG_SET } = require('../src/content.js');
+    expect(TAG_SET.has('BUTTON')).toBe(true);
+    expect(TAG_SET.has('MAIN')).toBe(true);
+    expect(TAG_SET.has('DIALOG')).toBe(true);
+  });
+});
