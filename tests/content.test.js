@@ -578,7 +578,7 @@ describe('getCssMediaUrls', () => {
   it('extracts URLs from various CSS properties and pseudo-elements (computed path)', () => {
     const el = document.createElement('div');
     // Force the computed path: give it a class
-    el.className = 'test-class';
+    el.className = 'test-class'; const style = document.createElement('style'); style.textContent = '.test-class { background-image: url(a.jpg); }'; document.head.appendChild(style);
 
     window.getComputedStyle = jest.fn((element, pseudoElt) => {
       if (pseudoElt === '::before') {
@@ -643,7 +643,7 @@ describe('getCssMediaUrls', () => {
 
   it('catches and ignores getComputedStyle errors for pseudo-elements', () => {
     const el = document.createElement('div');
-    el.className = 'test'; // Force computed path
+    el.className = 'test'; const style2 = document.createElement('style'); style2.textContent = '.test { background-image: url(a.jpg); }'; document.head.appendChild(style2);
     window.getComputedStyle = jest.fn((element, pseudoElt) => {
       if (pseudoElt) {
         throw new Error('Not implemented');

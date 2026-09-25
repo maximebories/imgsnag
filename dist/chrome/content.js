@@ -102,6 +102,100 @@
   const pendingBackgroundCheckQueue = [];
   let isBgCheckScheduled = false;
 
+  let knownBgClasses = null;
+  let knownBgIds = null;
+  let hasOpaqueStylesheets = false;
+  let lastStyleSheetCount = -1;
+  let lastCssRuleCount = -1;
+
+  function updateBgStyleSets() {
+    // Count both the number of sheets and the total rules in non-opaque sheets.
+    // CSS-in-JS libraries append rules to a single sheet, so sheet count doesn't change.
+    let currentRuleCount = 0;
+    let sheetsLength = document.styleSheets.length;
+    for (let i = 0; i < sheetsLength; i++) {
+      try {
+        currentRuleCount += document.styleSheets[i].cssRules ? document.styleSheets[i].cssRules.length : 0;
+      } catch (e) {
+        // cross-origin
+      }
+    }
+
+    if (sheetsLength === lastStyleSheetCount && currentRuleCount === lastCssRuleCount) return;
+    lastStyleSheetCount = sheetsLength;
+    lastCssRuleCount = currentRuleCount;
+    knownBgClasses = new Set();
+    knownBgIds = new Set();
+    hasOpaqueStylesheets = false;
+
+    function processRules(rules) {
+      if (!rules) return;
+      for (let j = 0; j < rules.length; j++) {
+        const rule = rules[j];
+        if (rule.type === 1) { // CSSStyleRule
+          const text = rule.cssText;
+          if (text && (text.includes('background') || text.includes('mask') || text.includes('content'))) {
+            // Tailwind and other utility frameworks use escaped colons and slashes.
+            // Match the dot and the class name, allowing escaped characters.
+            // A CSS class selector matches \.([^\s:+>~,[\]]+). But wait, cssText escapes them as `\.md\:bg-red-500`.
+            // We can just unescape the matched string.
+            const classMatches = rule.selectorText.match(/\.([^\s:+,>~\[\]()]+)/g);
+            if (classMatches) {
+              for (const c of classMatches) {
+                // remove the dot, then unescape backslashes
+                let unescaped = c.substring(1).replace(/\\(.)/g, '$1');
+                knownBgClasses.add(unescaped);
+              }
+            }
+            const idMatches = rule.selectorText.match(/#([^\s:+,>~\[\]()]+)/g);
+            if (idMatches) {
+              for (const id of idMatches) {
+                let unescaped = id.substring(1).replace(/\\(.)/g, '$1');
+                knownBgIds.add(unescaped);
+              }
+            }
+          }
+        } else if (rule.cssRules) {
+          // CSSMediaRule, CSSSupportsRule, etc.
+          processRules(rule.cssRules);
+        }
+      }
+    }
+
+    for (let i = 0; i < document.styleSheets.length; i++) {
+      let rules;
+      try {
+        rules = document.styleSheets[i].cssRules;
+      } catch (e) {
+        hasOpaqueStylesheets = true;
+        continue;
+      }
+      processRules(rules);
+    }
+  }
+
+  function hasRelevantExternalStyling(el) {
+    updateBgStyleSets();
+    if (hasOpaqueStylesheets && (el.className || el.id)) return true;
+
+    if (el.id && knownBgIds.has(el.id)) return true;
+
+    const clsStr = el.getAttribute('class');
+    if (clsStr) {
+      const classes = clsStr.trim().split(/\s+/);
+      for (const c of classes) {
+        if (knownBgClasses.has(c)) return true;
+      }
+    }
+    return false;
+  }
+
+  function hasRelevantStyling(el) {
+    const style = el.getAttribute('style');
+    if (style && (style.includes('background') || style.includes('mask') || style.includes('content'))) return true;
+    return hasRelevantExternalStyling(el);
+  }
+
   // Helpers
 
   function sendToBackground(message) {
@@ -228,8 +322,10 @@
     const urls = [];
     try {
       const rawStyle = el.getAttribute('style') || '';
-      const hasExternalStyling = el.className || el.id;
       const hasInlineMaskOrContent = rawStyle.includes('mask') || rawStyle.includes('content');
+
+      // If it only has an inline background, we *can* skip computed (if display accurate is false).
+      const hasExternalStyling = hasRelevantExternalStyling(el);
 
       const canSkipComputed = !useDisplayAccurate && !hasExternalStyling && !hasInlineMaskOrContent;
 
@@ -247,7 +343,7 @@
         if (!style) continue;
 
         let bgImage = style.backgroundImage;
-        if (isMainElement && !useDisplayAccurate && !canSkipComputed && el.style && el.style.backgroundImage) {
+        if (isMainElement && !useDisplayAccurate && !hasExternalStyling && el.style && el.style.backgroundImage) {
           const inlineBg = el.style.backgroundImage;
           if (inlineBg && inlineBg !== 'none' && inlineBg !== 'normal') {
              bgImage = inlineBg;
@@ -474,7 +570,7 @@
     // CSS background-image on likely container elements
     document.querySelectorAll(BG_IMAGE_SELECTORS).forEach((el) => {
       // Fast path: skip elements with no styling hints to avoid expensive getComputedStyle calls
-      if (!el.className && !el.id && !el.getAttribute('style')) return;
+      if (!hasRelevantStyling(el)) return;
 
       pendingBackgroundCheckQueue.push(el);
       if (!isBgCheckScheduled) {
@@ -1000,7 +1096,7 @@
 
   function handleBackgroundImage(el, imageSet) {
     // Fast path: skip elements with no styling hints to avoid expensive getComputedStyle calls
-    if (el.className || el.id || el.getAttribute('style')) {
+    if (hasRelevantStyling(el)) {
       pendingBackgroundCheckQueue.push(el);
       if (!isBgCheckScheduled) {
         isBgCheckScheduled = true;
