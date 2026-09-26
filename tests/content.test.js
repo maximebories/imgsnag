@@ -1160,6 +1160,16 @@ describe('BG_IMAGE_SELECTORS gate', () => {
   });
 });
 
+describe('MutationObserver tag extraction', () => {
+  const { TAG_SET } = require('../src/content.js');
+
+  it('includes tags from BG_IMAGE_SELECTORS in TAG_SET to avoid drift', () => {
+    expect(TAG_SET.has('BUTTON')).toBe(true);
+    expect(TAG_SET.has('MAIN')).toBe(true);
+    expect(TAG_SET.has('DIALOG')).toBe(true);
+  });
+});
+
 describe('resolveUrl', () => {
   const { resolveUrl } = require('../src/content.js');
 
