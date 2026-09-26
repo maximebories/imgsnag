@@ -107,3 +107,11 @@
 ## 2026-10-04 - Semantic Lists and Visual Headers
 **Learning:** When a UI contains multiple semantic lists (e.g., `<ul role="list">`), providing an explicit `aria-labelledby` linking each list to its visible header ensures screen readers announce clear group boundaries and maintain context for the list contents.
 **Action:** Always link semantic lists to their visible headers using `aria-labelledby` if such a header exists.
+
+## 2026-09-26 - Layout Budgets and Dark Mode Contrast
+**Learning:** Two distinct layout and a11y findings:
+1. (Layout Budget) Following up on the previous run's `flex-wrap` layout change, measuring `#bar`'s height across en/es/fr at n=99 reveals that `en` and `es` fit on one line with a bar height of 43px, but `fr` causes `.actions` to wrap, expanding `#bar`'s height to 89px. The measurement confirms that `fr` exceeds the 400px popup width natively.
+2. (Contrast) The `.spinner` element fails WCAG AA contrast in dark mode (2.85:1) because it retains its light-mode borders (`#ddd` and `#666`) against the dark background (`#1a1a1a`).
+**Action:**
+1. The measurement confirms that wrapping is strictly required for the action buttons in the `fr` locale, and that the resulting 89px bar height is expected and accounted for.
+2. Ensure elements like spinners have their border colors explicitly adjusted in the `prefers-color-scheme: dark` media query (e.g., `border-color: #333; border-top-color: #a3a3a3;`) to pass contrast checks.
