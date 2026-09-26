@@ -98,9 +98,127 @@
   let popupPort = null;
   let isDragDisabled = false;
 
+
   // Background image lazy evaluation queue (Feather: getComputedStyle batched at idle)
   const pendingBackgroundCheckQueue = [];
   let isBgCheckScheduled = false;
+
+  let cachedTotalRulesLength = -1;
+  let hasOpaqueStylesheets = false;
+  let styleHintCache = { classes: new Set(), ids: new Set(), tags: new Set() };
+
+  function updateStyleHintCache() {
+    let currentLength = 0;
+    let currentOpaque = false;
+
+    for (let i = 0; i < document.styleSheets.length; i++) {
+      const sheet = document.styleSheets[i];
+      try {
+        currentLength += sheet.cssRules ? sheet.cssRules.length : 0;
+      } catch (e) {
+        currentOpaque = true;
+        currentLength += 1;
+      }
+    }
+
+    if (cachedTotalRulesLength === currentLength && hasOpaqueStylesheets === currentOpaque) {
+      return;
+    }
+
+    cachedTotalRulesLength = currentLength;
+    hasOpaqueStylesheets = currentOpaque;
+
+    const classes = new Set();
+    const ids = new Set();
+    const tags = new Set();
+
+    if (!currentOpaque) {
+      function scanRules(rules) {
+        if (!rules) return;
+        for (let i = 0; i < rules.length; i++) {
+          const rule = rules[i];
+          if (rule.type === 1) { // CSSStyleRule
+            const style = rule.style;
+            if (style) {
+               let hasMedia = false;
+               const props = ['background-image', 'background', 'mask-image', 'mask', '-webkit-mask-image', '-webkit-mask', 'content'];
+               for (const prop of props) {
+                 const val = style.getPropertyValue(prop);
+                 if (val && (val.includes('url(') || val.includes('image-set(') || val.includes('var('))) {
+                   hasMedia = true;
+                   break;
+                 }
+               }
+               if (!hasMedia) {
+                  const bg = style.getPropertyValue('background') || style.getPropertyValue('background-image');
+                  if (bg && bg.includes('var(')) hasMedia = true;
+               }
+
+               if (hasMedia) {
+                 const selectorText = rule.selectorText;
+                 if (selectorText) {
+                    let match;
+                    const classRegex = /\.([a-zA-Z0-9_-]+)/g;
+                    while ((match = classRegex.exec(selectorText)) !== null) classes.add(match[1]);
+                    const idRegex = /#([a-zA-Z0-9_-]+)/g;
+                    while ((match = idRegex.exec(selectorText)) !== null) ids.add(match[1]);
+                    const tagRegex = /(?:^[\s>+~]?|\s|[>+~])([a-zA-Z0-9_-]+)(?:[:.[#\s>+~]|$)/g;
+                    while ((match = tagRegex.exec(selectorText)) !== null) tags.add(match[1].toUpperCase());
+                 }
+               }
+            }
+          } else if (rule.cssRules) {
+            scanRules(rule.cssRules);
+          }
+        }
+      }
+
+      for (let i = 0; i < document.styleSheets.length; i++) {
+        const sheet = document.styleSheets[i];
+        try {
+          scanRules(sheet.cssRules);
+        } catch (e) {
+        }
+      }
+    }
+
+    styleHintCache = { classes, ids, tags };
+  }
+
+  function hasMediaStylingHints(el) {
+    const rawStyle = el.getAttribute('style');
+    if (rawStyle && (rawStyle.includes('background') || rawStyle.includes('mask') || rawStyle.includes('content'))) {
+      return true;
+    }
+
+    if (hasOpaqueStylesheets) {
+      return !!(el.className || el.id);
+    }
+
+    updateStyleHintCache();
+
+    if (styleHintCache.tags.has(el.tagName)) return true;
+    if (el.id && styleHintCache.ids.has(el.id)) return true;
+
+    if (el.classList && el.classList.length > 0) {
+      for (let i = 0; i < el.classList.length; i++) {
+        if (styleHintCache.classes.has(el.classList[i])) return true;
+      }
+    } else if (el.className && typeof el.className === 'string') {
+      const classes = el.className.split(/\s+/);
+      for (const cls of classes) {
+        if (styleHintCache.classes.has(cls)) return true;
+      }
+    } else if (el.className && el.className.baseVal) {
+      const classes = el.className.baseVal.split(/\s+/);
+      for (const cls of classes) {
+        if (styleHintCache.classes.has(cls)) return true;
+      }
+    }
+
+    return false;
+  }
+
 
   // Helpers
 
@@ -474,7 +592,7 @@
     // CSS background-image on likely container elements
     document.querySelectorAll(BG_IMAGE_SELECTORS).forEach((el) => {
       // Fast path: skip elements with no styling hints to avoid expensive getComputedStyle calls
-      if (!el.className && !el.id && !el.getAttribute('style')) return;
+      if (!hasMediaStylingHints(el)) return;
 
       pendingBackgroundCheckQueue.push(el);
       if (!isBgCheckScheduled) {
@@ -1000,7 +1118,7 @@
 
   function handleBackgroundImage(el, imageSet) {
     // Fast path: skip elements with no styling hints to avoid expensive getComputedStyle calls
-    if (el.className || el.id || el.getAttribute('style')) {
+    if (hasMediaStylingHints(el)) {
       pendingBackgroundCheckQueue.push(el);
       if (!isBgCheckScheduled) {
         isBgCheckScheduled = true;
