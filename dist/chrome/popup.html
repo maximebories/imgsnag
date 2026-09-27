@@ -235,7 +235,8 @@
         display: none;
         align-items: center;
         justify-content: space-between;
-        flex-wrap: wrap;
+        flex-wrap: nowrap;
+        min-width: 0;
         padding: 8px;
         background: #fff;
         border-top: 1px solid #e0e0e0;
@@ -265,12 +266,14 @@
       .actions {
         display: flex;
         align-items: center;
-        flex-wrap: wrap;
+        flex-wrap: nowrap;
+        min-width: 0;
         justify-content: flex-end;
         gap: 6px;
       }
 
       kbd#shortcut-hint {
+        flex-shrink: 0;
         font-family: inherit;
         font-size: 11px;
         color: #666;
@@ -288,6 +291,10 @@
         border-radius: 4px;
         cursor: pointer;
         white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        min-width: 0;
+        flex-shrink: 1;
         transition: background 0.15s, opacity 0.15s;
       }
       .actions button:focus-visible {
@@ -328,6 +335,10 @@
           color: #a3a3a3;
           background: #374151;
           border-color: #4b5563;
+        }
+        .spinner {
+          border-color: #333;
+          border-top-color: #a3a3a3;
         }
       }
 
