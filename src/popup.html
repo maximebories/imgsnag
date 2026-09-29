@@ -235,7 +235,7 @@
         display: none;
         align-items: center;
         justify-content: space-between;
-        flex-wrap: wrap;
+        flex-wrap: nowrap;
         padding: 8px;
         background: #fff;
         border-top: 1px solid #e0e0e0;
@@ -257,17 +257,17 @@
         white-space: nowrap;
       }
 
-      /* Both levels wrap. #bar wrapping only moves .actions onto its own line;
-         the row itself holds two nowrap buttons plus the shortcut hint, which
-         in fr and es is wider than the 400px popup on its own. body is
-         overflow:hidden, so without this the overflow is clipped silently
-         rather than wrapped — a button with no visible sign it was cut. */
+      /* Both levels use flex-wrap: nowrap to prevent the bar from expanding vertically
+         in height-constrained popups (400px x 500px). When labels in fr and es push
+         the width beyond the 400px budget, min-width: 0 allows the containers
+         to shrink, delegating graceful truncation to the buttons themselves. */
       .actions {
         display: flex;
         align-items: center;
-        flex-wrap: wrap;
+        flex-wrap: nowrap;
         justify-content: flex-end;
         gap: 6px;
+        min-width: 0;
       }
 
       kbd#shortcut-hint {
@@ -279,6 +279,7 @@
         border-radius: 4px;
         padding: 2px 6px;
         white-space: nowrap;
+        flex-shrink: 0;
       }
 
       .actions button {
@@ -288,6 +289,9 @@
         border-radius: 4px;
         cursor: pointer;
         white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        min-width: 0;
         transition: background 0.15s, opacity 0.15s;
       }
       .actions button:focus-visible {
