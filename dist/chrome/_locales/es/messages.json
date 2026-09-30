@@ -100,6 +100,14 @@
     "message": "imgsnag-inline.svg",
     "description": "Filename shown in the cell label for a captured inline SVG. Must match the real download filename in background.js — do not translate."
   },
+  "popupShortcutCmd": {
+    "message": "Cmd",
+    "description": "The 'Cmd' modifier key on Mac keyboards, used in shortcuts."
+  },
+  "popupShortcutCtrl": {
+    "message": "Ctrl",
+    "description": "The 'Ctrl' modifier key on Windows/Linux keyboards, used in shortcuts."
+  },
   "popupShortcutKbd": {
     "message": "$MODIFIER$+Intro",
     "placeholders": {
