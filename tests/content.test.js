@@ -1185,3 +1185,64 @@ describe('resolveUrl', () => {
     });
   });
 });
+
+describe('MutationObserver regex sweep root node bypass', () => {
+  let extractRegexUrlsSpy;
+
+  beforeEach(() => {
+    jest.resetModules();
+
+    global.browser = {
+      runtime: {
+        sendMessage: jest.fn().mockResolvedValue(),
+        onConnect: { addListener: jest.fn() }
+      },
+      storage: {
+        sync: { get: jest.fn().mockResolvedValue({ disableDrag: false }) },
+        onChanged: { addListener: jest.fn() }
+      }
+    };
+
+    document.body.innerHTML = '';
+  });
+
+  afterEach(() => {
+    if (extractRegexUrlsSpy) {
+      extractRegexUrlsSpy.mockRestore();
+    }
+  });
+
+  it('skips dynamically added script tags without JSON types instead of bypassing the filter', async () => {
+    const content = require('../src/content.js');
+    extractRegexUrlsSpy = jest.spyOn(content, 'extractRegexUrls');
+
+    // Start the observer via the exported (or implicitly running) initialization
+    // The IIFE runs `initialScan()` which sets up the observer.
+
+    // Create a script tag with a type that should be rejected
+    const script = document.createElement('script');
+    script.type = 'text/javascript';
+    script.textContent = "var huge_js = 'http://example.com/image.jpg';";
+
+    // Add to DOM to trigger MutationObserver
+    document.body.appendChild(script);
+
+    // Wait for the next microtask (when MutationObserver callbacks run)
+    await Promise.resolve();
+
+    // The root node check prevents the TreeWalker from being created on the script tag,
+    // so extractRegexUrls should not be called on the script's text nodes.
+    // However, the script tag itself might be passed once to extractRegexUrls (as the root element).
+    // Let's verify that the text node itself (or the script element) does not result in the inner text being scanned.
+    // The loop calls extractRegexUrls(node) on the element node, then for child nodes using TreeWalker.
+
+    // In the code:
+    // extractRegexUrls(node, trackSweptImage); (on the element itself)
+    // Then TreeWalker walks children. If TreeWalker is skipped, the text node is skipped.
+    const textNode = script.firstChild;
+
+    // Check if the text node was ever passed to extractRegexUrls
+    const textNodeCalls = extractRegexUrlsSpy.mock.calls.filter(call => call[0] === textNode);
+    expect(textNodeCalls.length).toBe(0);
+  });
+});
