@@ -1085,6 +1085,23 @@
             extractUrlsFromElement(node, imageUrls, videoUrls);
           }
 
+          if (node.nodeType === Node.ELEMENT_NODE) {
+            if (node.tagName === 'STYLE') continue;
+            if (node.tagName === 'SCRIPT') {
+              const type = node.getAttribute('type');
+              if (type !== 'application/ld+json' && type !== 'application/json') continue;
+            }
+          } else if (node.nodeType === Node.TEXT_NODE) {
+            const parent = node.parentElement;
+            if (parent) {
+              if (parent.tagName === 'STYLE') continue;
+              if (parent.tagName === 'SCRIPT') {
+                const type = parent.getAttribute('type');
+                if (type !== 'application/ld+json' && type !== 'application/json') continue;
+              }
+            }
+          }
+
           if (node.nodeType === Node.ELEMENT_NODE || node.nodeType === Node.TEXT_NODE) {
             extractRegexUrls(node, trackSweptImage);
           }
