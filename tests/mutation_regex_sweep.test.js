@@ -74,4 +74,10 @@ describe('extractRegexUrls — shared text/attribute sweep', () => {
     expect(sweep(node)).toEqual(['https://example.com/repeat.jpg']);
     expect(sweep(node)).toEqual(['https://example.com/repeat.jpg']);
   });
+
+  it('rejects style elements in the root TreeWalker creation', () => {
+    const fs = require('fs');
+    const content = fs.readFileSync('src/content.js', 'utf8');
+    expect(content).toMatch(/if \(node.tagName === 'STYLE'\) {\s*shouldSweep = false;/);
+  });
 });

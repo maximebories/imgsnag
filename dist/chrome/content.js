@@ -68,7 +68,7 @@
   const SOURCE_URL_ATTRS = ['src', 'data-src', 'data-lazy-src', 'data-original'];
   const DATA_BG_ATTRS = ['data-bg', 'data-bg-src', 'data-background', 'data-background-image'];
   // Tags worth an attribute sweep when they turn up in a MutationObserver batch
-  const TAG_SET = new Set(['IMG', 'VIDEO', 'SOURCE', 'PICTURE', 'DIV', 'SPAN', 'SECTION', 'ARTICLE', 'HEADER', 'FOOTER', 'A', 'LI', 'FIGURE', 'I', 'META', 'LINK', 'OBJECT', 'EMBED', 'IFRAME', 'image', 'IMAGE', 'INPUT']);
+  const TAG_SET = new Set(['IMG', 'VIDEO', 'SOURCE', 'PICTURE', 'DIV', 'SPAN', 'SECTION', 'ARTICLE', 'HEADER', 'FOOTER', 'A', 'LI', 'FIGURE', 'I', 'META', 'LINK', 'OBJECT', 'EMBED', 'IFRAME', 'image', 'IMAGE', 'INPUT', 'BUTTON', 'MAIN', 'DIALOG']);
 
   // <input type="image"> renders and resolves its src exactly like an <img>, so every
   // path that reads an <img> treats it the same way. `el.type` is the IDL attribute,
@@ -1090,28 +1090,40 @@
           }
 
           if (node.nodeType === Node.ELEMENT_NODE) {
-            const walker = document.createTreeWalker(
-              node,
-              NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT,
-              REGEX_SWEEP_FILTER
-            );
+            let shouldSweep = true;
+            if (node.tagName === 'STYLE') {
+              shouldSweep = false;
+            } else if (node.tagName === 'SCRIPT') {
+              const type = node.getAttribute('type');
+              if (type !== 'application/ld+json' && type !== 'application/json') {
+                shouldSweep = false;
+              }
+            }
 
-            let el;
-            while ((el = walker.nextNode())) {
-              extractRegexUrls(el, trackSweptImage);
-              if (el.nodeType !== Node.ELEMENT_NODE) continue;
-              const tag = el.tagName;
-              if (
-                TAG_SET.has(tag) ||
-                (el.hasAttributes && el.hasAttributes() && (
-                  el.hasAttribute('srcset') || el.hasAttribute('data-srcset') || el.hasAttribute('data-bgset') || el.hasAttribute('imagesrcset') ||
-                  el.hasAttribute('data-src') || el.hasAttribute('data-lazy-src') || el.hasAttribute('data-original') ||
-                  el.hasAttribute('data-bg') || el.hasAttribute('data-bg-src') || el.hasAttribute('data-background') ||
-                  el.hasAttribute('data-background-image') ||
-                  (el.hasAttribute('style') && el.style && el.style.backgroundImage)
-                ))
-              ) {
-                extractUrlsFromElement(el, imageUrls, videoUrls);
+            if (shouldSweep) {
+              const walker = document.createTreeWalker(
+                node,
+                NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT,
+                REGEX_SWEEP_FILTER
+              );
+
+              let el;
+              while ((el = walker.nextNode())) {
+                extractRegexUrls(el, trackSweptImage);
+                if (el.nodeType !== Node.ELEMENT_NODE) continue;
+                const tag = el.tagName;
+                if (
+                  TAG_SET.has(tag) ||
+                  (el.hasAttributes && el.hasAttributes() && (
+                    el.hasAttribute('srcset') || el.hasAttribute('data-srcset') || el.hasAttribute('data-bgset') || el.hasAttribute('imagesrcset') ||
+                    el.hasAttribute('data-src') || el.hasAttribute('data-lazy-src') || el.hasAttribute('data-original') ||
+                    el.hasAttribute('data-bg') || el.hasAttribute('data-bg-src') || el.hasAttribute('data-background') ||
+                    el.hasAttribute('data-background-image') ||
+                    (el.hasAttribute('style') && el.style && (el.style.backgroundImage || el.getAttribute('style').toLowerCase().includes('mask')))
+                  ))
+                ) {
+                  extractUrlsFromElement(el, imageUrls, videoUrls);
+                }
               }
             }
           }

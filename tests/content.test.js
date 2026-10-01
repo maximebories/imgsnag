@@ -1117,6 +1117,21 @@ describe('collectMediaUrls initial scan unified traversal', () => {
   });
 });
 
+describe('MutationObserver target evaluations', () => {
+  it('verifies src/content.js contains the proper tags and mask evaluations for MutationObserver', () => {
+    const fs = require('fs');
+    const content = fs.readFileSync('src/content.js', 'utf8');
+
+    // Tests that TAG_SET covers these semantic elements
+    expect(content).toMatch(/const TAG_SET = new Set\(\[.*'BUTTON'.*\]\)/);
+    expect(content).toMatch(/const TAG_SET = new Set\(\[.*'MAIN'.*\]\)/);
+    expect(content).toMatch(/const TAG_SET = new Set\(\[.*'DIALOG'.*\]\)/);
+
+    // Tests that the inline mask properties bypass TAG_SET exclusion checks
+    expect(content).toMatch(/el\.style\.backgroundImage \|\| el\.getAttribute\('style'\)\.toLowerCase\(\)\.includes\('mask'\)/);
+  });
+});
+
 describe('BG_IMAGE_SELECTORS gate', () => {
   // The static scan only ever passes elements matching this selector to
   // getCssMediaUrls, so a URL the extractor *could* read is still invisible if
