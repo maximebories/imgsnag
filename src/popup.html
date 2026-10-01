@@ -235,7 +235,8 @@
         display: none;
         align-items: center;
         justify-content: space-between;
-        flex-wrap: wrap;
+        flex-wrap: nowrap;
+        min-width: 0;
         padding: 8px;
         background: #fff;
         border-top: 1px solid #e0e0e0;
@@ -248,7 +249,7 @@
          is repeated in #btn-selected's label, and aria-live still announces
          the full text. A 0% basis keeps it from forcing #bar onto two lines. */
       #counter {
-        flex: 1 1 0%;
+        flex: 0 1 auto;
         min-width: 0;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -265,7 +266,8 @@
       .actions {
         display: flex;
         align-items: center;
-        flex-wrap: wrap;
+        flex-wrap: nowrap;
+        min-width: 0;
         justify-content: flex-end;
         gap: 6px;
       }
@@ -288,6 +290,9 @@
         border-radius: 4px;
         cursor: pointer;
         white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        min-width: 0;
         transition: background 0.15s, opacity 0.15s;
       }
       .actions button:focus-visible {
