@@ -1085,11 +1085,30 @@
             extractUrlsFromElement(node, imageUrls, videoUrls);
           }
 
+          if (node.nodeType === Node.TEXT_NODE) {
+            const parent = node.parentElement;
+            if (parent) {
+              const tag = parent.tagName;
+              if (tag === 'STYLE') continue;
+              if (tag === 'SCRIPT') {
+                const type = parent.getAttribute('type');
+                if (type !== 'application/ld+json' && type !== 'application/json') continue;
+              }
+            }
+          }
+
           if (node.nodeType === Node.ELEMENT_NODE || node.nodeType === Node.TEXT_NODE) {
             extractRegexUrls(node, trackSweptImage);
           }
 
           if (node.nodeType === Node.ELEMENT_NODE) {
+            const tag = node.tagName;
+            if (tag === 'STYLE') continue;
+            if (tag === 'SCRIPT') {
+              const type = node.getAttribute('type');
+              if (type !== 'application/ld+json' && type !== 'application/json') continue;
+            }
+
             const walker = document.createTreeWalker(
               node,
               NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT,
