@@ -206,7 +206,7 @@
     const total = allUrls.size;
     const hiddenCount = imageEntries.filter(e => e.cell.hidden).length;
     const isMac = navigator.platform.includes('Mac');
-    const mod = isMac ? 'Cmd' : 'Ctrl';
+    const mod = isMac ? browser.i18n.getMessage('popupShortcutCmd') : browser.i18n.getMessage('popupShortcutCtrl');
 
     if (n > 0) {
       const key = pluralRules().select(n) === 'one' ? 'popupSelectedOne' : 'popupSelectedOther';
