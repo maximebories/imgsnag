@@ -58,3 +58,7 @@
 **Learning:** While routing tests (like `tests/popup_plural.test.js`) verify that `pluralRules().select()` picks the expected key (e.g., `popupHiddenCountOne`), they often mock `getMessage` and cannot prove the key actually exists in the locale files. `getMessage` silently returns `''` for missing keys, leading to blank UI without test failures.
 **Action:** A pluralisation change must include two tests: one for routing (the rule picks the right key) and one for existence (the key exists in real `messages.json` files for all locales, carries the required `$COUNT$` placeholder, and the key sets match identically).
 **Boundary:** The current `pluralRules()` mapping hardcodes a two-bucket assumption (`one` vs everything else). This holds for `en`, `es`, and `fr`, but fails for languages with `few`/`many`/`two` (e.g., Polish, Russian, Arabic). The day a fourth locale with different plural rules is added, the mapping logic in `src/popup.js` must be updated alongside the locale files.
+
+## 2026-10-02 - Hardcoded keyboard modifier strings bypass internationalization
+**Learning:** Hardcoded keyboard modifier strings (like 'Cmd' or 'Ctrl') bypass internationalization and assume English terminology and capitalization, which may not be appropriate for all locales.
+**Action:** Always extract keyboard modifiers into locale files via `browser.i18n.getMessage` (e.g. `popupShortcutCmd` and `popupShortcutCtrl`) so translators can explicitly control their representation for specific languages.

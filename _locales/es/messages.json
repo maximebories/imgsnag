@@ -144,5 +144,13 @@
       }
     },
     "description": "Message showing the number of smaller duplicate images collapsed from the UI (plural form)."
+  },
+  "popupShortcutCmd": {
+    "message": "Cmd",
+    "description": "Keyboard modifier for macOS."
+  },
+  "popupShortcutCtrl": {
+    "message": "Ctrl",
+    "description": "Keyboard modifier for Windows/Linux."
   }
 }
