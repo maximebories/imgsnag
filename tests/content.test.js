@@ -763,7 +763,20 @@ describe('handleSrcset', () => {
       srcset: 'https://example.com/from-srcset.jpg 800w',
       imagesrcset: 'https://example.com/from-imagesrcset.jpg 900w'
     }), set);
-    expect([...set]).toEqual(['https://example.com/from-srcset.jpg']);
+    expect([...set]).toContain('https://example.com/from-srcset.jpg');
+    // It now collects all valid options without short-circuiting, so it will contain imagesrcset too.
+    expect([...set]).toContain('https://example.com/from-imagesrcset.jpg');
+  });
+
+  it('does not short-circuit when earlier srcset variants are data: placeholders', () => {
+    const set = new Set();
+    handleSrcset(el('img', {
+      srcset: 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7 1w',
+      'data-srcset': 'https://example.com/real-image.jpg 1000w'
+    }), set);
+    // Notice that trackImageUrl inside handleSrcset automatically removes data: URLs
+    expect([...set]).toContain('https://example.com/real-image.jpg');
+    expect([...set]).not.toContain('data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7');
   });
 });
 
@@ -1119,6 +1132,17 @@ describe('collectMediaUrls initial scan unified traversal', () => {
 
     expect(imageUrls.has('https://example.com/elected.jpg')).toBe(true);
     expect(imageUrls.has('https://example.com/picture-fallback')).toBe(false);
+  });
+
+  it('collectImages: does not short-circuit when earlier srcset variants are data: placeholders', () => {
+    const { collectMediaUrls } = require('../src/content.js');
+    document.body.innerHTML = `
+      <img src="https://example.com/fallback.jpg"
+           srcset="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7 1w"
+           data-srcset="https://example.com/real-image.jpg 1000w">
+    `;
+    const res = collectMediaUrls();
+    expect(res.imageUrls.has('https://example.com/real-image.jpg')).toBe(true);
   });
 });
 
