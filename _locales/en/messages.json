@@ -54,6 +54,10 @@
     "message": "Videos",
     "description": "Header for the video section in the popup."
   },
+  "popupImages": {
+    "message": "Images",
+    "description": "Accessible label for the main image grid in the popup."
+  },
   "popupDownloadSelected": {
     "message": "Download selected ($COUNT$)",
     "description": "Button label for downloading only the selected media.",
