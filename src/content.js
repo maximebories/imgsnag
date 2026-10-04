@@ -1086,7 +1086,21 @@
           }
 
           if (node.nodeType === Node.ELEMENT_NODE || node.nodeType === Node.TEXT_NODE) {
-            extractRegexUrls(node, trackSweptImage);
+            let skipText = false;
+            if (node.nodeType === Node.TEXT_NODE && node.parentElement) {
+              const pTag = node.parentElement.tagName;
+              if (pTag === 'STYLE') {
+                skipText = true;
+              } else if (pTag === 'SCRIPT') {
+                const pType = node.parentElement.getAttribute('type');
+                if (pType !== 'application/ld+json' && pType !== 'application/json') {
+                  skipText = true;
+                }
+              }
+            }
+            if (!skipText) {
+              extractRegexUrls(node, trackSweptImage);
+            }
           }
 
           if (node.nodeType === Node.ELEMENT_NODE) {
