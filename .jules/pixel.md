@@ -103,3 +103,7 @@
 ## 2026-10-02 - Measured Bottom Bar Height
 **Learning:** Answering the open question regarding the bottom bar layout under truncation conditions (`flex: 1 1 0%` basis): headless measurements of `#bar` with simulated 99 selected out of 99 total (`n=99`) in en, es, and fr locales using Puppeteer returned a consistent `bar.offsetHeight` of 42px. The `.actions` flex container reached 332px in width in French (the longest strings) but didn't trigger wrapping because the `#counter` truncated correctly. Therefore, the single-line budget holds and does not cut into the grid height.
 **Action:** Always verify theoretical layout wrapping with actual headless browser DOM rendering (e.g., using Puppeteer) to confirm whether layout assumptions or truncation fixes effectively prevent wrapping.
+
+## 2026-10-04 - Semantic Lists and Visual Headers
+**Learning:** When a UI contains multiple semantic lists (e.g., `<ul role="list">`), providing an explicit `aria-labelledby` linking each list to its visible header ensures screen readers announce clear group boundaries and maintain context for the list contents.
+**Action:** Always link semantic lists to their visible headers using `aria-labelledby` if such a header exists.
