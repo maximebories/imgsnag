@@ -36,6 +36,36 @@ describe('extractRegexUrls — shared text/attribute sweep', () => {
     expect(sweep(node)).toEqual(['https://example.com/late.jpg']);
   });
 
+  it('skips text nodes whose parent is a style element', () => {
+    const style = document.createElement('style');
+    const node = document.createTextNode('.bg { background-image: url("https://example.com/late.jpg"); }');
+    style.appendChild(node);
+    expect(sweep(node)).toEqual([]);
+  });
+
+  it('skips text nodes whose parent is a script element without JSON type', () => {
+    const script = document.createElement('script');
+    const node = document.createTextNode('var img = "https://example.com/late.jpg";');
+    script.appendChild(node);
+    expect(sweep(node)).toEqual([]);
+  });
+
+  it('extracts image URLs from text nodes whose parent is a JSON script element', () => {
+    const script = document.createElement('script');
+    script.setAttribute('type', 'application/json');
+    const node = document.createTextNode('{"image": "https://example.com/late.jpg"}');
+    script.appendChild(node);
+    expect(sweep(node)).toEqual(['https://example.com/late.jpg']);
+  });
+
+  it('extracts image URLs from text nodes whose parent is a JSON-LD script element', () => {
+    const script = document.createElement('script');
+    script.setAttribute('type', 'application/ld+json');
+    const node = document.createTextNode('{"image": "https://example.com/late.jpg"}');
+    script.appendChild(node);
+    expect(sweep(node)).toEqual(['https://example.com/late.jpg']);
+  });
+
   it('unescapes backslash-escaped URLs in JSON text', () => {
     const node = document.createTextNode('{"image": "https:\\/\\/example.com\\/escaped.gif"}');
     expect(sweep(node)).toEqual(['https://example.com/escaped.gif']);
