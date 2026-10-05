@@ -504,6 +504,13 @@
   // of a single node's text content or attribute values.
   function extractRegexUrls(node, trackImage) {
     if (node.nodeType === Node.TEXT_NODE) {
+      const parent = node.parentElement;
+      if (parent) {
+        const tag = parent.tagName;
+        if (tag === 'STYLE' || (tag === 'SCRIPT' && parent.type !== 'application/ld+json' && parent.type !== 'application/json')) {
+          return;
+        }
+      }
       if (node.nodeValue && HTTP_HINT_RE.test(node.nodeValue)) {
         let match;
         IMAGE_URL_RE.lastIndex = 0;
