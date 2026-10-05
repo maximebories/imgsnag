@@ -99,7 +99,7 @@
   let isDragDisabled = false;
 
   // Background image lazy evaluation queue (Feather: getComputedStyle batched at idle)
-  const pendingBackgroundCheckQueue = [];
+  const pendingBackgroundCheckQueue = new Set();
   let isBgCheckScheduled = false;
 
   // Helpers
@@ -476,7 +476,7 @@
       // Fast path: skip elements with no styling hints to avoid expensive getComputedStyle calls
       if (!el.className && !el.id && !el.getAttribute('style')) return;
 
-      pendingBackgroundCheckQueue.push(el);
+      pendingBackgroundCheckQueue.add(el);
       if (!isBgCheckScheduled) {
         isBgCheckScheduled = true;
         if (typeof requestIdleCallback !== 'undefined') {
@@ -921,8 +921,12 @@
       : () => Math.max(0, 50 - (performance.now() - start));
 
     let processed = 0;
-    while (processed < pendingBackgroundCheckQueue.length && timeRemaining() > 0) {
-      const el = pendingBackgroundCheckQueue[processed++];
+    const it = pendingBackgroundCheckQueue.values();
+    const toDelete = [];
+    while (processed < pendingBackgroundCheckQueue.size && timeRemaining() > 0) {
+      const el = it.next().value;
+      toDelete.push(el);
+      processed++;
       try {
         for (const raw of getCssMediaUrls(el)) {
           const url = resolveUrl(raw);
@@ -933,12 +937,14 @@
       }
     }
     if (processed > 0) {
-      pendingBackgroundCheckQueue.splice(0, processed);
+      for (const el of toDelete) {
+        pendingBackgroundCheckQueue.delete(el);
+      }
     }
 
     if (imageUrls.size > 0) addNewUrls(imageUrls, 'image');
 
-    if (pendingBackgroundCheckQueue.length > 0) {
+    if (pendingBackgroundCheckQueue.size > 0) {
       if (typeof requestIdleCallback !== 'undefined') {
         requestIdleCallback(processBgImageQueue);
       } else {
@@ -1001,7 +1007,7 @@
   function handleBackgroundImage(el, imageSet) {
     // Fast path: skip elements with no styling hints to avoid expensive getComputedStyle calls
     if (el.className || el.id || el.getAttribute('style')) {
-      pendingBackgroundCheckQueue.push(el);
+      pendingBackgroundCheckQueue.add(el);
       if (!isBgCheckScheduled) {
         isBgCheckScheduled = true;
         if (typeof requestIdleCallback !== 'undefined') {
@@ -1184,11 +1190,15 @@
       port.postMessage({ action: 'init', images: [...discoveredMedia.values()] });
 
       // Flush the background image check queue synchronously so the grid is complete
-      if (pendingBackgroundCheckQueue.length > 0) {
+      if (pendingBackgroundCheckQueue.size > 0) {
         const imageUrls = new Set();
         let processed = 0;
-        while (processed < pendingBackgroundCheckQueue.length) {
-          const el = pendingBackgroundCheckQueue[processed++];
+        const it = pendingBackgroundCheckQueue.values();
+        const toDelete = [];
+        while (processed < pendingBackgroundCheckQueue.size) {
+          const el = it.next().value;
+          toDelete.push(el);
+          processed++;
           try {
             for (const raw of getCssMediaUrls(el)) {
               const url = resolveUrl(raw);
@@ -1199,7 +1209,9 @@
           }
         }
         if (processed > 0) {
-          pendingBackgroundCheckQueue.splice(0, processed);
+          for (const el of toDelete) {
+            pendingBackgroundCheckQueue.delete(el);
+          }
         }
         if (imageUrls.size > 0) addNewUrls(imageUrls, 'image');
       }
