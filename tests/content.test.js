@@ -60,14 +60,19 @@ describe('extractBgImageUrls', () => {
     expect(extractBgImageUrls(bgValue)).toEqual(['img2.png', 'img1.png']);
   });
 
-  it('should extract URLs with extraneous spaces inside the parentheses (current regex behavior)', () => {
+  it('should extract URLs with extraneous spaces inside the parentheses', () => {
     const bgValue = "url(  'image.jpg'  )";
-    expect(extractBgImageUrls(bgValue)).toEqual(["  'image.jpg'  "]);
+    expect(extractBgImageUrls(bgValue)).toEqual(['image.jpg']);
   });
 
   it('should extract URLs with extraneous spaces and no quotes', () => {
     const bgValue = "url(  image.jpg  )";
-    expect(extractBgImageUrls(bgValue)).toEqual(["  image.jpg  "]);
+    expect(extractBgImageUrls(bgValue)).toEqual(['image.jpg']);
+  });
+
+  it('should extract URLs containing parentheses', () => {
+    const bgValue = "url('https://example.com/image(1).png')";
+    expect(extractBgImageUrls(bgValue)).toEqual(['https://example.com/image(1).png']);
   });
 
   it('should return empty array for random text', () => {
