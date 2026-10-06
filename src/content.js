@@ -192,15 +192,31 @@
 
   function extractBgImageUrls(bgValue) {
     const urls = [];
-    BG_URL_RE.lastIndex = 0;
-    let match;
-    while ((match = BG_URL_RE.exec(bgValue)) !== null) {
-      urls.push(match[1]);
+
+    const urlKeyword = 'url(';
+    let urlIdx = 0;
+    const lowerBg = bgValue.toLowerCase();
+    while ((urlIdx = lowerBg.indexOf(urlKeyword, urlIdx)) !== -1) {
+      const start = urlIdx + urlKeyword.length;
+      let depth = 1;
+      let i = start;
+      for (; i < bgValue.length; i++) {
+        if (bgValue[i] === '(') depth++;
+        else if (bgValue[i] === ')') depth--;
+        if (depth === 0) break;
+      }
+      if (depth === 0) {
+        let inner = bgValue.substring(start, i).trim();
+        if ((inner.startsWith('"') && inner.endsWith('"')) || (inner.startsWith("'") && inner.endsWith("'"))) {
+          inner = inner.substring(1, inner.length - 1);
+        }
+        if (inner) urls.push(inner);
+      }
+      urlIdx = i + 1;
     }
 
     const keyword = 'image-set(';
     let idx = 0;
-    const lowerBg = bgValue.toLowerCase();
     while ((idx = lowerBg.indexOf(keyword, idx)) !== -1) {
       const start = idx + keyword.length;
       let depth = 1;
