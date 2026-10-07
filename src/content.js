@@ -630,6 +630,61 @@
     return items;
   }
 
+  // <template> content extraction
+  // Evaluated on popup connect because getComputedStyle does not apply to disconnected
+  // template contents. We explicitly query the DocumentFragment and parse inline styles.
+  function collectTemplateMedia() {
+    const imageUrls = new Set();
+    const videoUrls = new Set();
+
+    const trackImage = (url) => trackImageUrl(url, imageUrls);
+
+    function processTemplate(template) {
+      if (!template.content) return;
+
+      template.content.querySelectorAll('*').forEach((el) => {
+        extractUrlsFromElement(el, imageUrls, videoUrls);
+
+        // getComputedStyle returns empty on disconnected elements, so manually extract
+        // inline background/mask styles.
+        if (el.style) {
+          const props = [
+            el.style.backgroundImage,
+            el.style.maskImage,
+            el.style.webkitMaskImage,
+            el.style.content
+          ];
+          for (const bg of props) {
+            if (bg && bg !== 'none' && bg !== 'normal') {
+              for (const raw of extractBgImageUrls(bg)) {
+                trackImageUrl(raw, imageUrls);
+              }
+            }
+          }
+        }
+      });
+
+      // The TreeWalker in the live document does not traverse into template.content.
+      const walker = document.createTreeWalker(
+        template.content,
+        NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT,
+        REGEX_SWEEP_FILTER
+      );
+
+      let node;
+      while ((node = walker.nextNode())) {
+        extractRegexUrls(node, trackImage);
+      }
+
+      // Process nested templates
+      template.content.querySelectorAll('template').forEach(processTemplate);
+    }
+
+    document.querySelectorAll('template').forEach(processTemplate);
+
+    return { imageUrls, videoUrls };
+  }
+
   // <noscript> fallback images (RFC #298 stage 1)
   // Evaluated on popup connect because it parses DOM. The HTML parser leaves
   // <noscript> content as raw text; we parse it into an inert Document to run
@@ -1181,6 +1236,11 @@
       if (noscriptMedia.imageUrls.size > 0) addNewUrls(noscriptMedia.imageUrls, 'image');
       if (noscriptMedia.videoUrls.size > 0) addNewUrls(noscriptMedia.videoUrls, 'video');
 
+      // Capture <template> media
+      const templateMedia = collectTemplateMedia();
+      if (templateMedia.imageUrls.size > 0) addNewUrls(templateMedia.imageUrls, 'image');
+      if (templateMedia.videoUrls.size > 0) addNewUrls(templateMedia.videoUrls, 'video');
+
       port.postMessage({ action: 'init', images: [...discoveredMedia.values()] });
 
       // Flush the background image check queue synchronously so the grid is complete
@@ -1353,6 +1413,6 @@
   syncDragPreference();
   browser.storage.onChanged.addListener(() => syncDragPreference());
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { handleImg, handleSrcset, trackImageUrl, buildDomSizeMap, getCssMediaUrls, extractBgImageUrls, resolveUrl, isVideoUrl, isImageUrl, isSvgUrl, parseSrcset, pickBestFromSrcset, collectInlineSvgs, collectNoscriptImages, handleEmbed, passesSizeFilter, handleMeta, collectMediaUrls, handleSource, handlePicture, handleSvgImage, handleDataBg, extractRegexUrls, handleVideo, filterImagesBySize, SIZE_PROBE_POOL_SIZE, REGEX_SWEEP_FILTER, BG_IMAGE_SELECTORS, addNewUrls, MAX_TRACKED_MEDIA };
+    module.exports = { handleImg, handleSrcset, trackImageUrl, buildDomSizeMap, getCssMediaUrls, extractBgImageUrls, resolveUrl, isVideoUrl, isImageUrl, isSvgUrl, parseSrcset, pickBestFromSrcset, collectInlineSvgs, collectNoscriptImages, collectTemplateMedia, handleEmbed, passesSizeFilter, handleMeta, collectMediaUrls, handleSource, handlePicture, handleSvgImage, handleDataBg, extractRegexUrls, handleVideo, filterImagesBySize, SIZE_PROBE_POOL_SIZE, REGEX_SWEEP_FILTER, BG_IMAGE_SELECTORS, addNewUrls, MAX_TRACKED_MEDIA };
   }
 })();
