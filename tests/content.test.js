@@ -1185,3 +1185,23 @@ describe('resolveUrl', () => {
     });
   });
 });
+
+describe('processBgImageQueue', () => {
+  const { processBgImageQueue } = require('../src/content.js');
+
+  it('handles truthy deadlines without timeRemaining method gracefully', () => {
+    // This pins the "duck-typing the capability" fix from feather.md.
+    // If the check was just `deadline ? deadline.timeRemaining()`, passing a truthy
+    // object or number without a timeRemaining function would crash.
+    // Calling processBgImageQueue with a timestamp (e.g. from a raw requestAnimationFrame fallback)
+    // should not throw a TypeError.
+
+    // We expect it not to throw.
+    expect(() => processBgImageQueue(12345)).not.toThrow();
+    expect(() => processBgImageQueue({ type: 'idle' })).not.toThrow();
+
+    // It should also work fine with undefined or a valid deadline.
+    expect(() => processBgImageQueue()).not.toThrow();
+    expect(() => processBgImageQueue({ timeRemaining: () => 50 })).not.toThrow();
+  });
+});
