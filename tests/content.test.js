@@ -60,14 +60,19 @@ describe('extractBgImageUrls', () => {
     expect(extractBgImageUrls(bgValue)).toEqual(['img2.png', 'img1.png']);
   });
 
-  it('should extract URLs with extraneous spaces inside the parentheses (current regex behavior)', () => {
+  it('should extract URLs with extraneous spaces inside the parentheses', () => {
     const bgValue = "url(  'image.jpg'  )";
-    expect(extractBgImageUrls(bgValue)).toEqual(["  'image.jpg'  "]);
+    expect(extractBgImageUrls(bgValue)).toEqual(['image.jpg']);
   });
 
   it('should extract URLs with extraneous spaces and no quotes', () => {
     const bgValue = "url(  image.jpg  )";
-    expect(extractBgImageUrls(bgValue)).toEqual(["  image.jpg  "]);
+    expect(extractBgImageUrls(bgValue)).toEqual(['image.jpg']);
+  });
+
+  it('should extract URLs containing parentheses', () => {
+    const bgValue = "url('https://example.com/image(1).png')";
+    expect(extractBgImageUrls(bgValue)).toEqual(['https://example.com/image(1).png']);
   });
 
   it('should return empty array for random text', () => {
@@ -758,7 +763,20 @@ describe('handleSrcset', () => {
       srcset: 'https://example.com/from-srcset.jpg 800w',
       imagesrcset: 'https://example.com/from-imagesrcset.jpg 900w'
     }), set);
-    expect([...set]).toEqual(['https://example.com/from-srcset.jpg']);
+    expect([...set]).toContain('https://example.com/from-srcset.jpg');
+    // It now collects all valid options without short-circuiting, so it will contain imagesrcset too.
+    expect([...set]).toContain('https://example.com/from-imagesrcset.jpg');
+  });
+
+  it('does not short-circuit when earlier srcset variants are data: placeholders', () => {
+    const set = new Set();
+    handleSrcset(el('img', {
+      srcset: 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7 1w',
+      'data-srcset': 'https://example.com/real-image.jpg 1000w'
+    }), set);
+    // Notice that trackImageUrl inside handleSrcset automatically removes data: URLs
+    expect([...set]).toContain('https://example.com/real-image.jpg');
+    expect([...set]).not.toContain('data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7');
   });
 });
 
@@ -1115,6 +1133,17 @@ describe('collectMediaUrls initial scan unified traversal', () => {
     expect(imageUrls.has('https://example.com/elected.jpg')).toBe(true);
     expect(imageUrls.has('https://example.com/picture-fallback')).toBe(false);
   });
+
+  it('collectImages: does not short-circuit when earlier srcset variants are data: placeholders', () => {
+    const { collectMediaUrls } = require('../src/content.js');
+    document.body.innerHTML = `
+      <img src="https://example.com/fallback.jpg"
+           srcset="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7 1w"
+           data-srcset="https://example.com/real-image.jpg 1000w">
+    `;
+    const res = collectMediaUrls();
+    expect(res.imageUrls.has('https://example.com/real-image.jpg')).toBe(true);
+  });
 });
 
 describe('BG_IMAGE_SELECTORS gate', () => {
@@ -1157,6 +1186,16 @@ describe('BG_IMAGE_SELECTORS gate', () => {
     // url(...)` case is unreachable anyway. Pins the trade-off.
     expect(matches('<b style="justify-content: center"></b>')).toBe(false);
     expect(matches('<p style="align-content: center"></p>')).toBe(false);
+  });
+});
+
+describe('MutationObserver tag extraction', () => {
+  const { TAG_SET } = require('../src/content.js');
+
+  it('includes tags from BG_IMAGE_SELECTORS in TAG_SET to avoid drift', () => {
+    expect(TAG_SET.has('BUTTON')).toBe(true);
+    expect(TAG_SET.has('MAIN')).toBe(true);
+    expect(TAG_SET.has('DIALOG')).toBe(true);
   });
 });
 

@@ -506,6 +506,33 @@ describe('Background Script', () => {
     expect(global.mockStorage).not.toHaveProperty('dl_1');
   });
 
+  test('coalesces storage writes during bulk downloads', async () => {
+    const setSpy = jest.spyOn(global.browser.storage.local, 'set');
+
+    await messageListener({
+      action: 'download_images_bulk',
+      urls: [
+        'https://example.com/1.jpg',
+        'https://example.com/2.jpg',
+        'https://example.com/3.jpg'
+      ]
+    }, {});
+
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    // The background script should coalesce all download ID tracking writes
+    // that happen in the same microtask/macrotask into a single .set() call
+    expect(setSpy).toHaveBeenCalledTimes(1);
+
+    // Verify the single batched write contains all IDs
+    const lastCall = setSpy.mock.calls[0][0];
+    expect(lastCall).toHaveProperty('dl_1', true);
+    expect(lastCall).toHaveProperty('dl_2', true);
+    expect(lastCall).toHaveProperty('dl_3', true);
+
+    setSpy.mockRestore();
+  });
+
   test('storage-backed download tracking pins active downloads to storage.local', async () => {
     // 1. Verify storage is initially empty
     expect(global.mockStorage).toEqual({});
