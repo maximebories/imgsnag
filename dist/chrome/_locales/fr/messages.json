@@ -54,6 +54,10 @@
     "message": "Vidéos",
     "description": "Header for the video section in the popup."
   },
+  "popupImages": {
+    "message": "Images",
+    "description": "Accessible label for the main image grid in the popup."
+  },
   "popupDownloadSelected": {
     "message": "Télécharger la sélection ($COUNT$)",
     "description": "Button label for downloading only the selected media.",
@@ -144,5 +148,13 @@
       }
     },
     "description": "Message showing the number of smaller duplicate images collapsed from the UI (plural form)."
+  },
+  "popupShortcutCmd": {
+    "message": "Cmd",
+    "description": "Keyboard modifier for macOS."
+  },
+  "popupShortcutCtrl": {
+    "message": "Ctrl",
+    "description": "Keyboard modifier for Windows/Linux."
   }
 }

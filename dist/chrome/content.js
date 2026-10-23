@@ -192,15 +192,31 @@
 
   function extractBgImageUrls(bgValue) {
     const urls = [];
-    BG_URL_RE.lastIndex = 0;
-    let match;
-    while ((match = BG_URL_RE.exec(bgValue)) !== null) {
-      urls.push(match[1]);
+
+    const urlKeyword = 'url(';
+    let urlIdx = 0;
+    const lowerBg = bgValue.toLowerCase();
+    while ((urlIdx = lowerBg.indexOf(urlKeyword, urlIdx)) !== -1) {
+      const start = urlIdx + urlKeyword.length;
+      let depth = 1;
+      let i = start;
+      for (; i < bgValue.length; i++) {
+        if (bgValue[i] === '(') depth++;
+        else if (bgValue[i] === ')') depth--;
+        if (depth === 0) break;
+      }
+      if (depth === 0) {
+        let inner = bgValue.substring(start, i).trim();
+        if ((inner.startsWith('"') && inner.endsWith('"')) || (inner.startsWith("'") && inner.endsWith("'"))) {
+          inner = inner.substring(1, inner.length - 1);
+        }
+        if (inner) urls.push(inner);
+      }
+      urlIdx = i + 1;
     }
 
     const keyword = 'image-set(';
     let idx = 0;
-    const lowerBg = bgValue.toLowerCase();
     while ((idx = lowerBg.indexOf(keyword, idx)) !== -1) {
       const start = idx + keyword.length;
       let depth = 1;
@@ -401,9 +417,18 @@
     document.querySelectorAll(IMG_LIKE_SELECTOR).forEach((img) => {
       const inPicture = img.parentElement?.tagName === 'PICTURE';
       const hasSet = img.hasAttribute('srcset') || img.hasAttribute('data-srcset');
-      const setUsable = inPicture || (hasSet && isRealMediaUrl(
-        pickBestFromSrcset(img.getAttribute('srcset')) || pickBestFromSrcset(img.getAttribute('data-srcset'))
-      ));
+
+      let setUsable = inPicture;
+      if (!inPicture && hasSet) {
+        for (const attr of SOURCE_SRCSET_ATTRS) {
+          const val = pickBestFromSrcset(img.getAttribute(attr));
+          if (val && isRealMediaUrl(val)) {
+            setUsable = true;
+            break;
+          }
+        }
+      }
+
       if (img.src && !setUsable) trackImage(img.src);
       if (img.hasAttribute('data-src')) trackImage(img.getAttribute('data-src'));
       if (img.hasAttribute('data-lazy-src')) trackImage(img.getAttribute('data-lazy-src'));
@@ -414,11 +439,11 @@
     // <picture> sources are handled per-picture below (format alternatives).
     document.querySelectorAll('[srcset], [data-srcset], [data-bgset], [imagesrcset]').forEach((el) => {
       if (el.tagName === 'SOURCE' && el.parentElement?.tagName === 'PICTURE') return;
-      const best = pickBestFromSrcset(el.getAttribute('srcset')) ||
-                   pickBestFromSrcset(el.getAttribute('data-srcset')) ||
-                   pickBestFromSrcset(el.getAttribute('data-bgset')) ||
-                   pickBestFromSrcset(el.getAttribute('imagesrcset'));
-      if (best) trackImage(best);
+      const attrs = ['srcset', 'data-srcset', 'data-bgset', 'imagesrcset'];
+      for (const attr of attrs) {
+        const best = pickBestFromSrcset(el.getAttribute(attr));
+        if (best) trackImage(best);
+      }
     });
 
     document.querySelectorAll('[data-bg], [data-bg-src], [data-background], [data-background-image]').forEach((el) => {
@@ -504,6 +529,13 @@
   // of a single node's text content or attribute values.
   function extractRegexUrls(node, trackImage) {
     if (node.nodeType === Node.TEXT_NODE) {
+      const parent = node.parentElement;
+      if (parent) {
+        const tag = parent.tagName;
+        if (tag === 'STYLE' || (tag === 'SCRIPT' && parent.type !== 'application/ld+json' && parent.type !== 'application/json')) {
+          return;
+        }
+      }
       if (node.nodeValue && HTTP_HINT_RE.test(node.nodeValue)) {
         let match;
         IMAGE_URL_RE.lastIndex = 0;
@@ -838,7 +870,13 @@
         if (el.parentElement?.tagName === 'PICTURE') {
           realSet = true; // Handled per-picture, so we skip src here to avoid duplicates.
         } else {
-          realSet = isRealMediaUrl(pickBestFromSrcset(el.getAttribute('srcset')) || pickBestFromSrcset(el.getAttribute('data-srcset')));
+          for (const attr of SOURCE_SRCSET_ATTRS) {
+            const val = pickBestFromSrcset(el.getAttribute(attr));
+            if (val && isRealMediaUrl(val)) {
+              realSet = true;
+              break;
+            }
+          }
         }
       }
       const attrs = ['src', 'data-src', 'data-lazy-src', 'data-original'];
@@ -865,12 +903,12 @@
     if (el.hasAttributes && el.hasAttributes()) {
       // Picture sources are format alternatives handled by handleSource
       if (el.tagName === 'SOURCE' && el.parentElement?.tagName === 'PICTURE') return;
-      const raw = pickBestFromSrcset(el.getAttribute('srcset')) ||
-                  pickBestFromSrcset(el.getAttribute('data-srcset')) ||
-                  pickBestFromSrcset(el.getAttribute('data-bgset')) ||
-                  pickBestFromSrcset(el.getAttribute('imagesrcset'));
-      if (raw) {
-        trackImageUrl(raw, imageSet);
+      const attrs = ['srcset', 'data-srcset', 'data-bgset', 'imagesrcset'];
+      for (const attr of attrs) {
+        const raw = pickBestFromSrcset(el.getAttribute(attr));
+        if (raw) {
+          trackImageUrl(raw, imageSet);
+        }
       }
     }
   }
