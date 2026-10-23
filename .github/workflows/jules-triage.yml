@@ -1,0 +1,54 @@
+name: Jules triage
+
+# Nightly orchestration triage: reviews open PRs and Jules sessions, merges
+# accepted work to main, closes rejections, replies to stuck sessions.
+# The prompt lives in .github/jules-triage-prompt.md — inside the triage
+# agent's own deny-list, so a run can never rewrite its instructions.
+#
+# Required repository secrets:
+#   ANTHROPIC_API_KEY  — Claude API key for the headless run
+#   JULES_API_KEY      — read by tools/jules.py in its own process
+
+on:
+  schedule:
+    - cron: "17 22 * * *" # 23:17 Paris in winter, 00:17 in summer
+  workflow_dispatch:
+
+concurrency:
+  group: jules-triage
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  triage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # full history: triage compares branches against main
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm install -g @anthropic-ai/claude-code
+
+      - name: Configure git identity
+        run: |
+          git config user.name "Maxime Bories"
+          git config user.email "mb@meteorage.com"
+
+      - name: Run nightly triage
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          JULES_API_KEY: ${{ secrets.JULES_API_KEY }}
+          GH_TOKEN: ${{ github.token }}
+        run: claude --dangerously-skip-permissions -p "$(cat .github/jules-triage-prompt.md)"
