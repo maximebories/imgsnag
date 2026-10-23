@@ -210,6 +210,20 @@ describe('Background Script', () => {
     expect(response).toEqual({ success: false, error: 'Simulated download failure' });
   });
 
+  test('download_images_bulk: missing or invalid urls payload', async () => {
+    const invalidPayloads = [undefined, null, 'not-an-array', { length: 2 }];
+
+    for (const urls of invalidPayloads) {
+      const response = await messageListener({
+        action: 'download_images_bulk',
+        urls
+      }, {});
+
+      expect(response).toEqual({ success: false, error: 'Invalid urls payload' });
+    }
+    expect(downloads).toHaveLength(0);
+  });
+
   test('download_images_bulk: valid and invalid URLs', async () => {
     const setBadgeTextSpy = jest.spyOn(global.browser.action, 'setBadgeText');
 
