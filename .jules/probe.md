@@ -109,3 +109,7 @@
 ## 2026-09-21 - Coalesced storage writes regression test
 **Learning:** Verified that the Feather persona's fix for coalescing `storage.local.set` calls in `src/background.js` during bulk downloads (which prevents sending excessive async IPC round trips to the browser process) lacked a regression test. Without it, a refactor could accidentally revert to a discrete `.set()` per item, re-introducing the performance penalty.
 **Action:** Added a test in `test/background.test.js` under `coalesces storage writes during bulk downloads` that pins this batching behavior. The test initiates a bulk download and asserts that `global.browser.storage.local.set` is called exactly once with all combined `dl_<id>` keys in a single microtask batch, preserving the durability of the service worker download tracking without quadratic IPC overhead.
+
+## 2026-10-24 - Missing processBgImageQueue truthy deadline regression guard
+**Learning:** Verified that the Feather persona's fix for checking `typeof deadline.timeRemaining === 'function'` in `processBgImageQueue` (preventing a crash when a truthy argument without that method is passed, like a timestamp) lacked a regression test.
+**Action:** Exported `processBgImageQueue` from `src/content.js` and added a regression test in `tests/content.test.js` to ensure the function handles truthy deadlines without a `timeRemaining` method gracefully by falling back to the 50ms wall-clock bound without throwing a `TypeError`.
