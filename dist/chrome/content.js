@@ -68,7 +68,7 @@
   const SOURCE_URL_ATTRS = ['src', 'data-src', 'data-lazy-src', 'data-original'];
   const DATA_BG_ATTRS = ['data-bg', 'data-bg-src', 'data-background', 'data-background-image'];
   // Tags worth an attribute sweep when they turn up in a MutationObserver batch
-  const TAG_SET = new Set(['IMG', 'VIDEO', 'SOURCE', 'PICTURE', 'DIV', 'SPAN', 'SECTION', 'ARTICLE', 'HEADER', 'FOOTER', 'A', 'LI', 'FIGURE', 'I', 'META', 'LINK', 'OBJECT', 'EMBED', 'IFRAME', 'image', 'IMAGE', 'INPUT']);
+  const TAG_SET = new Set(['IMG', 'VIDEO', 'SOURCE', 'PICTURE', 'DIV', 'SPAN', 'SECTION', 'ARTICLE', 'HEADER', 'FOOTER', 'A', 'LI', 'FIGURE', 'I', 'META', 'LINK', 'OBJECT', 'EMBED', 'IFRAME', 'image', 'IMAGE', 'INPUT', 'BUTTON', 'MAIN', 'DIALOG']);
 
   // <input type="image"> renders and resolves its src exactly like an <img>, so every
   // path that reads an <img> treats it the same way. `el.type` is the IDL attribute,
@@ -244,7 +244,7 @@
     const urls = [];
     try {
       const rawStyle = el.getAttribute('style') || '';
-      const hasExternalStyling = el.className || el.id;
+      const hasExternalStyling = el.hasAttribute('class') || el.id;
       const hasInlineMaskOrContent = rawStyle.includes('mask') || rawStyle.includes('content');
 
       const canSkipComputed = !useDisplayAccurate && !hasExternalStyling && !hasInlineMaskOrContent;
@@ -499,7 +499,7 @@
     // CSS background-image on likely container elements
     document.querySelectorAll(BG_IMAGE_SELECTORS).forEach((el) => {
       // Fast path: skip elements with no styling hints to avoid expensive getComputedStyle calls
-      if (!el.className && !el.id && !el.getAttribute('style')) return;
+      if (!el.hasAttribute('class') && !el.id && !el.getAttribute('style')) return;
 
       pendingBackgroundCheckQueue.push(el);
       if (!isBgCheckScheduled) {
@@ -1038,7 +1038,7 @@
 
   function handleBackgroundImage(el, imageSet) {
     // Fast path: skip elements with no styling hints to avoid expensive getComputedStyle calls
-    if (el.className || el.id || el.getAttribute('style')) {
+    if (el.hasAttribute('class') || el.id || el.getAttribute('style')) {
       pendingBackgroundCheckQueue.push(el);
       if (!isBgCheckScheduled) {
         isBgCheckScheduled = true;
@@ -1146,7 +1146,7 @@
                   el.hasAttribute('data-src') || el.hasAttribute('data-lazy-src') || el.hasAttribute('data-original') ||
                   el.hasAttribute('data-bg') || el.hasAttribute('data-bg-src') || el.hasAttribute('data-background') ||
                   el.hasAttribute('data-background-image') ||
-                  (el.hasAttribute('style') && el.style && el.style.backgroundImage)
+                  (el.hasAttribute('style') && (el.getAttribute('style').toLowerCase().includes('background') || el.getAttribute('style').toLowerCase().includes('mask')))
                 ))
               ) {
                 extractUrlsFromElement(el, imageUrls, videoUrls);
@@ -1391,6 +1391,6 @@
   syncDragPreference();
   browser.storage.onChanged.addListener(() => syncDragPreference());
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { handleImg, handleSrcset, trackImageUrl, buildDomSizeMap, getCssMediaUrls, extractBgImageUrls, resolveUrl, isVideoUrl, isImageUrl, isSvgUrl, parseSrcset, pickBestFromSrcset, collectInlineSvgs, collectNoscriptImages, handleEmbed, passesSizeFilter, handleMeta, collectMediaUrls, handleSource, handlePicture, handleSvgImage, handleDataBg, extractRegexUrls, handleVideo, filterImagesBySize, SIZE_PROBE_POOL_SIZE, REGEX_SWEEP_FILTER, BG_IMAGE_SELECTORS, addNewUrls, MAX_TRACKED_MEDIA };
+    module.exports = { handleImg, handleSrcset, trackImageUrl, buildDomSizeMap, getCssMediaUrls, extractBgImageUrls, resolveUrl, isVideoUrl, isImageUrl, isSvgUrl, parseSrcset, pickBestFromSrcset, collectInlineSvgs, collectNoscriptImages, handleEmbed, passesSizeFilter, handleMeta, collectMediaUrls, handleSource, handlePicture, handleSvgImage, handleDataBg, extractRegexUrls, handleVideo, filterImagesBySize, SIZE_PROBE_POOL_SIZE, REGEX_SWEEP_FILTER, BG_IMAGE_SELECTORS, addNewUrls, MAX_TRACKED_MEDIA, TAG_SET };
   }
 })();
