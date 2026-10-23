@@ -1,0 +1,2 @@
+No-op.
+Both builds are in lockstep and the differences (service_worker vs scripts, icon sizes, gecko settings) are intentional and already journaled.
