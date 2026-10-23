@@ -6,8 +6,9 @@ name: Jules triage
 # agent's own deny-list, so a run can never rewrite its instructions.
 #
 # Required repository secrets:
-#   ANTHROPIC_API_KEY  — Claude API key for the headless run
-#   JULES_API_KEY      — read by tools/jules.py in its own process
+#   CLAUDE_CODE_OAUTH_TOKEN — from `claude setup-token` (subscription auth;
+#                             one-year lifetime, regenerate when it expires)
+#   JULES_API_KEY           — read by tools/jules.py in its own process
 
 on:
   schedule:
@@ -48,7 +49,9 @@ jobs:
 
       - name: Run nightly triage
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          # NOTE: do not add ANTHROPIC_API_KEY here — it outranks the OAuth
+          # token and would silently bill the API instead of the subscription.
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           JULES_API_KEY: ${{ secrets.JULES_API_KEY }}
           GH_TOKEN: ${{ github.token }}
         run: claude --dangerously-skip-permissions -p "$(cat .github/jules-triage-prompt.md)"
