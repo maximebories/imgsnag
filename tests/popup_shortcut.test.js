@@ -21,7 +21,15 @@ document.body.innerHTML = `
 `;
 
 global.browser = {
-  i18n: { getUILanguage: () => 'en', getMessage: (k, arr) => arr ? arr.join(',') : k },
+  i18n: {
+    getUILanguage: () => 'en',
+    getMessage: (k, arr) => {
+      if (k === 'popupShortcutCmd') return 'Cmd';
+      if (k === 'popupShortcutCtrl') return 'Ctrl';
+      if (k === 'popupShortcutKbd' && arr) return arr[0] + '+Entrée'; // simulate localized formatting
+      return arr ? arr.join(',') : k;
+    }
+  },
   runtime: { sendMessage: jest.fn().mockResolvedValue() },
   tabs: { query: jest.fn().mockResolvedValue([]), connect: jest.fn() }
 };

@@ -2,9 +2,11 @@
 """Jules API helper for the nightly triage job.
 
 Exists so the triage agent never needs `python3 -c` (arbitrary code execution)
-or a raw `curl` carrying the API key on its command line. The key is read from
-the macOS Keychain inside this process and never printed, never passed as an
-argument, and never echoed back in output.
+or a raw `curl` carrying the API key on its command line. The key is read
+inside this process — from the JULES_API_KEY environment variable (cloud
+environments, where the secret is injected by the runner) or, failing that,
+from the macOS Keychain — and never printed, never passed as an argument,
+and never echoed back in output.
 
 Usage:
     python3 tools/jules.py list [--page-size N] [--state STATE]
@@ -18,6 +20,7 @@ message into the process table.
 
 import argparse
 import json
+import os
 import subprocess
 import sys
 import urllib.error
@@ -28,7 +31,10 @@ KEYCHAIN_SERVICE = "jules-api-key"
 
 
 def api_key():
-    """Read the Jules API key from the login Keychain."""
+    """Read the Jules API key: JULES_API_KEY env var, else the login Keychain."""
+    key = os.environ.get("JULES_API_KEY", "").strip()
+    if key:
+        return key
     try:
         out = subprocess.run(
             ["security", "find-generic-password", "-s", KEYCHAIN_SERVICE, "-w"],
@@ -36,8 +42,11 @@ def api_key():
             text=True,
             check=True,
         )
-    except subprocess.CalledProcessError:
-        sys.exit(f"error: no Keychain item for service '{KEYCHAIN_SERVICE}'")
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        sys.exit(
+            "error: JULES_API_KEY is not set and no Keychain item for "
+            f"service '{KEYCHAIN_SERVICE}'"
+        )
     key = out.stdout.strip()
     if not key:
         sys.exit(f"error: Keychain item '{KEYCHAIN_SERVICE}' is empty")
