@@ -1236,10 +1236,13 @@
   function getTargetUrlsForElement(el) {
     const urls = [];
 
-    if (isImgLike(el) && el.src) {
-      const url = resolveUrl(el.src);
-      if (url && !url.startsWith('data:')) urls.push(url);
-      return urls;
+    if (isImgLike(el)) {
+      const targetUrl = el.currentSrc || el.src;
+      if (targetUrl) {
+        const url = resolveUrl(targetUrl);
+        if (url && !url.startsWith('data:')) urls.push(url);
+        return urls;
+      }
     }
 
     if (el.tagName === 'VIDEO') {
@@ -1264,6 +1267,23 @@
     for (const el of elements) {
       if (isImgLike(el)) {
         let hasValidImage = false;
+
+        if (el.currentSrc) {
+          const url = resolveUrl(el.currentSrc);
+          if (url && !url.startsWith('data:')) {
+            hasValidImage = true;
+            if (!downloadedUrls.has(url)) {
+              downloadedUrls.add(url);
+              sendToBackground({ action: 'download_image', url });
+              didDownload = true;
+            }
+          }
+        }
+
+        if (hasValidImage) {
+          continue;
+        }
+
         const attrs = ['data-src', 'data-lazy-src', 'data-original', 'src'];
         for (const attr of attrs) {
           let val;
@@ -1326,16 +1346,27 @@
     // Warden: Prevent hostile pages from synthesizing events to force downloads
     if (!e.isTrusted) return;
     if (isImgLike(e.target) && !isDragDisabled) {
-      const attrs = ['data-src', 'data-lazy-src', 'data-original', 'src'];
-      for (const attr of attrs) {
-        let val;
-        if (attr === 'src') val = e.target.src;
-        else val = e.target.hasAttribute(attr) ? e.target.getAttribute(attr) : null;
-        if (val) {
-          const url = resolveUrl(val);
-          if (url && !url.startsWith('data:')) {
-            sendToBackground({ action: 'download_image', url });
-            break; // Only trigger one download
+      let downloaded = false;
+      if (e.target.currentSrc) {
+        const url = resolveUrl(e.target.currentSrc);
+        if (url && !url.startsWith('data:')) {
+          sendToBackground({ action: 'download_image', url });
+          downloaded = true;
+        }
+      }
+
+      if (!downloaded) {
+        const attrs = ['data-src', 'data-lazy-src', 'data-original', 'src'];
+        for (const attr of attrs) {
+          let val;
+          if (attr === 'src') val = e.target.src;
+          else val = e.target.hasAttribute(attr) ? e.target.getAttribute(attr) : null;
+          if (val) {
+            const url = resolveUrl(val);
+            if (url && !url.startsWith('data:')) {
+              sendToBackground({ action: 'download_image', url });
+              break; // Only trigger one download
+            }
           }
         }
       }
