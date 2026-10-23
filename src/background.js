@@ -87,6 +87,9 @@ browser.runtime.onMessage.addListener((message, sender) => {
 
   if (message.action === 'download_images_bulk') {
     const urls = message.urls;
+    if (!Array.isArray(urls)) {
+      return Promise.resolve({ success: false, error: 'Invalid urls payload' });
+    }
     const validUrls = urls.map(getSafeDownloadUrl).filter(Boolean);
 
     const total = validUrls.length;
