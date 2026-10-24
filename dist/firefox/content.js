@@ -662,6 +662,61 @@
     return items;
   }
 
+  // <template> content extraction
+  // Evaluated on popup connect because getComputedStyle does not apply to disconnected
+  // template contents. We explicitly query the DocumentFragment and parse inline styles.
+  function collectTemplateMedia() {
+    const imageUrls = new Set();
+    const videoUrls = new Set();
+
+    const trackImage = (url) => trackImageUrl(url, imageUrls);
+
+    function processTemplate(template) {
+      if (!template.content) return;
+
+      template.content.querySelectorAll('*').forEach((el) => {
+        extractUrlsFromElement(el, imageUrls, videoUrls);
+
+        // getComputedStyle returns empty on disconnected elements, so manually extract
+        // inline background/mask styles.
+        if (el.style) {
+          const props = [
+            el.style.backgroundImage,
+            el.style.maskImage,
+            el.style.webkitMaskImage,
+            el.style.content
+          ];
+          for (const bg of props) {
+            if (bg && bg !== 'none' && bg !== 'normal') {
+              for (const raw of extractBgImageUrls(bg)) {
+                trackImageUrl(raw, imageUrls);
+              }
+            }
+          }
+        }
+      });
+
+      // The TreeWalker in the live document does not traverse into template.content.
+      const walker = document.createTreeWalker(
+        template.content,
+        NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT,
+        REGEX_SWEEP_FILTER
+      );
+
+      let node;
+      while ((node = walker.nextNode())) {
+        extractRegexUrls(node, trackImage);
+      }
+
+      // Process nested templates
+      template.content.querySelectorAll('template').forEach(processTemplate);
+    }
+
+    document.querySelectorAll('template').forEach(processTemplate);
+
+    return { imageUrls, videoUrls };
+  }
+
   // <noscript> fallback images (RFC #298 stage 1)
   // Evaluated on popup connect because it parses DOM. The HTML parser leaves
   // <noscript> content as raw text; we parse it into an inert Document to run
@@ -1219,6 +1274,11 @@
       if (noscriptMedia.imageUrls.size > 0) addNewUrls(noscriptMedia.imageUrls, 'image');
       if (noscriptMedia.videoUrls.size > 0) addNewUrls(noscriptMedia.videoUrls, 'video');
 
+      // Capture <template> media
+      const templateMedia = collectTemplateMedia();
+      if (templateMedia.imageUrls.size > 0) addNewUrls(templateMedia.imageUrls, 'image');
+      if (templateMedia.videoUrls.size > 0) addNewUrls(templateMedia.videoUrls, 'video');
+
       port.postMessage({ action: 'init', images: [...discoveredMedia.values()] });
 
       // Flush the background image check queue synchronously so the grid is complete
@@ -1274,10 +1334,13 @@
   function getTargetUrlsForElement(el) {
     const urls = [];
 
-    if (isImgLike(el) && el.src) {
-      const url = resolveUrl(el.src);
-      if (url && !url.startsWith('data:')) urls.push(url);
-      return urls;
+    if (isImgLike(el)) {
+      const targetUrl = el.currentSrc || el.src;
+      if (targetUrl) {
+        const url = resolveUrl(targetUrl);
+        if (url && !url.startsWith('data:')) urls.push(url);
+        return urls;
+      }
     }
 
     if (el.tagName === 'VIDEO') {
@@ -1302,6 +1365,23 @@
     for (const el of elements) {
       if (isImgLike(el)) {
         let hasValidImage = false;
+
+        if (el.currentSrc) {
+          const url = resolveUrl(el.currentSrc);
+          if (url && !url.startsWith('data:')) {
+            hasValidImage = true;
+            if (!downloadedUrls.has(url)) {
+              downloadedUrls.add(url);
+              sendToBackground({ action: 'download_image', url });
+              didDownload = true;
+            }
+          }
+        }
+
+        if (hasValidImage) {
+          continue;
+        }
+
         const attrs = ['data-src', 'data-lazy-src', 'data-original', 'src'];
         for (const attr of attrs) {
           let val;
@@ -1364,16 +1444,27 @@
     // Warden: Prevent hostile pages from synthesizing events to force downloads
     if (!e.isTrusted) return;
     if (isImgLike(e.target) && !isDragDisabled) {
-      const attrs = ['data-src', 'data-lazy-src', 'data-original', 'src'];
-      for (const attr of attrs) {
-        let val;
-        if (attr === 'src') val = e.target.src;
-        else val = e.target.hasAttribute(attr) ? e.target.getAttribute(attr) : null;
-        if (val) {
-          const url = resolveUrl(val);
-          if (url && !url.startsWith('data:')) {
-            sendToBackground({ action: 'download_image', url });
-            break; // Only trigger one download
+      let downloaded = false;
+      if (e.target.currentSrc) {
+        const url = resolveUrl(e.target.currentSrc);
+        if (url && !url.startsWith('data:')) {
+          sendToBackground({ action: 'download_image', url });
+          downloaded = true;
+        }
+      }
+
+      if (!downloaded) {
+        const attrs = ['data-src', 'data-lazy-src', 'data-original', 'src'];
+        for (const attr of attrs) {
+          let val;
+          if (attr === 'src') val = e.target.src;
+          else val = e.target.hasAttribute(attr) ? e.target.getAttribute(attr) : null;
+          if (val) {
+            const url = resolveUrl(val);
+            if (url && !url.startsWith('data:')) {
+              sendToBackground({ action: 'download_image', url });
+              break; // Only trigger one download
+            }
           }
         }
       }
@@ -1391,6 +1482,6 @@
   syncDragPreference();
   browser.storage.onChanged.addListener(() => syncDragPreference());
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { handleImg, handleSrcset, trackImageUrl, buildDomSizeMap, getCssMediaUrls, extractBgImageUrls, resolveUrl, isVideoUrl, isImageUrl, isSvgUrl, parseSrcset, pickBestFromSrcset, collectInlineSvgs, collectNoscriptImages, handleEmbed, passesSizeFilter, handleMeta, collectMediaUrls, handleSource, handlePicture, handleSvgImage, handleDataBg, extractRegexUrls, handleVideo, filterImagesBySize, SIZE_PROBE_POOL_SIZE, REGEX_SWEEP_FILTER, BG_IMAGE_SELECTORS, addNewUrls, MAX_TRACKED_MEDIA, TAG_SET };
+    module.exports = { handleImg, handleSrcset, trackImageUrl, buildDomSizeMap, getCssMediaUrls, extractBgImageUrls, resolveUrl, isVideoUrl, isImageUrl, isSvgUrl, parseSrcset, pickBestFromSrcset, collectInlineSvgs, collectNoscriptImages, collectTemplateMedia, handleEmbed, passesSizeFilter, handleMeta, collectMediaUrls, handleSource, handlePicture, handleSvgImage, handleDataBg, extractRegexUrls, handleVideo, filterImagesBySize, SIZE_PROBE_POOL_SIZE, REGEX_SWEEP_FILTER, BG_IMAGE_SELECTORS, addNewUrls, MAX_TRACKED_MEDIA, TAG_SET, processBgImageQueue };
   }
 })();
