@@ -113,3 +113,7 @@
 ## 2026-10-24 - Missing processBgImageQueue truthy deadline regression guard
 **Learning:** Verified that the Feather persona's fix for checking `typeof deadline.timeRemaining === 'function'` in `processBgImageQueue` (preventing a crash when a truthy argument without that method is passed, like a timestamp) lacked a regression test.
 **Action:** Exported `processBgImageQueue` from `src/content.js` and added a regression test in `tests/content.test.js` to ensure the function handles truthy deadlines without a `timeRemaining` method gracefully by falling back to the 50ms wall-clock bound without throwing a `TypeError`.
+
+## 2026-10-24 - TreeWalker Root Node Filter Bypass Regression Test
+**Learning:** `TreeWalker` does not apply its `NodeFilter` (e.g. `FILTER_REJECT`) to the root node itself. In the `MutationObserver` path, a walker rooted directly on a dynamically added `<style>` or non-JSON `<script>` bypasses the tag-level rejection and walks its text children, extracting URLs from raw CSS/JS source.
+**Action:** Extended `tests/mutation_regex_sweep.test.js` with parent-tag skip cases and a `MutationObserver` root-node case for `<script>`/`<style>` vs JSON scripts.

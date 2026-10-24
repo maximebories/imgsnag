@@ -105,3 +105,107 @@ describe('extractRegexUrls — shared text/attribute sweep', () => {
     expect(sweep(node)).toEqual(['https://example.com/repeat.jpg']);
   });
 });
+
+describe('MutationObserver root node filtering (TreeWalker)', () => {
+  let observerCallback;
+  let originalMutationObserver;
+
+  beforeEach(() => {
+    jest.resetModules();
+    global.browser = {
+      runtime: { sendMessage: jest.fn().mockResolvedValue(), onConnect: { addListener: jest.fn() } },
+      storage: { sync: { get: jest.fn().mockResolvedValue({ disableDrag: false }) }, onChanged: { addListener: jest.fn() } }
+    };
+    document.body.innerHTML = '';
+
+    originalMutationObserver = global.MutationObserver;
+    global.MutationObserver = class MockObserver {
+      constructor(cb) {
+        observerCallback = cb;
+      }
+      observe() {}
+      disconnect() {}
+    };
+
+    require('../src/content.js');
+  });
+
+  afterEach(() => {
+    global.MutationObserver = originalMutationObserver;
+  });
+
+  it('does not extract URLs from dynamically added <script> and <style> tags', () => {
+    // 1. Add a non-JSON script with a URL
+    const script = document.createElement('script');
+    script.textContent = 'const img = "https://example.com/bad-script.png";';
+
+    // 2. Add a style with a URL
+    const style = document.createElement('style');
+    style.textContent = '.bg { background-image: url("https://example.com/bad-style.png"); }';
+
+    // 3. Add an application/json script with a URL (should be extracted)
+    const jsonScript = document.createElement('script');
+    jsonScript.setAttribute('type', 'application/json');
+    jsonScript.textContent = '{"image": "https://example.com/good-json.png"}';
+
+    const mutations = [
+      { addedNodes: [script] },
+      { addedNodes: [style] },
+      { addedNodes: [jsonScript] }
+    ];
+
+    const content = require('../src/content.js');
+    const extractRegexUrls = content.extractRegexUrls;
+    const REGEX_SWEEP_FILTER = content.REGEX_SWEEP_FILTER;
+
+    const imageUrls = new Set();
+    const trackSweptImage = (url) => {
+      imageUrls.add(url);
+    };
+
+    for (const mutation of mutations) {
+      for (const node of mutation.addedNodes) {
+        let shouldSweep = false;
+        if (node.nodeType === Node.TEXT_NODE) {
+          if (node.parentElement) {
+            const pTag = node.parentElement.tagName;
+            if (pTag === 'STYLE') {
+              shouldSweep = false;
+            } else if (pTag === 'SCRIPT') {
+              const type = node.parentElement.getAttribute('type');
+              shouldSweep = (type === 'application/ld+json' || type === 'application/json');
+            } else {
+              shouldSweep = true;
+            }
+          } else {
+            shouldSweep = true;
+          }
+        } else if (node.nodeType === Node.ELEMENT_NODE) {
+          shouldSweep = REGEX_SWEEP_FILTER.acceptNode(node) !== NodeFilter.FILTER_REJECT;
+        }
+
+        if (shouldSweep) {
+          extractRegexUrls(node, trackSweptImage);
+        }
+
+        if (node.nodeType === Node.ELEMENT_NODE && shouldSweep) {
+          const walker = document.createTreeWalker(
+            node,
+            NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT,
+            REGEX_SWEEP_FILTER
+          );
+
+          let el;
+          while ((el = walker.nextNode())) {
+            extractRegexUrls(el, trackSweptImage);
+          }
+        }
+      }
+    }
+
+    const urls = Array.from(imageUrls);
+    expect(urls).not.toContain('https://example.com/bad-script.png');
+    expect(urls).not.toContain('https://example.com/bad-style.png');
+    expect(urls).toContain('https://example.com/good-json.png');
+  });
+});
