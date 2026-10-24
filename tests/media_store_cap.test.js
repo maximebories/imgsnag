@@ -54,3 +54,69 @@ describe('media store cap', () => {
     expect(announced).toHaveLength(0);
   });
 });
+
+describe('pendingNetworkFilter cap', () => {
+  beforeEach(() => {
+    jest.resetModules();
+  });
+
+  it('stops adding to pendingNetworkFilter once it reaches MAX_TRACKED_MEDIA', async () => {
+    // Re-require after resetModules so we get fresh module state
+    // but we need to re-mock browser completely like setup.js
+    const listenerMock = jest.fn();
+    global.browser = {
+      runtime: {
+        onConnect: { addListener: listenerMock },
+        sendMessage: jest.fn().mockResolvedValue({})
+      },
+      storage: {
+        sync: { get: jest.fn().mockResolvedValue({}) },
+        local: { get: jest.fn().mockResolvedValue({}) },
+        onChanged: { addListener: jest.fn() }
+      }
+    };
+
+    const { filterImagesBySize, MAX_TRACKED_MEDIA } = require('../src/content.js');
+
+    // Fill pendingNetworkFilter to its limit
+    const urls1 = new Set();
+    for (let i = 0; i < MAX_TRACKED_MEDIA; i++) {
+      urls1.add(`https://example.com/v${i}.jpg`);
+    }
+    await filterImagesBySize(urls1, new Map());
+
+    // Try to add one more to pendingNetworkFilter
+    const urls2 = new Set(['https://example.com/overflow.jpg']);
+    await filterImagesBySize(urls2, new Map());
+
+    let overflowProbed = false;
+    let underCapProbed = false;
+    const realImage = global.Image;
+    global.Image = class {
+      set src(url) {
+        if (url === 'https://example.com/overflow.jpg') {
+          overflowProbed = true;
+        }
+        if (url === 'https://example.com/v0.jpg') {
+          underCapProbed = true;
+        }
+        setTimeout(() => this.onerror(), 0);
+      }
+    };
+
+    const listener = listenerMock.mock.calls[0][0];
+    listener({
+      name: 'imgsnag-popup',
+      postMessage: jest.fn(),
+      onDisconnect: { addListener: jest.fn() }
+    });
+
+    // wait for event loop to start processing the queue
+    await new Promise(resolve => setTimeout(resolve, 50));
+
+    expect(underCapProbed).toBe(true);
+    expect(overflowProbed).toBe(false);
+
+    global.Image = realImage;
+  });
+});
