@@ -110,7 +110,8 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        transition: background 0.15s;
+        transition: background 0.15s, opacity 0.15s;
+        opacity: 0;
       }
       .cell .check:hover { background: rgba(0,0,0,0.5); }
       .cell .check:focus-visible {
@@ -125,7 +126,7 @@
       .cell .check.selected:hover, .cell .check.selected:focus-visible {
         background: #1d4ed8;
       }
-      .cell:focus-within .check {
+      .cell:hover .check, .cell:focus-within .check, .cell .check.selected {
         opacity: 1; /* ensure it stays visible when focused inside */
       }
       .cell .check.selected::after {

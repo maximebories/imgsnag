@@ -115,3 +115,7 @@
 **Action:**
 1. The measurement confirms that wrapping is strictly required for the action buttons in the `fr` locale, and that the resulting 89px bar height is expected and accounted for.
 2. Ensure elements like spinners have their border colors explicitly adjusted in the `prefers-color-scheme: dark` media query (e.g., `border-color: #333; border-top-color: #a3a3a3;`) to pass contrast checks.
+
+## 2026-10-24 - Reduced Checkbox Clutter
+**Learning:** Default-visible checkboxes on every image cell create excessive visual clutter, especially in grids. Hiding them by default (opacity 0) and revealing them on hover, focus, or when selected makes the interface cleaner while preserving accessibility.
+**Action:** Hide selection controls by default using `opacity: 0` but ensure they appear on `:hover`, `:focus-within`, and when `.selected` to maintain usability and visual feedback.
