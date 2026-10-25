@@ -418,8 +418,26 @@
       const inPicture = img.parentElement?.tagName === 'PICTURE';
       const hasSet = img.hasAttribute('srcset') || img.hasAttribute('data-srcset');
 
-      let setUsable = inPicture;
-      if (!inPicture && hasSet) {
+      let setUsable = false;
+      if (inPicture) {
+        const pic = img.parentElement;
+        for (const source of pic.querySelectorAll('source')) {
+          let sourceUsable = false;
+          for (const attr of SOURCE_SRCSET_ATTRS) {
+            const best = pickBestFromSrcset(source.getAttribute(attr));
+            if (best && isRealMediaUrl(best)) { sourceUsable = true; break; }
+          }
+          if (!sourceUsable) {
+            for (const attr of SOURCE_URL_ATTRS) {
+              const val = source.getAttribute(attr);
+              if (val && isRealMediaUrl(val)) { sourceUsable = true; break; }
+            }
+          }
+          if (sourceUsable) { setUsable = true; break; }
+        }
+      }
+
+      if (!setUsable && hasSet) {
         for (const attr of SOURCE_SRCSET_ATTRS) {
           const val = pickBestFromSrcset(img.getAttribute(attr));
           if (val && isRealMediaUrl(val)) {
@@ -923,8 +941,23 @@
       let realSet = false;
       if (hasSet) {
         if (el.parentElement?.tagName === 'PICTURE') {
-          realSet = true; // Handled per-picture, so we skip src here to avoid duplicates.
-        } else {
+          const pic = el.parentElement;
+          for (const source of pic.querySelectorAll('source')) {
+            let sourceUsable = false;
+            for (const attr of SOURCE_SRCSET_ATTRS) {
+              const best = pickBestFromSrcset(source.getAttribute(attr));
+              if (best && isRealMediaUrl(best)) { sourceUsable = true; break; }
+            }
+            if (!sourceUsable) {
+              for (const attr of SOURCE_URL_ATTRS) {
+                const val = source.getAttribute(attr);
+                if (val && isRealMediaUrl(val)) { sourceUsable = true; break; }
+              }
+            }
+            if (sourceUsable) { realSet = true; break; }
+          }
+        }
+        if (!realSet) {
           for (const attr of SOURCE_SRCSET_ATTRS) {
             const val = pickBestFromSrcset(el.getAttribute(attr));
             if (val && isRealMediaUrl(val)) {
@@ -1329,12 +1362,27 @@
     const urls = [];
 
     if (isImgLike(el)) {
-      const targetUrl = el.currentSrc || el.src;
-      if (targetUrl) {
-        const url = resolveUrl(targetUrl);
-        if (url && !url.startsWith('data:')) urls.push(url);
-        return urls;
+      if (el.currentSrc) {
+        const url = resolveUrl(el.currentSrc);
+        if (url && !url.startsWith('data:')) {
+          urls.push(url);
+          return urls;
+        }
       }
+      const attrs = ['data-src', 'data-lazy-src', 'data-original', 'src'];
+      for (const attr of attrs) {
+        let val;
+        if (attr === 'src') val = el.src;
+        else val = el.hasAttribute(attr) ? el.getAttribute(attr) : null;
+        if (val) {
+          const url = resolveUrl(val);
+          if (url && !url.startsWith('data:')) {
+            urls.push(url);
+            return urls;
+          }
+        }
+      }
+      return urls;
     }
 
     if (el.tagName === 'VIDEO') {
@@ -1476,6 +1524,6 @@
   syncDragPreference();
   browser.storage.onChanged.addListener(() => syncDragPreference());
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { handleImg, handleSrcset, trackImageUrl, buildDomSizeMap, getCssMediaUrls, extractBgImageUrls, resolveUrl, isVideoUrl, isImageUrl, isSvgUrl, parseSrcset, pickBestFromSrcset, collectInlineSvgs, collectNoscriptImages, collectTemplateMedia, handleEmbed, passesSizeFilter, handleMeta, collectMediaUrls, handleSource, handlePicture, handleSvgImage, handleDataBg, extractRegexUrls, handleVideo, filterImagesBySize, SIZE_PROBE_POOL_SIZE, REGEX_SWEEP_FILTER, BG_IMAGE_SELECTORS, addNewUrls, MAX_TRACKED_MEDIA, TAG_SET, processBgImageQueue };
+    module.exports = { handleImg, handleSrcset, trackImageUrl, buildDomSizeMap, getCssMediaUrls, extractBgImageUrls, resolveUrl, isVideoUrl, isImageUrl, isSvgUrl, parseSrcset, pickBestFromSrcset, collectInlineSvgs, collectNoscriptImages, collectTemplateMedia, handleEmbed, passesSizeFilter, handleMeta, collectMediaUrls, handleSource, handlePicture, handleSvgImage, handleDataBg, extractRegexUrls, handleVideo, filterImagesBySize, SIZE_PROBE_POOL_SIZE, REGEX_SWEEP_FILTER, BG_IMAGE_SELECTORS, addNewUrls, MAX_TRACKED_MEDIA, TAG_SET, processBgImageQueue, getTargetUrlsForElement };
   }
 })();
