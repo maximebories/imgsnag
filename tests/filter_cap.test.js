@@ -137,4 +137,13 @@ describe('filterImagesBySize network-probe fan-out', () => {
     expect(results).toEqual([]);
     expect(sizeMap.has(broken)).toBe(false);
   });
+
+  it('exempts SVG URLs from size probing', async () => {
+    const svgUrl = 'https://example.com/vector.svg';
+    const sizeMap = new Map();
+    const results = await filterImagesBySize(new Set([svgUrl]), sizeMap);
+
+    expect(results).toEqual([svgUrl]);
+    expect(maxInflight).toBe(0);
+  });
 });

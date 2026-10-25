@@ -117,3 +117,15 @@
 ## 2026-10-24 - TreeWalker Root Node Filter Bypass Regression Test
 **Learning:** `TreeWalker` does not apply its `NodeFilter` (e.g. `FILTER_REJECT`) to the root node itself. In the `MutationObserver` path, a walker rooted directly on a dynamically added `<style>` or non-JSON `<script>` bypasses the tag-level rejection and walks its text children, extracting URLs from raw CSS/JS source.
 **Action:** Extended `tests/mutation_regex_sweep.test.js` with parent-tag skip cases and a `MutationObserver` root-node case for `<script>`/`<style>` vs JSON scripts.
+
+## 2026-10-24 - collectNoscriptImages regression test
+**Learning:** Verified that the Scout persona's fix for extracting `<noscript>` fallback images with `DOMParser` (`collectNoscriptImages`) lacked dedicated regression tests. This feature relies on processing unparsed `<noscript>` text as inert HTML to capture dynamically injected fallback media URLs, skipping empty blocks for performance via a fast regex gate. It is also essential to ensure `resolveUrl` continues to apply the live page's `document.baseURI` to these correctly, since elements rendered via `DOMParser` have an `about:blank` base URI.
+**Action:** Added `tests/noscript_fallback.test.js` to pin the extraction logic of `collectNoscriptImages()`, explicitly testing proper URL extraction, the behavior of the fast-path regex skip on non-image HTML strings, and that inert `<noscript>` nodes still resolve relative URLs against the correct `document.baseURI` via `resolveUrl`.
+
+## 2026-10-24 - Storage bounds regression test for pendingNetworkFilter
+**Learning:** Verified that Warden's capacity bounds limit `MAX_TRACKED_MEDIA` on `pendingNetworkFilter` to avoid memory exhaustion (as recorded in the journal) lacked coverage checking this specific set. The existing tests in `tests/media_store_cap.test.js` focused entirely on `addNewUrls` acting on `discoveredMedia`, leaving the initial entry point through `filterImagesBySize` unchecked.
+**Action:** Added a test in `tests/media_store_cap.test.js` to assert that `pendingNetworkFilter` correctly drops URLs once `MAX_TRACKED_MEDIA` is reached. This relies on mock Image objects and flushing through `browser.runtime.onConnect` to verify that overflow items are legitimately absent.
+
+## 2026-10-24 - SVG exemption from filterImagesBySize network probe regression test
+**Learning:** Verified that the size-filter behavior exempting `.svg` URLs from `filterImagesBySize` network probes lacked a dedicated regression test. The fix guards against SVGs being unnecessarily probed, ensuring they are accepted directly.
+**Action:** Added `exempts SVG URLs from size probing` test in `tests/filter_cap.test.js` to ensure `filterImagesBySize` accepts SVG URLs without issuing any `new Image()` probe.
