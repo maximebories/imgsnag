@@ -115,3 +115,7 @@
 **Action:**
 1. The measurement confirms that wrapping is strictly required for the action buttons in the `fr` locale, and that the resulting 89px bar height is expected and accounted for.
 2. Ensure elements like spinners have their border colors explicitly adjusted in the `prefers-color-scheme: dark` media query (e.g., `border-color: #333; border-top-color: #a3a3a3;`) to pass contrast checks.
+
+## 2026-10-26 - Selected Cell Visual Indicator
+**Learning:** In a dense image grid, indicating selection merely by turning a small corner checkbox blue is insufficient. The selected state gets lost against complex image backgrounds, causing poor visual scanning and accessibility (contrast).
+**Action:** Always provide a robust, whole-cell visual indicator for selected states. Adding `.selected` to the cell wrapper to scale down the image and reveal a solid border (the cell background) clearly demarcates selected items exactly like native OS file explorers or Google Photos.
