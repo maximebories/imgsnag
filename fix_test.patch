@@ -1,0 +1,15 @@
+--- a/tests/content.test.js
++++ b/tests/content.test.js
+@@ -652,10 +652,11 @@
+     // An object is truthy, so checking !el.className fails and triggers getComputedStyle.
+     // el.hasAttribute('class') correctly returns false.
+     const el = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+-    window.getComputedStyle = jest.fn();
++    const spy = jest.spyOn(window, 'getComputedStyle').mockImplementation(() => ({}));
+
+     const urls = getCssMediaUrls(el);
+-    expect(window.getComputedStyle).not.toHaveBeenCalled();
++    expect(spy).not.toHaveBeenCalled();
++    spy.mockRestore();
+     expect(urls).toEqual([]);
+   });
