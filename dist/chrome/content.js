@@ -1180,6 +1180,10 @@
           }
 
           if (node.nodeType === Node.ELEMENT_NODE) {
+            const tag = node.tagName;
+            if (tag === 'STYLE' || (tag === 'SCRIPT' && node.getAttribute('type') !== 'application/ld+json' && node.getAttribute('type') !== 'application/json')) {
+              continue;
+            }
             const walker = document.createTreeWalker(
               node,
               NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT,
