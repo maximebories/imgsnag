@@ -125,3 +125,7 @@
 ## 2026-10-24 - Storage bounds regression test for pendingNetworkFilter
 **Learning:** Verified that Warden's capacity bounds limit `MAX_TRACKED_MEDIA` on `pendingNetworkFilter` to avoid memory exhaustion (as recorded in the journal) lacked coverage checking this specific set. The existing tests in `tests/media_store_cap.test.js` focused entirely on `addNewUrls` acting on `discoveredMedia`, leaving the initial entry point through `filterImagesBySize` unchecked.
 **Action:** Added a test in `tests/media_store_cap.test.js` to assert that `pendingNetworkFilter` correctly drops URLs once `MAX_TRACKED_MEDIA` is reached. This relies on mock Image objects and flushing through `browser.runtime.onConnect` to verify that overflow items are legitimately absent.
+
+## 2026-10-26 - SVGAnimatedString fast-path regression test
+**Learning:** Verified that the Feather persona's fix for the `SVGAnimatedString` bypass on `el.className` checks (which caused attribute-less SVG elements to erroneously trigger expensive `getComputedStyle` calls because an `SVGAnimatedString` object is always truthy) lacked a regression test.
+**Action:** Added a regression test in `tests/content.test.js` under the `getCssMediaUrls` describe block that explicitly creates an SVG element without a class and asserts that `window.getComputedStyle` is completely bypassed, proving the fast path correctly uses `hasAttribute('class')`.

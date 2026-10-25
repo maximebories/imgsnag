@@ -646,6 +646,20 @@ describe('getCssMediaUrls', () => {
     expect(urls).not.toContain('https://example.com/inline-bg.jpg');
   });
 
+  it('skips getComputedStyle on classless SVG elements by correctly handling SVGAnimatedString', () => {
+    // This pins the "SVGAnimatedString fast-path bypass" fix from feather.md.
+    // SVGElement.className returns an SVGAnimatedString object, not a string.
+    // An object is truthy, so checking !el.className fails and triggers getComputedStyle.
+    // el.hasAttribute('class') correctly returns false.
+    const el = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    const spy = jest.spyOn(window, 'getComputedStyle').mockImplementation(() => ({}));
+
+    const urls = getCssMediaUrls(el);
+    expect(spy).not.toHaveBeenCalled();
+    spy.mockRestore();
+    expect(urls).toEqual([]);
+  });
+
   it('catches and ignores getComputedStyle errors for pseudo-elements', () => {
     const el = document.createElement('div');
     el.className = 'test'; // Force computed path
