@@ -99,7 +99,7 @@
   let isDragDisabled = false;
 
   // Background image lazy evaluation queue (Feather: getComputedStyle batched at idle)
-  const pendingBackgroundCheckQueue = [];
+  const pendingBackgroundCheckQueue = new Set();
   let isBgCheckScheduled = false;
 
   // Helpers
@@ -418,8 +418,26 @@
       const inPicture = img.parentElement?.tagName === 'PICTURE';
       const hasSet = img.hasAttribute('srcset') || img.hasAttribute('data-srcset');
 
-      let setUsable = inPicture;
-      if (!inPicture && hasSet) {
+      let setUsable = false;
+      if (inPicture) {
+        const pic = img.parentElement;
+        for (const source of pic.querySelectorAll('source')) {
+          let sourceUsable = false;
+          for (const attr of SOURCE_SRCSET_ATTRS) {
+            const best = pickBestFromSrcset(source.getAttribute(attr));
+            if (best && isRealMediaUrl(best)) { sourceUsable = true; break; }
+          }
+          if (!sourceUsable) {
+            for (const attr of SOURCE_URL_ATTRS) {
+              const val = source.getAttribute(attr);
+              if (val && isRealMediaUrl(val)) { sourceUsable = true; break; }
+            }
+          }
+          if (sourceUsable) { setUsable = true; break; }
+        }
+      }
+
+      if (!setUsable && hasSet) {
         for (const attr of SOURCE_SRCSET_ATTRS) {
           const val = pickBestFromSrcset(img.getAttribute(attr));
           if (val && isRealMediaUrl(val)) {
@@ -501,7 +519,7 @@
       // Fast path: skip elements with no styling hints to avoid expensive getComputedStyle calls
       if (!el.hasAttribute('class') && !el.id && !el.getAttribute('style')) return;
 
-      pendingBackgroundCheckQueue.push(el);
+      pendingBackgroundCheckQueue.add(el);
       if (!isBgCheckScheduled) {
         isBgCheckScheduled = true;
         if (typeof requestIdleCallback !== 'undefined') {
@@ -923,8 +941,23 @@
       let realSet = false;
       if (hasSet) {
         if (el.parentElement?.tagName === 'PICTURE') {
-          realSet = true; // Handled per-picture, so we skip src here to avoid duplicates.
-        } else {
+          const pic = el.parentElement;
+          for (const source of pic.querySelectorAll('source')) {
+            let sourceUsable = false;
+            for (const attr of SOURCE_SRCSET_ATTRS) {
+              const best = pickBestFromSrcset(source.getAttribute(attr));
+              if (best && isRealMediaUrl(best)) { sourceUsable = true; break; }
+            }
+            if (!sourceUsable) {
+              for (const attr of SOURCE_URL_ATTRS) {
+                const val = source.getAttribute(attr);
+                if (val && isRealMediaUrl(val)) { sourceUsable = true; break; }
+              }
+            }
+            if (sourceUsable) { realSet = true; break; }
+          }
+        }
+        if (!realSet) {
           for (const attr of SOURCE_SRCSET_ATTRS) {
             const val = pickBestFromSrcset(el.getAttribute(attr));
             if (val && isRealMediaUrl(val)) {
@@ -1013,9 +1046,9 @@
       ? () => deadline.timeRemaining()
       : () => Math.max(0, 50 - (performance.now() - start));
 
-    let processed = 0;
-    while (processed < pendingBackgroundCheckQueue.length && timeRemaining() > 0) {
-      const el = pendingBackgroundCheckQueue[processed++];
+    for (const el of pendingBackgroundCheckQueue) {
+      if (timeRemaining() <= 0) break;
+      pendingBackgroundCheckQueue.delete(el);
       try {
         for (const raw of getCssMediaUrls(el)) {
           const url = resolveUrl(raw);
@@ -1025,13 +1058,10 @@
         // Element may not be connected to DOM yet
       }
     }
-    if (processed > 0) {
-      pendingBackgroundCheckQueue.splice(0, processed);
-    }
 
     if (imageUrls.size > 0) addNewUrls(imageUrls, 'image');
 
-    if (pendingBackgroundCheckQueue.length > 0) {
+    if (pendingBackgroundCheckQueue.size > 0) {
       if (typeof requestIdleCallback !== 'undefined') {
         requestIdleCallback(processBgImageQueue);
       } else {
@@ -1094,7 +1124,7 @@
   function handleBackgroundImage(el, imageSet) {
     // Fast path: skip elements with no styling hints to avoid expensive getComputedStyle calls
     if (el.hasAttribute('class') || el.id || el.getAttribute('style')) {
-      pendingBackgroundCheckQueue.push(el);
+      pendingBackgroundCheckQueue.add(el);
       if (!isBgCheckScheduled) {
         isBgCheckScheduled = true;
         if (typeof requestIdleCallback !== 'undefined') {
@@ -1282,11 +1312,10 @@
       port.postMessage({ action: 'init', images: [...discoveredMedia.values()] });
 
       // Flush the background image check queue synchronously so the grid is complete
-      if (pendingBackgroundCheckQueue.length > 0) {
+      if (pendingBackgroundCheckQueue.size > 0) {
         const imageUrls = new Set();
-        let processed = 0;
-        while (processed < pendingBackgroundCheckQueue.length) {
-          const el = pendingBackgroundCheckQueue[processed++];
+        for (const el of pendingBackgroundCheckQueue) {
+          pendingBackgroundCheckQueue.delete(el);
           try {
             for (const raw of getCssMediaUrls(el)) {
               const url = resolveUrl(raw);
@@ -1295,9 +1324,6 @@
           } catch {
             // Element may not be connected to DOM yet
           }
-        }
-        if (processed > 0) {
-          pendingBackgroundCheckQueue.splice(0, processed);
         }
         if (imageUrls.size > 0) addNewUrls(imageUrls, 'image');
       }
@@ -1335,12 +1361,27 @@
     const urls = [];
 
     if (isImgLike(el)) {
-      const targetUrl = el.currentSrc || el.src;
-      if (targetUrl) {
-        const url = resolveUrl(targetUrl);
-        if (url && !url.startsWith('data:')) urls.push(url);
-        return urls;
+      if (el.currentSrc) {
+        const url = resolveUrl(el.currentSrc);
+        if (url && !url.startsWith('data:')) {
+          urls.push(url);
+          return urls;
+        }
       }
+      const attrs = ['data-src', 'data-lazy-src', 'data-original', 'src'];
+      for (const attr of attrs) {
+        let val;
+        if (attr === 'src') val = el.src;
+        else val = el.hasAttribute(attr) ? el.getAttribute(attr) : null;
+        if (val) {
+          const url = resolveUrl(val);
+          if (url && !url.startsWith('data:')) {
+            urls.push(url);
+            return urls;
+          }
+        }
+      }
+      return urls;
     }
 
     if (el.tagName === 'VIDEO') {
@@ -1482,6 +1523,6 @@
   syncDragPreference();
   browser.storage.onChanged.addListener(() => syncDragPreference());
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { handleImg, handleSrcset, trackImageUrl, buildDomSizeMap, getCssMediaUrls, extractBgImageUrls, resolveUrl, isVideoUrl, isImageUrl, isSvgUrl, parseSrcset, pickBestFromSrcset, collectInlineSvgs, collectNoscriptImages, collectTemplateMedia, handleEmbed, passesSizeFilter, handleMeta, collectMediaUrls, handleSource, handlePicture, handleSvgImage, handleDataBg, extractRegexUrls, handleVideo, filterImagesBySize, SIZE_PROBE_POOL_SIZE, REGEX_SWEEP_FILTER, BG_IMAGE_SELECTORS, addNewUrls, MAX_TRACKED_MEDIA, TAG_SET, processBgImageQueue };
+    module.exports = { handleImg, handleSrcset, trackImageUrl, buildDomSizeMap, getCssMediaUrls, extractBgImageUrls, resolveUrl, isVideoUrl, isImageUrl, isSvgUrl, parseSrcset, pickBestFromSrcset, collectInlineSvgs, collectNoscriptImages, collectTemplateMedia, handleEmbed, passesSizeFilter, handleMeta, collectMediaUrls, handleSource, handlePicture, handleSvgImage, handleDataBg, extractRegexUrls, handleVideo, filterImagesBySize, SIZE_PROBE_POOL_SIZE, REGEX_SWEEP_FILTER, BG_IMAGE_SELECTORS, addNewUrls, MAX_TRACKED_MEDIA, TAG_SET, processBgImageQueue, getTargetUrlsForElement };
   }
 })();
