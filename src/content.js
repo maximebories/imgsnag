@@ -1180,6 +1180,7 @@
           }
 
           if (node.nodeType === Node.ELEMENT_NODE) {
+            if (REGEX_SWEEP_FILTER.acceptNode(node) === NodeFilter.FILTER_REJECT) continue;
             const walker = document.createTreeWalker(
               node,
               NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT,
