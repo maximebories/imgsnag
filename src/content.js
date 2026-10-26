@@ -486,8 +486,11 @@
     document.querySelectorAll('picture').forEach((pic) => {
       const img = pic.querySelector('img');
       if (img && img.currentSrc) {
-        trackImage(img.currentSrc);
-        return;
+        const url = resolveUrl(img.currentSrc);
+        if (url && !url.startsWith('data:')) {
+          trackImage(img.currentSrc);
+          return;
+        }
       }
       for (const source of pic.querySelectorAll('source')) {
         if (collectSourceVariants(source, trackImage)) return;
@@ -1140,8 +1143,11 @@
     if (el.tagName === 'PICTURE') {
       const img = el.querySelector('img');
       if (img && img.currentSrc) {
-        trackImageUrl(img.currentSrc, imageSet);
-        return;
+        const url = resolveUrl(img.currentSrc);
+        if (url && !url.startsWith('data:')) {
+          trackImageUrl(img.currentSrc, imageSet);
+          return;
+        }
       }
       // One closure per <picture>, not per <source> — handlePicture runs on the
       // MutationObserver path.
