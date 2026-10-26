@@ -77,3 +77,7 @@
 ## 2026-10-26 - apple-touch-startup-image extraction RFC
 **Learning:** `link[rel="apple-touch-startup-image"]` declares large iOS splash screens that never render in the DOM; the `<link>` selector collects `icon`/`apple-touch-icon` but not this rel. The `href` points straight at the image, so unlike the Web App Manifest (RFC #273) there is no extra fetch or parsing. Extending the existing selector costs nothing, and the images are full-screen so they clear the size filter.
 **Action:** Verdict GO, staged. Filed as RFC issue #399 by the orchestrator (from PR #390, which was journal-only and closed).
+
+## 2026-10-27 - Deterministic cross-origin embed synthesis (YouTube thumbnails) RFC
+**Learning:** Media embeddings (like YouTube videos) do not serve the thumbnail image directly in the host page's DOM (they embed an `iframe`), yet the thumbnail URL itself is deterministically computable from the embed URL without requiring any network requests or scraping. For example, `https://www.youtube.com/embed/dQw4w9WgXcQ` implies the high-res thumbnail at `https://i.ytimg.com/vi/dQw4w9WgXcQ/maxresdefault.jpg`. Since we already intercept `<iframe src>`, we can synthesize the direct URL to the media asset and queue it for validation without crossing security boundaries. This bypasses the need for `all_frames: true` because the synthesis happens against the host page's src attribute, avoiding the opaque cross-origin boundary altogether.
+**Action:** Verdict GO, staged. To be filed as an RFC by the orchestrator.
