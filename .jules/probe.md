@@ -129,3 +129,7 @@
 ## 2026-10-26 - SVGAnimatedString fast-path regression test
 **Learning:** Verified that the Feather persona's fix for the `SVGAnimatedString` bypass on `el.className` checks (which caused attribute-less SVG elements to erroneously trigger expensive `getComputedStyle` calls because an `SVGAnimatedString` object is always truthy) lacked a regression test.
 **Action:** Added a regression test in `tests/content.test.js` under the `getCssMediaUrls` describe block that explicitly creates an SVG element without a class and asserts that `window.getComputedStyle` is completely bypassed, proving the fast path correctly uses `hasAttribute('class')`.
+
+## 2026-10-26 - SVG exemption from filterImagesBySize network probe regression test
+**Learning:** The size-filter behavior exempting `.svg` URLs from `filterImagesBySize` network probes lacked a dedicated regression test.
+**Action:** Added `exempts SVG URLs from size probing` in `tests/filter_cap.test.js` asserting an SVG URL is accepted with no `new Image()` probe issued.
