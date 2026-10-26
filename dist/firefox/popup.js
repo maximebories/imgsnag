@@ -347,11 +347,13 @@
       if (selectedUrls.has(item.url)) {
         selectedUrls.delete(item.url);
         check.classList.remove('selected');
+        cell.classList.remove('selected');
         check.setAttribute('aria-checked', 'false');
         check.title = fullSelectLabel;
       } else {
         selectedUrls.add(item.url);
         check.classList.add('selected');
+        cell.classList.add('selected');
         check.setAttribute('aria-checked', 'true');
         check.title = fullDeselectLabel;
       }
