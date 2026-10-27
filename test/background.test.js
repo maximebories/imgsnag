@@ -339,6 +339,14 @@ describe('Background Script', () => {
       });
       expect(global.URL.revokeObjectURL).toHaveBeenCalledTimes(1);
       expect(global.URL.revokeObjectURL).toHaveBeenCalledWith('blob:test-url');
+
+      // Triggering onChanged again for the same ID should not revoke again
+      // because the blob URL was deleted from the blobUrlsByDownloadId map
+      onChangedListener({
+        id: downloads[0].id,
+        state: { current: 'interrupted' }
+      });
+      expect(global.URL.revokeObjectURL).toHaveBeenCalledTimes(1);
     });
 
     test('Firefox path revokes blob immediately on download failure', async () => {
