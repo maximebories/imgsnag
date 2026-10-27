@@ -81,3 +81,7 @@
 ## 2026-10-26 - Deterministic cross-origin embed synthesis (YouTube thumbnails) RFC
 **Learning:** Media embeddings (like YouTube videos) do not serve the thumbnail image directly in the host page's DOM (they embed an `iframe`), yet the thumbnail URL itself is deterministically computable from the embed URL without requiring any network requests or scraping. For example, `https://www.youtube.com/embed/dQw4w9WgXcQ` implies the high-res thumbnail at `https://i.ytimg.com/vi/dQw4w9WgXcQ/maxresdefault.jpg`. Since we already intercept `<iframe src>`, we can synthesize the direct URL to the media asset and queue it for validation without crossing security boundaries. This bypasses the need for `all_frames: true` because the synthesis happens against the host page's src attribute, avoiding the opaque cross-origin boundary altogether.
 **Action:** Verdict GO, staged. Filed as an RFC issue by the orchestrator (from PR #400).
+
+## 2026-10-27 - WebVTT Video Seek Thumbnails RFC
+**Learning:** Video players use WebVTT (`<track kind="metadata">`) to map timestamps to high-quality thumbnail sprite sheets via spatial media fragments (`sprite.jpg#xywh=0,0,160,90`). These sprite URLs never enter the DOM and are missed by ambient discovery unless the user scrubs the timeline. Because VTT requires a network fetch, extraction must happen on popup connect and strictly use `credentials: 'omit'`.
+**Action:** Verdict GO, staged. Filed as an RFC issue by the orchestrator.
