@@ -119,3 +119,7 @@
 ## 2026-10-26 - Selected Cell Visual Indicator
 **Learning:** In a dense image grid, indicating selection merely by turning a small corner checkbox blue is insufficient. The selected state gets lost against complex image backgrounds, causing poor visual scanning and accessibility (contrast).
 **Action:** Always provide a robust, whole-cell visual indicator for selected states. Adding `.selected` to the cell wrapper to scale down the image and reveal a solid border (the cell background) clearly demarcates selected items exactly like native OS file explorers or Google Photos.
+
+## 2026-10-28 - Decode URL filenames for UI Display
+**Learning:** Extracting filenames from media URLs using just the pathname can result in unreadable UI labels and tooltips because the text remains URL encoded (e.g. `%20` instead of a space). Calling `decodeURIComponent` on the extracted filename improves readability for users when filenames are shown in placeholders, labels, or accessibility tooltips.
+**Action:** Always wrap `decodeURIComponent` in a try-catch block when parsing external URL strings, as malformed URI sequences will cause it to throw a URIError.

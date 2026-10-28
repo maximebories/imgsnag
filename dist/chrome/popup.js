@@ -260,7 +260,8 @@
   function filenameFromUrl(url, full = false) {
     try {
       const path = new URL(url).pathname;
-      const name = path.split('/').pop();
+      let name = path.split('/').pop();
+      try { name = decodeURIComponent(name); } catch {}
       return (!full && name.length > 20) ? name.slice(0, 17) + '...' : name;
     } catch {
       return '';
