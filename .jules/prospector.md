@@ -85,3 +85,7 @@
 ## 2026-10-27 - WebVTT Video Seek Thumbnails RFC
 **Learning:** Video players use WebVTT (`<track kind="metadata">`) to map timestamps to high-quality thumbnail sprite sheets via spatial media fragments (`sprite.jpg#xywh=0,0,160,90`). These sprite URLs never enter the DOM and are missed by ambient discovery unless the user scrubs the timeline. Because VTT requires a network fetch, extraction must happen on popup connect and strictly use `credentials: 'omit'`.
 **Action:** Verdict GO, staged. Filed as an RFC issue by the orchestrator.
+
+## 2026-10-29 - CSS border-image extraction RFC
+**Learning:** CSS `border-image` and `border-image-source` properties are valid image sinks missed by the current pipeline. Similar to `background-image`, they sit on the `getComputedStyle` path. Expanding `getCssMediaUrls` and `BG_IMAGE_SELECTORS` is trivial, but any implementation must ride the existing idle-time queue and styling-hint fast path to absorb the cost.
+**Action:** Verdict GO, staged. Filed as an RFC issue by the orchestrator.
