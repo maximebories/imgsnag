@@ -123,3 +123,7 @@
 ## 2026-10-28 - Decode URL filenames for UI Display
 **Learning:** Extracting filenames from media URLs using just the pathname can result in unreadable UI labels and tooltips because the text remains URL encoded (e.g. `%20` instead of a space). Calling `decodeURIComponent` on the extracted filename improves readability for users when filenames are shown in placeholders, labels, or accessibility tooltips.
 **Action:** Always wrap `decodeURIComponent` in a try-catch block when parsing external URL strings, as malformed URI sequences will cause it to throw a URIError.
+
+## 2026-10-29 - Focus Ring Contrast on Selected Cells
+**Learning:** When a UI component like a grid cell transitions into a `.selected` state that deeply alters its background color (e.g., from light gray to solid blue), any persistent interactive elements inside that container (like absolute-positioned checkmarks or action buttons) can lose focus ring visibility if their `outline` inherits or maintains a color identical to the new selected background (blue-on-blue).
+**Action:** When defining selected visual states that change background colors, explicitly update the `.selected:focus-visible` pseudo-class `outline-color` (e.g., to `#fff`) for all interactive descendants to guarantee focus ring contrast remains accessible.
