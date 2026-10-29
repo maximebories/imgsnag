@@ -195,3 +195,7 @@
 ## 2026-10-26 - Fix short-circuiting on data URIs in picture sources
 **Learning:** In `collectImages` and `handlePicture`, when parsing `<picture>` tags, if `img.currentSrc` yielded a `data:` URI, the loop simply short-circuited and ignored the remaining `<source>` tags. This meant high-resolution media URLs defined via `srcset`/`data-srcset` were completely missed because the image fallback was a data URI.
 **Action:** In `collectImages` and `handlePicture`, wrap the `currentSrc` verification in `resolveUrl` and a check for `!url.startsWith('data:')` so that the early return only triggers if `currentSrc` is a usable non-data media URL.
+
+## 2023-11-21 - Missed twitter:image:src tracking tags
+**Learning:** The media discovery pipeline tracked `twitter:image` tags to find Twitter Card image assets, but failed to include `twitter:image:src`, a variant sometimes used by older sites and CMS platforms. This led to missing fallback and preview images on these pages.
+**Action:** Added `meta[name="twitter:image:src"]` to the selector in `collectImages` and the property check in `handleMeta` so it correctly flows through the existing `resolveUrl` parsing path.

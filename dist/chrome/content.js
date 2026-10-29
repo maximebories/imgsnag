@@ -394,7 +394,7 @@
 
   function collectImages(trackImage) {
     // <meta> Open Graph / Twitter, <link rel="preload"> hints, and icons
-    document.querySelectorAll('meta[property="og:image"], meta[property="og:image:secure_url"], meta[name="twitter:image"], meta[itemprop="image"], link[rel="preload"][as="image"], link[rel="icon"], link[rel="apple-touch-icon"], link[rel="shortcut icon"], link[rel="image_src"], link[rel="mask-icon"], link[itemprop="image"]').forEach((el) => {
+    document.querySelectorAll('meta[property="og:image"], meta[property="og:image:secure_url"], meta[name="twitter:image"], meta[name="twitter:image:src"], meta[itemprop="image"], link[rel="preload"][as="image"], link[rel="icon"], link[rel="apple-touch-icon"], link[rel="shortcut icon"], link[rel="image_src"], link[rel="mask-icon"], link[itemprop="image"]').forEach((el) => {
       // A responsive preload's `href` is only the fallback for browsers that
       // ignore imagesrcset. The [imagesrcset] sweep below already takes the best
       // candidate, so emitting href here too would double-count one image —
@@ -1080,7 +1080,7 @@
       const prop = el.getAttribute('property');
       const name = el.getAttribute('name');
       const itemprop = el.getAttribute('itemprop');
-      if (prop === 'og:image' || prop === 'og:image:secure_url' || name === 'twitter:image' || itemprop === 'image') {
+      if (prop === 'og:image' || prop === 'og:image:secure_url' || name === 'twitter:image' || name === 'twitter:image:src' || itemprop === 'image') {
         trackImageUrl(el.getAttribute('content'), imageSet);
       } else if (videoSet) {
         const videoUrl = videoUrlFromMeta(el);
