@@ -41,7 +41,11 @@
           }
           return NodeFilter.FILTER_REJECT;
         }
-        if (!node.hasAttributes()) return NodeFilter.FILTER_SKIP;
+        if (typeof node.hasAttributes === 'function') {
+          if (!node.hasAttributes()) return NodeFilter.FILTER_SKIP;
+        } else if (!node.attributes || node.attributes.length === 0) {
+          return NodeFilter.FILTER_SKIP;
+        }
       }
       return NodeFilter.FILTER_ACCEPT;
     }
@@ -567,7 +571,11 @@
         }
       }
     } else if (node.nodeType === Node.ELEMENT_NODE) {
-      if (!node.hasAttributes()) return;
+      if (typeof node.hasAttributes === 'function') {
+        if (!node.hasAttributes()) return;
+      } else if (!node.attributes || node.attributes.length === 0) {
+        return;
+      }
       const names = node.getAttributeNames();
       for (let i = 0, len = names.length; i < len; i++) {
         // srcset-family attributes hold many variants of one image; the
@@ -991,7 +999,11 @@
   }
 
   function handleSrcset(el, imageSet) {
-    if (el.hasAttributes && el.hasAttributes()) {
+    let hasAttr = false;
+    if (typeof el.hasAttributes === 'function') hasAttr = el.hasAttributes();
+    else if (el.attributes) hasAttr = el.attributes.length > 0;
+
+    if (hasAttr) {
       // Picture sources are format alternatives handled by handleSource
       if (el.tagName === 'SOURCE' && el.parentElement?.tagName === 'PICTURE') return;
       const attrs = ['srcset', 'data-srcset', 'data-bgset', 'imagesrcset'];
@@ -1166,7 +1178,11 @@
   }
 
   function handleDataBg(el, imageSet) {
-    if (el.hasAttributes && el.hasAttributes()) {
+    let hasAttr = false;
+    if (typeof el.hasAttributes === 'function') hasAttr = el.hasAttributes();
+    else if (el.attributes) hasAttr = el.attributes.length > 0;
+
+    if (hasAttr) {
       for (const attr of DATA_BG_ATTRS) {
         if (el.hasAttribute(attr)) {
           const bg = el.getAttribute(attr);
@@ -1231,9 +1247,13 @@
               extractRegexUrls(el, trackSweptImage);
               if (el.nodeType !== Node.ELEMENT_NODE) continue;
               const tag = el.tagName;
+
+              let hasAttr = false;
+              if (typeof el.hasAttributes === 'function') hasAttr = el.hasAttributes();
+              else if (el.attributes) hasAttr = el.attributes.length > 0;
               if (
                 TAG_SET.has(tag) ||
-                (el.hasAttributes && el.hasAttributes() && (
+                (hasAttr && (
                   el.hasAttribute('srcset') || el.hasAttribute('data-srcset') || el.hasAttribute('data-bgset') || el.hasAttribute('imagesrcset') ||
                   el.hasAttribute('data-src') || el.hasAttribute('data-lazy-src') || el.hasAttribute('data-original') ||
                   el.hasAttribute('data-bg') || el.hasAttribute('data-bg-src') || el.hasAttribute('data-background') ||
