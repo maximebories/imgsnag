@@ -133,3 +133,7 @@
 ## 2026-10-26 - SVG exemption from filterImagesBySize network probe regression test
 **Learning:** The size-filter behavior exempting `.svg` URLs from `filterImagesBySize` network probes lacked a dedicated regression test.
 **Action:** Added `exempts SVG URLs from size probing` in `tests/filter_cap.test.js` asserting an SVG URL is accepted with no `new Image()` probe issued.
+
+## 2026-10-29 - Drag-to-save disable setting regression test
+**Learning:** Verified that the popup `disableDrag` sync-storage setting, which conditionally disables the drag-to-save listener in `src/content.js`, lacked a regression test. Without it, a refactor to the event handler or the asynchronous storage initialization could accidentally bypass this user preference and force drag-to-save downloads even when explicitly disabled.
+**Action:** Extended `tests/trust_boundaries.test.js` with a test that explicitly mocks `disableDrag: true` in `browser.storage.sync.get`, re-evaluates `src/content.js` to pick up the setting during initialization, and dispatches a trusted `dragend` event to verify that `browser.runtime.sendMessage` is successfully suppressed.
