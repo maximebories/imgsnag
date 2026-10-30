@@ -127,10 +127,11 @@ describe('handleMeta', () => {
     expect([...set]).toEqual(['https://example.com/og.jpg']);
   });
 
-  it('captures meta[name="twitter:image"]', () => {
+  it('captures meta[name="twitter:image"] and meta[name="twitter:image:src"]', () => {
     const set = new Set();
     handleMeta(el('meta', { name: 'twitter:image', content: 'https://example.com/twitter.jpg' }), set, new Set());
-    expect([...set]).toEqual(['https://example.com/twitter.jpg']);
+    handleMeta(el('meta', { name: 'twitter:image:src', content: 'https://example.com/twitter-src.jpg' }), set, new Set());
+    expect([...set]).toEqual(['https://example.com/twitter.jpg', 'https://example.com/twitter-src.jpg']);
   });
 
   it('captures link[rel="preload"][as="image"]', () => {

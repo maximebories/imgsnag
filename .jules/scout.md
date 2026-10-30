@@ -199,3 +199,7 @@
 ## 2026-10-29 - Relative URLs in Anchor and Area tags blindspot
 **Learning:** `<a>` and `<area>` tags that link directly to an image (like a high-res lightbox variant or an image map) are a common way to expose media. If these tags contain relative URLs (e.g. `/images/highres.jpg`), they are completely missed by the `TreeWalker` regex sweep because `IMAGE_URL_RE` requires an `http` or `https` prefix.
 **Action:** Explicitly extract from `a[href]` and `area[href]` in the `collectImages()` DOM scan. Also, add `AREA` to the `TAG_SET` for the `MutationObserver`, create a `handleAnchor` helper for dynamic insertions, and ensure `Alt+Click` explicitly checks the `href` of targeted `A` and `AREA` elements if they point to an image.
+
+## 2026-10-29 - Missed twitter:image:src tracking tags
+**Learning:** The media discovery pipeline tracked `twitter:image` tags to find Twitter Card image assets, but failed to include `twitter:image:src`, a variant sometimes used by older sites and CMS platforms. This led to missing fallback and preview images on these pages.
+**Action:** Added `meta[name="twitter:image:src"]` to the selector in `collectImages` and the property check in `handleMeta` so it correctly flows through the existing `resolveUrl` parsing path.
