@@ -102,6 +102,9 @@
         outline: 3px solid #2563eb;
         outline-offset: -3px;
       }
+      .cell.selected .cell-action:focus-visible {
+        outline-color: #fff;
+      }
 
       .cell .check {
         position: absolute;
@@ -132,6 +135,9 @@
       }
       .cell .check.selected:hover, .cell .check.selected:focus-visible {
         background: #1d4ed8;
+      }
+      .cell .check.selected:focus-visible {
+        outline-color: #fff;
       }
       .cell:focus-within .check {
         opacity: 1; /* ensure it stays visible when focused inside */

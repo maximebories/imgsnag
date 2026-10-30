@@ -68,7 +68,7 @@
   const SOURCE_URL_ATTRS = ['src', 'data-src', 'data-lazy-src', 'data-original'];
   const DATA_BG_ATTRS = ['data-bg', 'data-bg-src', 'data-background', 'data-background-image'];
   // Tags worth an attribute sweep when they turn up in a MutationObserver batch
-  const TAG_SET = new Set(['IMG', 'VIDEO', 'SOURCE', 'PICTURE', 'DIV', 'SPAN', 'SECTION', 'ARTICLE', 'HEADER', 'FOOTER', 'A', 'LI', 'FIGURE', 'I', 'META', 'LINK', 'OBJECT', 'EMBED', 'IFRAME', 'image', 'IMAGE', 'INPUT', 'BUTTON', 'MAIN', 'DIALOG']);
+  const TAG_SET = new Set(['IMG', 'VIDEO', 'SOURCE', 'PICTURE', 'DIV', 'SPAN', 'SECTION', 'ARTICLE', 'HEADER', 'FOOTER', 'A', 'AREA', 'LI', 'FIGURE', 'I', 'META', 'LINK', 'OBJECT', 'EMBED', 'IFRAME', 'image', 'IMAGE', 'INPUT', 'BUTTON', 'MAIN', 'DIALOG']);
 
   // <input type="image"> renders and resolves its src exactly like an <img>, so every
   // path that reads an <img> treats it the same way. `el.type` is the IDL attribute,
@@ -394,7 +394,7 @@
 
   function collectImages(trackImage) {
     // <meta> Open Graph / Twitter, <link rel="preload"> hints, and icons
-    document.querySelectorAll('meta[property="og:image"], meta[property="og:image:secure_url"], meta[name="twitter:image"], meta[itemprop="image"], link[rel="preload"][as="image"], link[rel="icon"], link[rel="apple-touch-icon"], link[rel="shortcut icon"], link[rel="image_src"], link[rel="mask-icon"], link[itemprop="image"]').forEach((el) => {
+    document.querySelectorAll('meta[property="og:image"], meta[property="og:image:secure_url"], meta[name="twitter:image"], meta[name="twitter:image:src"], meta[itemprop="image"], link[rel="preload"][as="image"], link[rel="icon"], link[rel="apple-touch-icon"], link[rel="shortcut icon"], link[rel="image_src"], link[rel="mask-icon"], link[itemprop="image"]').forEach((el) => {
       // A responsive preload's `href` is only the fallback for browsers that
       // ignore imagesrcset. The [imagesrcset] sweep below already takes the best
       // candidate, so emitting href here too would double-count one image —
@@ -515,6 +515,12 @@
     document.querySelectorAll('svg image, image').forEach((el) => {
       const raw = el.getAttribute('href') || el.getAttribute('xlink:href');
       if (raw) trackImage(raw);
+    });
+
+    // <a> and <area> links pointing directly to images (e.g. lightbox links)
+    document.querySelectorAll('a[href], area[href]').forEach((el) => {
+      const raw = el.getAttribute('href');
+      if (raw && isImageUrl(resolveUrl(raw))) trackImage(raw);
     });
 
     // CSS background-image on likely container elements
@@ -1080,7 +1086,7 @@
       const prop = el.getAttribute('property');
       const name = el.getAttribute('name');
       const itemprop = el.getAttribute('itemprop');
-      if (prop === 'og:image' || prop === 'og:image:secure_url' || name === 'twitter:image' || itemprop === 'image') {
+      if (prop === 'og:image' || prop === 'og:image:secure_url' || name === 'twitter:image' || name === 'twitter:image:src' || itemprop === 'image') {
         trackImageUrl(el.getAttribute('content'), imageSet);
       } else if (videoSet) {
         const videoUrl = videoUrlFromMeta(el);
@@ -1165,6 +1171,16 @@
     }
   }
 
+  function handleAnchor(el, imageSet) {
+    if (el.tagName === 'A' || el.tagName === 'AREA') {
+      const raw = el.getAttribute('href');
+      const url = resolveUrl(raw);
+      if (url && isImageUrl(url) && !url.startsWith('data:')) {
+        trackImageUrl(raw, imageSet);
+      }
+    }
+  }
+
   function handleDataBg(el, imageSet) {
     if (el.hasAttributes && el.hasAttributes()) {
       for (const attr of DATA_BG_ATTRS) {
@@ -1196,6 +1212,7 @@
     handleEmbed(el, imageSet);
     handlePicture(el, imageSet);
     handleSvgImage(el, imageSet);
+    handleAnchor(el, imageSet);
   }
 
   // Observers — continuous media tracking
@@ -1402,6 +1419,11 @@
       if (url && isImageUrl(url) && !url.startsWith('data:')) urls.push(url);
     }
 
+    if (el.tagName === 'A' || el.tagName === 'AREA') {
+      const url = resolveUrl(el.getAttribute('href'));
+      if (url && isImageUrl(url) && !url.startsWith('data:')) urls.push(url);
+    }
+
     return urls;
   }
 
@@ -1471,6 +1493,15 @@
           didDownload = true;
         }
       }
+
+      if (el.tagName === 'A' || el.tagName === 'AREA') {
+        const url = resolveUrl(el.getAttribute('href'));
+        if (url && isImageUrl(url) && !url.startsWith('data:') && !downloadedUrls.has(url)) {
+          downloadedUrls.add(url);
+          sendToBackground({ action: 'download_image', url });
+          didDownload = true;
+        }
+      }
     }
 
     if (didDownload) {
@@ -1530,6 +1561,6 @@
   syncDragPreference();
   browser.storage.onChanged.addListener(() => syncDragPreference());
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { handleImg, handleSrcset, trackImageUrl, buildDomSizeMap, getCssMediaUrls, extractBgImageUrls, resolveUrl, isVideoUrl, isImageUrl, isSvgUrl, parseSrcset, pickBestFromSrcset, collectInlineSvgs, collectNoscriptImages, collectTemplateMedia, handleEmbed, passesSizeFilter, handleMeta, collectMediaUrls, handleSource, handlePicture, handleSvgImage, handleDataBg, extractRegexUrls, handleVideo, filterImagesBySize, SIZE_PROBE_POOL_SIZE, REGEX_SWEEP_FILTER, BG_IMAGE_SELECTORS, addNewUrls, MAX_TRACKED_MEDIA, TAG_SET, processBgImageQueue, getTargetUrlsForElement };
+    module.exports = { handleImg, handleSrcset, trackImageUrl, buildDomSizeMap, getCssMediaUrls, extractBgImageUrls, resolveUrl, isVideoUrl, isImageUrl, isSvgUrl, parseSrcset, pickBestFromSrcset, collectInlineSvgs, collectNoscriptImages, collectTemplateMedia, handleEmbed, passesSizeFilter, handleMeta, collectMediaUrls, handleSource, handlePicture, handleSvgImage, handleAnchor, handleDataBg, extractRegexUrls, handleVideo, filterImagesBySize, SIZE_PROBE_POOL_SIZE, REGEX_SWEEP_FILTER, BG_IMAGE_SELECTORS, addNewUrls, MAX_TRACKED_MEDIA, TAG_SET, processBgImageQueue, getTargetUrlsForElement };
   }
 })();
