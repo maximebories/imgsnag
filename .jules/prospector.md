@@ -85,3 +85,7 @@
 ## 2026-10-27 - WebVTT Video Seek Thumbnails RFC
 **Learning:** Video players use WebVTT (`<track kind="metadata">`) to map timestamps to high-quality thumbnail sprite sheets via spatial media fragments (`sprite.jpg#xywh=0,0,160,90`). These sprite URLs never enter the DOM and are missed by ambient discovery unless the user scrubs the timeline. Because VTT requires a network fetch, extraction must happen on popup connect and strictly use `credentials: 'omit'`.
 **Action:** Verdict GO, staged. Filed as an RFC issue by the orchestrator.
+
+## 2026-10-31 - Same-origin iframe descent RFC
+**Learning:** Embedded galleries, widgets, and rich-text editors often use same-origin `<iframe>` boundaries for layout isolation. Because imgsnag skips `all_frames: true` to avoid the cross-origin/ad-frame performance tax, media inside these iframes drops out. However, `iframe.contentDocument` is directly readable by the top-level script for same-origin or `srcdoc` frames. By recursively descending into accessible iframe documents during the DOM scan, we can capture this media using existing DOM traversal logic without network requests or new permissions.
+**Action:** Verdict GO, staged. Filed as an RFC issue by the orchestrator.
