@@ -195,3 +195,7 @@
 ## 2026-10-26 - Fix short-circuiting on data URIs in picture sources
 **Learning:** In `collectImages` and `handlePicture`, when parsing `<picture>` tags, if `img.currentSrc` yielded a `data:` URI, the loop simply short-circuited and ignored the remaining `<source>` tags. This meant high-resolution media URLs defined via `srcset`/`data-srcset` were completely missed because the image fallback was a data URI.
 **Action:** In `collectImages` and `handlePicture`, wrap the `currentSrc` verification in `resolveUrl` and a check for `!url.startsWith('data:')` so that the early return only triggers if `currentSrc` is a usable non-data media URL.
+
+## 2026-10-29 - Relative URLs in Anchor and Area tags blindspot
+**Learning:** `<a>` and `<area>` tags that link directly to an image (like a high-res lightbox variant or an image map) are a common way to expose media. If these tags contain relative URLs (e.g. `/images/highres.jpg`), they are completely missed by the `TreeWalker` regex sweep because `IMAGE_URL_RE` requires an `http` or `https` prefix.
+**Action:** Explicitly extract from `a[href]` and `area[href]` in the `collectImages()` DOM scan. Also, add `AREA` to the `TAG_SET` for the `MutationObserver`, create a `handleAnchor` helper for dynamic insertions, and ensure `Alt+Click` explicitly checks the `href` of targeted `A` and `AREA` elements if they point to an image.
