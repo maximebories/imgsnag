@@ -85,3 +85,7 @@
 ## 2026-10-27 - WebVTT Video Seek Thumbnails RFC
 **Learning:** Video players use WebVTT (`<track kind="metadata">`) to map timestamps to high-quality thumbnail sprite sheets via spatial media fragments (`sprite.jpg#xywh=0,0,160,90`). These sprite URLs never enter the DOM and are missed by ambient discovery unless the user scrubs the timeline. Because VTT requires a network fetch, extraction must happen on popup connect and strictly use `credentials: 'omit'`.
 **Action:** Verdict GO, staged. Filed as an RFC issue by the orchestrator.
+
+## 2026-10-30 - Inline `<style>` block media extraction RFC
+**Learning:** The pipeline currently extracts CSS `background-image` using `getComputedStyle` during DOM traversal. This inherently misses CSS media that is conditionally applied, such as `:hover`/`:active` pseudo-classes or unmatched `@media` queries (e.g., mobile variants when on desktop). The existing regex sweep explicitly rejects `<style>` elements to avoid parsing CSS, but a fast regex over `<style>` text content (`url(...)` and `image-set(...)`) would safely extract all background variants, including those on pseudo-classes and inactive breakpoints, without the performance penalty of CSSOM iteration.
+**Action:** Verdict GO, staged. Filed as an RFC issue by the orchestrator.
