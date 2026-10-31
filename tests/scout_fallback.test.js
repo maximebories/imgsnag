@@ -60,7 +60,6 @@ describe('Scout Fallback tests', () => {
   });
 
   test('collectImages tracks src when picture source is a data URL', () => {
-      dom.window.performance = { now: () => 1000 };
       dom = new JSDOM(`
         <picture>
           <source srcset="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7">
@@ -80,7 +79,6 @@ describe('Scout Fallback tests', () => {
       };
 
       const contentSrcFixed = 'window.module = { exports: {} };\n' + contentSrc + '\nwindow.imgsnagExports = window.module.exports;';
-      dom.window.performance = { now: () => 1000 };
       dom.window.eval(contentSrcFixed);
 
       const img = dom.window.document.querySelector('img');

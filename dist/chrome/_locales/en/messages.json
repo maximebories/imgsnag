@@ -97,13 +97,8 @@
     "description": "Short visible badge text indicating an image is an SVG."
   },
   "popupEmptyHint": {
-    "message": "Tip: $MODIFIER$+Click or drag images to save directly",
-    "description": "Hint shown to users on how to save images directly.",
-    "placeholders": {
-      "modifier": {
-        "content": "$1"
-      }
-    }
+    "message": "Tip: Alt+Click or drag images to save directly",
+    "description": "Hint shown to users on how to save images directly."
   },
   "popupInlineSvg": {
     "message": "imgsnag-inline.svg",
@@ -161,13 +156,5 @@
   "popupShortcutCtrl": {
     "message": "Ctrl",
     "description": "Keyboard modifier for Windows/Linux."
-  },
-  "popupShortcutAlt": {
-    "message": "Alt",
-    "description": "Keyboard modifier for Windows/Linux/ChromeOS."
-  },
-  "popupShortcutOpt": {
-    "message": "Option",
-    "description": "Keyboard modifier for macOS."
   }
 }
