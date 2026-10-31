@@ -11,10 +11,13 @@ describe('Scout Fallback tests', () => {
   let dom;
 
   beforeEach(() => {
+    global.performance = require("perf_hooks").performance;
     dom = new JSDOM('<!DOCTYPE html><html><head></head><body></body></html>', { url: 'https://example.com/' });
     global.document = dom.window.document;
     global.window = dom.window;
     global.Node = dom.window.Node;
+
+
     global.NodeFilter = dom.window.NodeFilter;
     global.Image = dom.window.Image;
     global.XMLSerializer = dom.window.XMLSerializer;
@@ -60,7 +63,8 @@ describe('Scout Fallback tests', () => {
   });
 
   test('collectImages tracks src when picture source is a data URL', () => {
-      dom = new JSDOM(`
+      global.performance = require("perf_hooks").performance;
+    dom = new JSDOM(`
         <picture>
           <source srcset="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7">
           <img src="http://example.com/real.jpg">
