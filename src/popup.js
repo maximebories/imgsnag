@@ -166,8 +166,9 @@
     browser.i18n.getMessage('popupLoading');
   document.getElementById('empty-text').textContent =
     browser.i18n.getMessage('popupNoMedia');
+  const altMod = navigator.platform.includes('Mac') ? browser.i18n.getMessage('popupShortcutOpt') : browser.i18n.getMessage('popupShortcutAlt');
   document.getElementById('empty-hint').textContent =
-    browser.i18n.getMessage('popupEmptyHint');
+    browser.i18n.getMessage('popupEmptyHint', [altMod]);
   document.getElementById('error-text').textContent =
     browser.i18n.getMessage('popupReload');
   document.getElementById('video-header-text').textContent =
