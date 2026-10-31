@@ -127,3 +127,7 @@
 ## 2026-10-29 - Focus Ring Contrast on Selected Cells
 **Learning:** When a UI component like a grid cell transitions into a `.selected` state that deeply alters its background color (e.g., from light gray to solid blue), any persistent interactive elements inside that container (like absolute-positioned checkmarks or action buttons) can lose focus ring visibility if their `outline` inherits or maintains a color identical to the new selected background (blue-on-blue).
 **Action:** When defining selected visual states that change background colors, explicitly update the `.selected:focus-visible` pseudo-class `outline-color` (e.g., to `#fff`) for all interactive descendants to guarantee focus ring contrast remains accessible.
+
+## 2026-10-31 - Added visible image header to image grid with aria-labelledby
+**Learning:** When a popup contains multiple semantic lists, it is crucial to link each list to its visible header using `aria-labelledby` to provide context to screen readers.
+**Action:** Always provide an explicit `aria-labelledby` linking lists to their headers for accessibility.
