@@ -47,6 +47,8 @@
     }
   };
 
+  const CLASS_ID_STYLE_HINT_RE = /(?:bg|background|hero|cover|poster|banner|avatar|image|img|thumb|mask|content)/i;
+
   const BG_IMAGE_SELECTORS =
     'div, span, section, article, header, footer, a, li, figure, i, button, main, dialog, [style*="background"], [style*="mask"]';
 
@@ -526,7 +528,9 @@
     // CSS background-image on likely container elements
     document.querySelectorAll(BG_IMAGE_SELECTORS).forEach((el) => {
       // Fast path: skip elements with no styling hints to avoid expensive getComputedStyle calls
-      if (!el.hasAttribute('class') && !el.id && !el.getAttribute('style')) return;
+      if (!((el.hasAttribute('style') && CLASS_ID_STYLE_HINT_RE.test(el.getAttribute('style'))) ||
+            (el.hasAttribute('class') && CLASS_ID_STYLE_HINT_RE.test(el.getAttribute('class'))) ||
+            (el.id && CLASS_ID_STYLE_HINT_RE.test(el.id)))) return;
 
       pendingBackgroundCheckQueue.add(el);
       if (!isBgCheckScheduled) {
@@ -1132,7 +1136,9 @@
 
   function handleBackgroundImage(el, imageSet) {
     // Fast path: skip elements with no styling hints to avoid expensive getComputedStyle calls
-    if (el.hasAttribute('class') || el.id || el.getAttribute('style')) {
+    if ((el.hasAttribute('style') && CLASS_ID_STYLE_HINT_RE.test(el.getAttribute('style'))) ||
+        (el.hasAttribute('class') && CLASS_ID_STYLE_HINT_RE.test(el.getAttribute('class'))) ||
+        (el.id && CLASS_ID_STYLE_HINT_RE.test(el.id))) {
       pendingBackgroundCheckQueue.add(el);
       if (!isBgCheckScheduled) {
         isBgCheckScheduled = true;
