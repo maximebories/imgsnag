@@ -62,3 +62,6 @@
 ## 2026-10-02 - Hardcoded keyboard modifier strings bypass internationalization
 **Learning:** Hardcoded keyboard modifier strings (like 'Cmd' or 'Ctrl') bypass internationalization and assume English terminology and capitalization, which may not be appropriate for all locales.
 **Action:** Always extract keyboard modifiers into locale files via `browser.i18n.getMessage` (e.g. `popupShortcutCmd` and `popupShortcutCtrl`) so translators can explicitly control their representation for specific languages.
+## 2026-10-30 - Hardcoded Alt modifier string bypasses internationalization
+**Learning:** Hardcoded keyboard modifier strings like 'Alt' inside full phrase keys (like `popupEmptyHint`) assume English terminology and PC keyboards, missing OS-specific terms (like 'Option' on Mac).
+**Action:** Extract 'Alt'/'Option' keyboard modifiers into separate locale keys (`popupShortcutAlt` and `popupShortcutOpt`) and pass them dynamically via placeholders into phrase strings based on the user's OS platform (e.g. using `navigator.platform.includes('Mac')`).
