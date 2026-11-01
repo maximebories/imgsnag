@@ -1385,6 +1385,37 @@
     const urls = [];
 
     if (isImgLike(el)) {
+      let realSet = false;
+      if (el.parentElement?.tagName === 'PICTURE') {
+        const pic = el.parentElement;
+        for (const source of pic.querySelectorAll('source')) {
+          for (const attr of SOURCE_SRCSET_ATTRS) {
+            const best = pickBestFromSrcset(source.getAttribute(attr));
+            if (best && isRealMediaUrl(best)) { urls.push(resolveUrl(best)); realSet = true; break; }
+          }
+          if (!realSet) {
+            for (const attr of SOURCE_URL_ATTRS) {
+              const val = source.getAttribute(attr);
+              if (val && isRealMediaUrl(val)) { urls.push(resolveUrl(val)); realSet = true; break; }
+            }
+          }
+          if (realSet) break;
+        }
+      }
+
+      if (!realSet && (el.hasAttribute('srcset') || el.hasAttribute('data-srcset') || el.hasAttribute('data-bgset') || el.hasAttribute('imagesrcset'))) {
+        for (const attr of ['srcset', 'data-srcset', 'data-bgset', 'imagesrcset']) {
+          const val = pickBestFromSrcset(el.getAttribute(attr));
+          if (val && isRealMediaUrl(val)) {
+            urls.push(resolveUrl(val));
+            realSet = true;
+            break;
+          }
+        }
+      }
+
+      if (realSet) return urls;
+
       if (el.currentSrc) {
         const url = resolveUrl(el.currentSrc);
         if (url && !url.startsWith('data:')) {
@@ -1392,8 +1423,8 @@
           return urls;
         }
       }
-      const attrs = ['data-src', 'data-lazy-src', 'data-original', 'src'];
-      for (const attr of attrs) {
+
+      for (const attr of MEDIA_SRC_ATTRS) {
         let val;
         if (attr === 'src') val = el.src;
         else val = el.hasAttribute(attr) ? el.getAttribute(attr) : null;
@@ -1409,8 +1440,28 @@
     }
 
     if (el.tagName === 'VIDEO') {
-      const url = resolveUrl(el.src || el.querySelector('source')?.src);
-      if (url && !url.startsWith('data:')) urls.push(url);
+      for (const attr of MEDIA_SRC_ATTRS) {
+        const val = el.getAttribute(attr);
+        if (val) {
+          const url = resolveUrl(val);
+          if (url && !url.startsWith('data:')) {
+            urls.push(url);
+            return urls;
+          }
+        }
+      }
+      for (const source of el.querySelectorAll('source')) {
+        for (const attr of MEDIA_SRC_ATTRS) {
+          const val = source.getAttribute(attr);
+          if (val) {
+            const url = resolveUrl(val);
+            if (url && !url.startsWith('data:')) {
+              urls.push(url);
+              return urls;
+            }
+          }
+        }
+      }
       return urls;
     }
 
@@ -1433,70 +1484,9 @@
     let didDownload = false;
 
     for (const el of elements) {
-      if (isImgLike(el)) {
-        let hasValidImage = false;
-
-        if (el.currentSrc) {
-          const url = resolveUrl(el.currentSrc);
-          if (url && !url.startsWith('data:')) {
-            hasValidImage = true;
-            if (!downloadedUrls.has(url)) {
-              downloadedUrls.add(url);
-              sendToBackground({ action: 'download_image', url });
-              didDownload = true;
-            }
-          }
-        }
-
-        if (hasValidImage) {
-          continue;
-        }
-
-        const attrs = ['data-src', 'data-lazy-src', 'data-original', 'src'];
-        for (const attr of attrs) {
-          let val;
-          if (attr === 'src') val = el.src;
-          else val = el.hasAttribute(attr) ? el.getAttribute(attr) : null;
-          if (val) {
-            const url = resolveUrl(val);
-            if (url && !url.startsWith('data:')) {
-              hasValidImage = true;
-              if (!downloadedUrls.has(url)) {
-                downloadedUrls.add(url);
-                sendToBackground({ action: 'download_image', url });
-                didDownload = true;
-              }
-              break; // Stop after first valid attribute (whether downloaded or already cached)
-            }
-          }
-        }
-        if (hasValidImage) {
-          continue;
-        }
-      }
-
-      if (el.tagName === 'VIDEO') {
-        const url = resolveUrl(el.src || el.querySelector('source')?.src);
-        if (url && !url.startsWith('data:') && !downloadedUrls.has(url)) {
-          downloadedUrls.add(url);
-          sendToBackground({ action: 'download_image', url });
-          didDownload = true;
-        }
-        continue;
-      }
-
-      for (const raw of getCssMediaUrls(el)) {
-        const url = resolveUrl(raw);
-        if (url && isImageUrl(url) && !url.startsWith('data:') && !downloadedUrls.has(url)) {
-          downloadedUrls.add(url);
-          sendToBackground({ action: 'download_image', url });
-          didDownload = true;
-        }
-      }
-
-      if (el.tagName === 'A' || el.tagName === 'AREA') {
-        const url = resolveUrl(el.getAttribute('href'));
-        if (url && isImageUrl(url) && !url.startsWith('data:') && !downloadedUrls.has(url)) {
+      const targetUrls = getTargetUrlsForElement(el);
+      for (const url of targetUrls) {
+        if (!downloadedUrls.has(url)) {
           downloadedUrls.add(url);
           sendToBackground({ action: 'download_image', url });
           didDownload = true;
@@ -1523,29 +1513,10 @@
     // Warden: Prevent hostile pages from synthesizing events to force downloads
     if (!e.isTrusted) return;
     if (isImgLike(e.target) && !isDragDisabled) {
-      let downloaded = false;
-      if (e.target.currentSrc) {
-        const url = resolveUrl(e.target.currentSrc);
-        if (url && !url.startsWith('data:')) {
-          sendToBackground({ action: 'download_image', url });
-          downloaded = true;
-        }
-      }
-
-      if (!downloaded) {
-        const attrs = ['data-src', 'data-lazy-src', 'data-original', 'src'];
-        for (const attr of attrs) {
-          let val;
-          if (attr === 'src') val = e.target.src;
-          else val = e.target.hasAttribute(attr) ? e.target.getAttribute(attr) : null;
-          if (val) {
-            const url = resolveUrl(val);
-            if (url && !url.startsWith('data:')) {
-              sendToBackground({ action: 'download_image', url });
-              break; // Only trigger one download
-            }
-          }
-        }
+      const urls = getTargetUrlsForElement(e.target);
+      for (const url of urls) {
+        sendToBackground({ action: 'download_image', url });
+        break; // Only trigger one download
       }
     }
   });

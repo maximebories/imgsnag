@@ -343,7 +343,7 @@
         #empty .hint { color: #a3a3a3; }
         .cell .placeholder { color: #bbb; background: #333; }
         kbd#shortcut-hint {
-          color: #a3a3a3;
+          color: #d1d5db;
           background: #374151;
           border-color: #4b5563;
         }
@@ -381,7 +381,10 @@
       <span id="error-text"></span>
     </div>
 
-    <ul id="grid" role="list"></ul>
+    <div id="image-header" class="group-header">
+      <span id="image-header-text"></span>
+    </div>
+    <ul id="grid" role="list" aria-labelledby="image-header-text"></ul>
 
     <div id="video-header" class="group-header">
       <span id="video-header-text"></span>
