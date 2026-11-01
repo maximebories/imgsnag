@@ -127,3 +127,7 @@
 ## 2026-10-29 - Focus Ring Contrast on Selected Cells
 **Learning:** When a UI component like a grid cell transitions into a `.selected` state that deeply alters its background color (e.g., from light gray to solid blue), any persistent interactive elements inside that container (like absolute-positioned checkmarks or action buttons) can lose focus ring visibility if their `outline` inherits or maintains a color identical to the new selected background (blue-on-blue).
 **Action:** When defining selected visual states that change background colors, explicitly update the `.selected:focus-visible` pseudo-class `outline-color` (e.g., to `#fff`) for all interactive descendants to guarantee focus ring contrast remains accessible.
+
+## 2026-10-31 - Keyboard Hint Contrast in Dark Mode
+**Learning:** The keyboard shortcut hint (`kbd#shortcut-hint`) in dark mode used a foreground color of `#a3a3a3` against a background of `#374151`, resulting in a contrast ratio of ~4.08:1. This fails the WCAG AA requirement of 4.5:1 for standard text size (11px).
+**Action:** When adding dark mode overrides for new UI elements, always verify that the chosen colors meet WCAG AA contrast requirements against their specific backgrounds. Changing the text color to `#d1d5db` improves the contrast ratio to ~7.0:1 while preserving a secondary, muted visual hierarchy.
