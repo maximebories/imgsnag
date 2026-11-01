@@ -149,6 +149,7 @@
   const loadingEl = document.getElementById('loading');
   const emptyEl = document.getElementById('empty');
   const errorEl = document.getElementById('error');
+  const imageHeaderEl = document.getElementById('image-header');
   const gridEl = document.getElementById('grid');
   const videoHeaderEl = document.getElementById('video-header');
   const videoGridEl = document.getElementById('video-grid');
@@ -173,7 +174,8 @@
     browser.i18n.getMessage('popupReload');
   document.getElementById('video-header-text').textContent =
     browser.i18n.getMessage('popupVideos');
-  gridEl.setAttribute('aria-label', browser.i18n.getMessage('popupImages'));
+  document.getElementById('image-header-text').textContent =
+    browser.i18n.getMessage('popupImages');
   btnSelected.textContent = browser.i18n.getMessage('popupDownloadSelected', ['0']);
   btnAll.textContent = browser.i18n.getMessage('popupDownloadAll', ['0']);
   document.documentElement.lang = browser.i18n.getUILanguage();
@@ -416,6 +418,7 @@
 
     if (hasImage) {
       gridEl.appendChild(imageFragment);
+      show(imageHeaderEl);
       show(gridEl);
       scheduleDedupe();
     }
