@@ -350,6 +350,7 @@ describe('Background Script', () => {
     });
 
     test('Firefox path revokes blob immediately on download failure', async () => {
+      const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
       global.URL.createObjectURL = jest.fn().mockReturnValue('blob:test-url');
       global.URL.revokeObjectURL = jest.fn();
 
@@ -363,10 +364,12 @@ describe('Background Script', () => {
         }, {});
 
         expect(response).toEqual({ success: false, error: 'Simulated download failure' });
+        expect(consoleWarnSpy).toHaveBeenCalledWith('[imgsnag] SVG download failed:', 'Simulated download failure');
         expect(global.URL.createObjectURL).toHaveBeenCalled();
         expect(global.URL.revokeObjectURL).toHaveBeenCalledTimes(1);
         expect(global.URL.revokeObjectURL).toHaveBeenCalledWith('blob:test-url');
       } finally {
+        consoleWarnSpy.mockRestore();
         global.browser.downloads.download = originalDownload;
       }
     });

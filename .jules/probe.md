@@ -141,3 +141,7 @@
 ## 2026-10-31 - resolveUrl baseURI resolution test
 **Learning:** Verified that the Scout persona's fix to use `document.baseURI` in `resolveUrl` (ensuring that relative URLs respect a document's `<base href>` rather than strictly using `location.href`) lacked a dedicated test asserting that the base resolution succeeds for allowed protocols and correctly fails-closed for hostile base protocols like `file://`.
 **Action:** Added tests in `src/tests/content.test.js` to ensure `resolveUrl` correctly processes relative URLs against a mock `<base href>` and correctly rejects resolution when the base URL uses a non-allowlisted protocol.
+
+## 2026-11-02 - SVG download failure logging regression test
+**Learning:** Verified that the error logging for SVG download failures (`console.warn`) inside the `download_svg` branch lacked a dedicated regression test.
+**Action:** Added a regression test asserting that `console.warn` is called with the expected arguments when an SVG download fails.
