@@ -89,3 +89,7 @@
 ## 2026-11-01 - <model-viewer> poster extraction RFC
 **Learning:** The `<model-viewer>` web component (used heavily for 3D products on e-commerce sites like Shopify) uses a `poster` attribute for its pre-load image. The extension structurally ignores this component because `MODEL-VIEWER` is missing from `TAG_SET` and initial DOM queries. Crucially, if the `poster` URL is extensionless (common with modern CDNs), the regex sweep also fails to find it. This is a high-value, zero-ambiguity channel that clears the URL-handoff boundary and can be captured for practically zero performance cost.
 **Action:** Verdict GO, staged. Filed as an RFC issue by the orchestrator.
+
+## 2026-11-02 - Same-origin iframe descent RFC
+**Learning:** Many sites (CMS admins like WordPress/Shopify, or embedded widgets like Discourse) sandbox user-generated content in same-origin `<iframe>`s. While the extension avoids `all_frames: true` to prevent state management complexity and cross-origin security concerns, it currently ignores the DOM inside same-origin frames, missing any `<img>` or `<picture>` elements inside them. The parent content script can safely traverse same-origin iframes simply by wrapping `iframe.contentDocument` in a `try...catch` (to handle `SecurityError` from cross-origin frames). This provides a massive coverage boost for embedded editors and widgets with zero cross-origin attack surface.
+**Action:** Verdict GO, staged. Filed as an RFC issue by the orchestrator.
