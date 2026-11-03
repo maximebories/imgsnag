@@ -135,3 +135,7 @@
 ## 2026-10-31 - Added visible image header to image grid with aria-labelledby
 **Learning:** When a popup contains multiple semantic lists, it is crucial to link each list to its visible header using `aria-labelledby` to provide context to screen readers.
 **Action:** Always provide an explicit `aria-labelledby` linking lists to their headers for accessibility.
+
+## 2026-11-03 - Checkbox Border Contrast on Selected Backgrounds
+**Learning:** When a container element changes its background color upon selection (e.g., to a solid blue), interactive child elements (like checkboxes) that also change to the same background color lose their shape and visually blend into the container if their borders are overridden to match the background. Retaining a distinct border color (like white) on the child element ensures it remains visually separate and identifiable against the container's identical background.
+**Action:** When styling `.selected` states that apply identical background colors to both a parent container and a child control, ensure the child control retains a contrasting `border-color` (e.g., `rgba(255,255,255,0.9)`) rather than overriding it to match the background.
