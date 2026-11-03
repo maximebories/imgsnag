@@ -202,12 +202,15 @@ describe('Background Script', () => {
   });
 
   test('download_image: download failure', async () => {
+    const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
     const response = await messageListener({
       action: 'download_image',
       url: 'http://fail.com/image.jpg'
     }, {});
 
     expect(response).toEqual({ success: false, error: 'Simulated download failure' });
+    expect(consoleWarnSpy).toHaveBeenCalledWith('[imgsnag] Download failed:', 'http://fail.com/image.jpg', 'Simulated download failure');
+    consoleWarnSpy.mockRestore();
   });
 
   test('download_images_bulk: missing or invalid urls payload', async () => {
@@ -278,6 +281,7 @@ describe('Background Script', () => {
   });
 
   test('download_images_bulk: with a download failure', async () => {
+    const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
     const response = await messageListener({
       action: 'download_images_bulk',
       urls: [
@@ -288,6 +292,8 @@ describe('Background Script', () => {
     }, {});
 
     expect(response).toEqual({ started: true, completed: true });
+    expect(consoleWarnSpy).toHaveBeenCalledWith('[imgsnag] Download failed:', 'http://fail.com/image.jpg', 'Simulated download failure');
+    consoleWarnSpy.mockRestore();
 
     // Give async operations a moment to settle
     await new Promise(resolve => setTimeout(resolve, 0));
