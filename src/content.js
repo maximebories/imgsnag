@@ -1229,41 +1229,64 @@
       const trackSweptImage = (url) => {
         trackImageUrl(url, imageUrls);
       };
-      for (const mutation of mutations) {
-        for (const node of mutation.addedNodes) {
-          if (node.nodeType === Node.ELEMENT_NODE) {
-            extractUrlsFromElement(node, imageUrls, videoUrls);
+
+      const batchElements = new Set();
+      const addedNodesArr = [];
+      for (const m of mutations) {
+        for (const node of m.addedNodes) {
+          if (node.nodeType === Node.ELEMENT_NODE) batchElements.add(node);
+          addedNodesArr.push(node);
+        }
+      }
+
+      for (const node of addedNodesArr) {
+        let skip = false;
+        // Memory constraint: "ancestor pruning must account for nodes that are detached or reparented
+        // within the same mutation batch. Only skip a node if an ancestor node in the batch actually .contains() it and the node is .isConnected."
+        if (node.nodeType === Node.ELEMENT_NODE && node.isConnected) {
+          let parent = node.parentElement;
+          while (parent) {
+            if (batchElements.has(parent) && parent.contains(node)) {
+              skip = true;
+              break;
+            }
+            parent = parent.parentElement;
           }
+        }
+        if (skip) continue;
 
-          if (node.nodeType === Node.ELEMENT_NODE || node.nodeType === Node.TEXT_NODE) {
-            extractRegexUrls(node, trackSweptImage);
-          }
+        if (node.nodeType === Node.ELEMENT_NODE) {
+          extractUrlsFromElement(node, imageUrls, videoUrls);
+        }
 
-          if (node.nodeType === Node.ELEMENT_NODE) {
-            if (REGEX_SWEEP_FILTER.acceptNode(node) === NodeFilter.FILTER_REJECT) continue;
-            const walker = document.createTreeWalker(
-              node,
-              NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT,
-              REGEX_SWEEP_FILTER
-            );
+        if (node.nodeType === Node.ELEMENT_NODE || node.nodeType === Node.TEXT_NODE) {
+          extractRegexUrls(node, trackSweptImage);
+        }
 
-            let el;
-            while ((el = walker.nextNode())) {
-              extractRegexUrls(el, trackSweptImage);
-              if (el.nodeType !== Node.ELEMENT_NODE) continue;
-              const tag = el.tagName;
-              if (
-                TAG_SET.has(tag) ||
-                (el.hasAttributes && el.hasAttributes() && (
-                  el.hasAttribute('srcset') || el.hasAttribute('data-srcset') || el.hasAttribute('data-bgset') || el.hasAttribute('imagesrcset') ||
-                  el.hasAttribute('data-src') || el.hasAttribute('data-lazy-src') || el.hasAttribute('data-original') ||
-                  el.hasAttribute('data-bg') || el.hasAttribute('data-bg-src') || el.hasAttribute('data-background') ||
-                  el.hasAttribute('data-background-image') ||
-                  (el.hasAttribute('style') && (el.getAttribute('style').toLowerCase().includes('background') || el.getAttribute('style').toLowerCase().includes('mask')))
-                ))
-              ) {
-                extractUrlsFromElement(el, imageUrls, videoUrls);
-              }
+        if (node.nodeType === Node.ELEMENT_NODE) {
+          if (REGEX_SWEEP_FILTER.acceptNode(node) === NodeFilter.FILTER_REJECT) continue;
+          const walker = document.createTreeWalker(
+            node,
+            NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT,
+            REGEX_SWEEP_FILTER
+          );
+
+          let el;
+          while ((el = walker.nextNode())) {
+            extractRegexUrls(el, trackSweptImage);
+            if (el.nodeType !== Node.ELEMENT_NODE) continue;
+            const tag = el.tagName;
+            if (
+              TAG_SET.has(tag) ||
+              (el.hasAttributes && el.hasAttributes() && (
+                el.hasAttribute('srcset') || el.hasAttribute('data-srcset') || el.hasAttribute('data-bgset') || el.hasAttribute('imagesrcset') ||
+                el.hasAttribute('data-src') || el.hasAttribute('data-lazy-src') || el.hasAttribute('data-original') ||
+                el.hasAttribute('data-bg') || el.hasAttribute('data-bg-src') || el.hasAttribute('data-background') ||
+                el.hasAttribute('data-background-image') ||
+                (el.hasAttribute('style') && (el.getAttribute('style').toLowerCase().includes('background') || el.getAttribute('style').toLowerCase().includes('mask')))
+              ))
+            ) {
+              extractUrlsFromElement(el, imageUrls, videoUrls);
             }
           }
         }
