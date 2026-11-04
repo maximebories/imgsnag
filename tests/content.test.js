@@ -79,6 +79,21 @@ describe('extractBgImageUrls', () => {
     const bgValue = "some random text without url function";
     expect(extractBgImageUrls(bgValue)).toEqual([]);
   });
+
+  it('should extract URLs from src() strings', () => {
+    const bgValue = 'src("image.jpg")';
+    expect(extractBgImageUrls(bgValue)).toEqual(['image.jpg']);
+  });
+
+  it('should extract URLs from src() inside image-set() strings', () => {
+    const bgValue = 'image-set(src("img1.png") 1x, "img2.png" 2x)';
+    expect(extractBgImageUrls(bgValue)).toEqual(['img1.png', 'img2.png']);
+  });
+
+  it('should preserve the bare-string variant when it precedes src()', () => {
+    const bgValue = 'image-set("img1.png" 1x, src("img2.png") 2x)';
+    expect(extractBgImageUrls(bgValue)).toEqual(['img2.png', 'img1.png']);
+  });
 });
 
 describe('parseSrcset', () => {

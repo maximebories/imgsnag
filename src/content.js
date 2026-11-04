@@ -193,26 +193,28 @@
   function extractBgImageUrls(bgValue) {
     const urls = [];
 
-    const urlKeyword = 'url(';
-    let urlIdx = 0;
     const lowerBg = bgValue.toLowerCase();
-    while ((urlIdx = lowerBg.indexOf(urlKeyword, urlIdx)) !== -1) {
-      const start = urlIdx + urlKeyword.length;
-      let depth = 1;
-      let i = start;
-      for (; i < bgValue.length; i++) {
-        if (bgValue[i] === '(') depth++;
-        else if (bgValue[i] === ')') depth--;
-        if (depth === 0) break;
-      }
-      if (depth === 0) {
-        let inner = bgValue.substring(start, i).trim();
-        if ((inner.startsWith('"') && inner.endsWith('"')) || (inner.startsWith("'") && inner.endsWith("'"))) {
-          inner = inner.substring(1, inner.length - 1);
+
+    for (const keyword of ['url(', 'src(']) {
+      let urlIdx = 0;
+      while ((urlIdx = lowerBg.indexOf(keyword, urlIdx)) !== -1) {
+        const start = urlIdx + keyword.length;
+        let depth = 1;
+        let i = start;
+        for (; i < bgValue.length; i++) {
+          if (bgValue[i] === '(') depth++;
+          else if (bgValue[i] === ')') depth--;
+          if (depth === 0) break;
         }
-        if (inner) urls.push(inner);
+        if (depth === 0) {
+          let inner = bgValue.substring(start, i).trim();
+          if ((inner.startsWith('"') && inner.endsWith('"')) || (inner.startsWith("'") && inner.endsWith("'"))) {
+            inner = inner.substring(1, inner.length - 1);
+          }
+          if (inner) urls.push(inner);
+        }
+        urlIdx = i + 1;
       }
-      urlIdx = i + 1;
     }
 
     const keyword = 'image-set(';
@@ -229,7 +231,7 @@
       const inner = bgValue.substring(start, i);
       // url() variants are already collected by BG_URL_RE above; type() carries a
       // MIME string, not a URL — strip both before harvesting bare-string variants.
-      const withoutUrls = inner.replace(/(?:url|type)\([^)]*\)/gi, '');
+      const withoutUrls = inner.replace(/(?:url|src|type)\([^)]*\)/gi, '');
       const QUOTE_RE = /(["'])(.*?)\1/g;
       let quoteMatch;
       while ((quoteMatch = QUOTE_RE.exec(withoutUrls)) !== null) {
@@ -469,7 +471,8 @@
         if (el.hasAttribute(attr)) {
           const bg = el.getAttribute(attr);
           if (bg) {
-            if (bg.includes('url(') || bg.includes('image-set(')) {
+            const lowerBgAttr = bg.toLowerCase();
+            if (lowerBgAttr.includes('url(') || lowerBgAttr.includes('image-set(') || lowerBgAttr.includes('src(')) {
               for (const raw of extractBgImageUrls(bg)) trackImage(raw);
             } else {
               const url = resolveUrl(bg.trim());
@@ -1187,7 +1190,8 @@
         if (el.hasAttribute(attr)) {
           const bg = el.getAttribute(attr);
           if (bg) {
-            if (bg.includes('url(') || bg.includes('image-set(')) {
+            const lowerBgAttr = bg.toLowerCase();
+            if (lowerBgAttr.includes('url(') || lowerBgAttr.includes('image-set(') || lowerBgAttr.includes('src(')) {
               for (const raw of extractBgImageUrls(bg)) {
                 trackImageUrl(raw, imageSet);
               }
