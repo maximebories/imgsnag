@@ -1225,8 +1225,25 @@
       const trackSweptImage = (url) => {
         trackImageUrl(url, imageUrls);
       };
+      const addedNodes = new Set();
       for (const mutation of mutations) {
         for (const node of mutation.addedNodes) {
+          addedNodes.add(node);
+        }
+      }
+
+      const topLevelNodes = new Set();
+      for (const node of addedNodes) {
+        let isDescendant = false;
+        if (node.isConnected) {
+            for (let p = node.parentElement; p; p = p.parentElement) {
+              if (addedNodes.has(p)) { isDescendant = true; break; }
+            }
+        }
+        if (!isDescendant) topLevelNodes.add(node);
+      }
+
+      for (const node of topLevelNodes) {
           if (node.nodeType === Node.ELEMENT_NODE) {
             extractUrlsFromElement(node, imageUrls, videoUrls);
           }
@@ -1262,7 +1279,6 @@
               }
             }
           }
-        }
       }
       if (imageUrls.size > 0) addNewUrls(imageUrls, 'image');
       if (videoUrls.size > 0) addNewUrls(videoUrls, 'video');
