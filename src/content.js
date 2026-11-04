@@ -475,8 +475,9 @@
             if (lowerBgAttr.includes('url(') || lowerBgAttr.includes('image-set(') || lowerBgAttr.includes('src(')) {
               for (const raw of extractBgImageUrls(bg)) trackImage(raw);
             } else {
-              const url = resolveUrl(bg.trim());
-              if (isImageUrl(url)) trackImage(bg.trim());
+              const raw = bg.trim();
+              const url = resolveUrl(raw);
+              if (url && isImageUrl(url)) trackImage(raw);
             }
           }
         }
@@ -1064,7 +1065,7 @@
       try {
         for (const raw of getCssMediaUrls(el)) {
           const url = resolveUrl(raw);
-          if (url && isImageUrl(url) && !url.startsWith('data:')) imageUrls.add(url);
+          if (url && isImageUrl(url) && !url.startsWith('data:')) trackImageUrl(raw, imageUrls);
         }
       } catch {
         // Element may not be connected to DOM yet
@@ -1130,7 +1131,7 @@
     if (tag !== 'OBJECT' && tag !== 'EMBED' && tag !== 'IFRAME') return;
     const raw = tag === 'OBJECT' ? el.getAttribute('data') : el.getAttribute('src');
     const url = resolveUrl(raw);
-    if (url && isImageUrl(url) && !url.startsWith('data:')) trackImageUrl(url, imageSet);
+    if (url && isImageUrl(url) && !url.startsWith('data:')) trackImageUrl(raw, imageSet);
   }
 
   function handleBackgroundImage(el, imageSet) {
@@ -1178,9 +1179,7 @@
     if (el.tagName === 'A' || el.tagName === 'AREA') {
       const raw = el.getAttribute('href');
       const url = resolveUrl(raw);
-      if (url && isImageUrl(url) && !url.startsWith('data:')) {
-        trackImageUrl(raw, imageSet);
-      }
+      if (url && isImageUrl(url) && !url.startsWith('data:')) trackImageUrl(raw, imageSet);
     }
   }
 
@@ -1196,8 +1195,9 @@
                 trackImageUrl(raw, imageSet);
               }
             } else {
-              const url = resolveUrl(bg.trim());
-              if (isImageUrl(url) && !url.startsWith('data:')) imageSet.add(url);
+              const raw = bg.trim();
+              const url = resolveUrl(raw);
+              if (url && isImageUrl(url) && !url.startsWith('data:')) trackImageUrl(raw, imageSet);
             }
           }
         }
@@ -1347,7 +1347,7 @@
           try {
             for (const raw of getCssMediaUrls(el)) {
               const url = resolveUrl(raw);
-              if (url && isImageUrl(url) && !url.startsWith('data:')) imageUrls.add(url);
+              if (url && isImageUrl(url) && !url.startsWith('data:')) trackImageUrl(raw, imageUrls);
             }
           } catch {
             // Element may not be connected to DOM yet
