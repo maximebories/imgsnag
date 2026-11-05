@@ -139,3 +139,7 @@
 ## 2026-11-03 - Checkbox Border Contrast on Selected Backgrounds
 **Learning:** When a container element changes its background color upon selection (e.g., to a solid blue), interactive child elements (like checkboxes) that also change to the same background color lose their shape and visually blend into the container if their borders are overridden to match the background. Retaining a distinct border color (like white) on the child element ensures it remains visually separate and identifiable against the container's identical background.
 **Action:** When styling `.selected` states that apply identical background colors to both a parent container and a child control, ensure the child control retains a contrasting `border-color` (e.g., `rgba(255,255,255,0.9)`) rather than overriding it to match the background.
+
+## 2026-11-04 - Badge Border Contrast on Selected Backgrounds
+**Learning:** When a container element changes its background color upon selection (e.g., to solid blue), static child badges that use that identical background color lose their shape and visually blend into the container when the main content scales down. Retaining a distinct border color (like white) ensures the badge remains visually identifiable against the container's identical background.
+**Action:** When styling badges that share the background color of their container's selected state, explicitly add a contrasting `border` (e.g., `border: 1px solid rgba(255,255,255,0.9)`) and adjust padding to maintain the original footprint and contrast.
