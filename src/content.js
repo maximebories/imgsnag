@@ -68,7 +68,7 @@
   const SOURCE_URL_ATTRS = ['src', 'data-src', 'data-lazy-src', 'data-original'];
   const DATA_BG_ATTRS = ['data-bg', 'data-bg-src', 'data-background', 'data-background-image'];
   // Tags worth an attribute sweep when they turn up in a MutationObserver batch
-  const TAG_SET = new Set(['IMG', 'VIDEO', 'SOURCE', 'PICTURE', 'DIV', 'SPAN', 'SECTION', 'ARTICLE', 'HEADER', 'FOOTER', 'A', 'LI', 'FIGURE', 'I', 'META', 'LINK', 'OBJECT', 'EMBED', 'IFRAME', 'image', 'IMAGE', 'INPUT', 'BUTTON', 'MAIN', 'DIALOG']);
+  const TAG_SET = new Set(['IMG', 'VIDEO', 'SOURCE', 'PICTURE', 'DIV', 'SPAN', 'SECTION', 'ARTICLE', 'HEADER', 'FOOTER', 'A', 'AREA', 'LI', 'FIGURE', 'I', 'META', 'LINK', 'OBJECT', 'EMBED', 'IFRAME', 'image', 'IMAGE', 'INPUT', 'BUTTON', 'MAIN', 'DIALOG']);
 
   // <input type="image"> renders and resolves its src exactly like an <img>, so every
   // path that reads an <img> treats it the same way. `el.type` is the IDL attribute,
@@ -193,26 +193,28 @@
   function extractBgImageUrls(bgValue) {
     const urls = [];
 
-    const urlKeyword = 'url(';
-    let urlIdx = 0;
     const lowerBg = bgValue.toLowerCase();
-    while ((urlIdx = lowerBg.indexOf(urlKeyword, urlIdx)) !== -1) {
-      const start = urlIdx + urlKeyword.length;
-      let depth = 1;
-      let i = start;
-      for (; i < bgValue.length; i++) {
-        if (bgValue[i] === '(') depth++;
-        else if (bgValue[i] === ')') depth--;
-        if (depth === 0) break;
-      }
-      if (depth === 0) {
-        let inner = bgValue.substring(start, i).trim();
-        if ((inner.startsWith('"') && inner.endsWith('"')) || (inner.startsWith("'") && inner.endsWith("'"))) {
-          inner = inner.substring(1, inner.length - 1);
+
+    for (const keyword of ['url(', 'src(']) {
+      let urlIdx = 0;
+      while ((urlIdx = lowerBg.indexOf(keyword, urlIdx)) !== -1) {
+        const start = urlIdx + keyword.length;
+        let depth = 1;
+        let i = start;
+        for (; i < bgValue.length; i++) {
+          if (bgValue[i] === '(') depth++;
+          else if (bgValue[i] === ')') depth--;
+          if (depth === 0) break;
         }
-        if (inner) urls.push(inner);
+        if (depth === 0) {
+          let inner = bgValue.substring(start, i).trim();
+          if ((inner.startsWith('"') && inner.endsWith('"')) || (inner.startsWith("'") && inner.endsWith("'"))) {
+            inner = inner.substring(1, inner.length - 1);
+          }
+          if (inner) urls.push(inner);
+        }
+        urlIdx = i + 1;
       }
-      urlIdx = i + 1;
     }
 
     const keyword = 'image-set(';
@@ -229,7 +231,7 @@
       const inner = bgValue.substring(start, i);
       // url() variants are already collected by BG_URL_RE above; type() carries a
       // MIME string, not a URL — strip both before harvesting bare-string variants.
-      const withoutUrls = inner.replace(/(?:url|type)\([^)]*\)/gi, '');
+      const withoutUrls = inner.replace(/(?:url|src|type)\([^)]*\)/gi, '');
       const QUOTE_RE = /(["'])(.*?)\1/g;
       let quoteMatch;
       while ((quoteMatch = QUOTE_RE.exec(withoutUrls)) !== null) {
@@ -394,7 +396,7 @@
 
   function collectImages(trackImage) {
     // <meta> Open Graph / Twitter, <link rel="preload"> hints, and icons
-    document.querySelectorAll('meta[property="og:image"], meta[property="og:image:secure_url"], meta[name="twitter:image"], meta[itemprop="image"], link[rel="preload"][as="image"], link[rel="icon"], link[rel="apple-touch-icon"], link[rel="shortcut icon"], link[rel="image_src"], link[rel="mask-icon"], link[itemprop="image"]').forEach((el) => {
+    document.querySelectorAll('meta[property="og:image"], meta[property="og:image:url"], meta[property="og:image:secure_url"], meta[name="twitter:image"], meta[name="twitter:image:src"], meta[itemprop="image"], link[rel="preload"][as="image"], link[rel="icon"], link[rel="apple-touch-icon"], link[rel="shortcut icon"], link[rel="image_src"], link[rel="mask-icon"], link[itemprop="image"]').forEach((el) => {
       // A responsive preload's `href` is only the fallback for browsers that
       // ignore imagesrcset. The [imagesrcset] sweep below already takes the best
       // candidate, so emitting href here too would double-count one image —
@@ -469,11 +471,13 @@
         if (el.hasAttribute(attr)) {
           const bg = el.getAttribute(attr);
           if (bg) {
-            if (bg.includes('url(') || bg.includes('image-set(')) {
+            const lowerBgAttr = bg.toLowerCase();
+            if (lowerBgAttr.includes('url(') || lowerBgAttr.includes('image-set(') || lowerBgAttr.includes('src(')) {
               for (const raw of extractBgImageUrls(bg)) trackImage(raw);
             } else {
-              const url = resolveUrl(bg.trim());
-              if (isImageUrl(url)) trackImage(bg.trim());
+              const raw = bg.trim();
+              const url = resolveUrl(raw);
+              if (url && isImageUrl(url)) trackImage(raw);
             }
           }
         }
@@ -515,6 +519,12 @@
     document.querySelectorAll('svg image, image').forEach((el) => {
       const raw = el.getAttribute('href') || el.getAttribute('xlink:href');
       if (raw) trackImage(raw);
+    });
+
+    // <a> and <area> links pointing directly to images (e.g. lightbox links)
+    document.querySelectorAll('a[href], area[href]').forEach((el) => {
+      const raw = el.getAttribute('href');
+      if (raw && isImageUrl(resolveUrl(raw))) trackImage(raw);
     });
 
     // CSS background-image on likely container elements
@@ -1055,7 +1065,7 @@
       try {
         for (const raw of getCssMediaUrls(el)) {
           const url = resolveUrl(raw);
-          if (url && isImageUrl(url) && !url.startsWith('data:')) imageUrls.add(url);
+          if (url && isImageUrl(url) && !url.startsWith('data:')) trackImageUrl(raw, imageUrls);
         }
       } catch {
         // Element may not be connected to DOM yet
@@ -1080,7 +1090,7 @@
       const prop = el.getAttribute('property');
       const name = el.getAttribute('name');
       const itemprop = el.getAttribute('itemprop');
-      if (prop === 'og:image' || prop === 'og:image:secure_url' || name === 'twitter:image' || itemprop === 'image') {
+      if (prop === 'og:image' || prop === 'og:image:url' || prop === 'og:image:secure_url' || name === 'twitter:image' || name === 'twitter:image:src' || itemprop === 'image') {
         trackImageUrl(el.getAttribute('content'), imageSet);
       } else if (videoSet) {
         const videoUrl = videoUrlFromMeta(el);
@@ -1121,7 +1131,7 @@
     if (tag !== 'OBJECT' && tag !== 'EMBED' && tag !== 'IFRAME') return;
     const raw = tag === 'OBJECT' ? el.getAttribute('data') : el.getAttribute('src');
     const url = resolveUrl(raw);
-    if (url && isImageUrl(url) && !url.startsWith('data:')) trackImageUrl(url, imageSet);
+    if (url && isImageUrl(url) && !url.startsWith('data:')) trackImageUrl(raw, imageSet);
   }
 
   function handleBackgroundImage(el, imageSet) {
@@ -1165,19 +1175,29 @@
     }
   }
 
+  function handleAnchor(el, imageSet) {
+    if (el.tagName === 'A' || el.tagName === 'AREA') {
+      const raw = el.getAttribute('href');
+      const url = resolveUrl(raw);
+      if (url && isImageUrl(url) && !url.startsWith('data:')) trackImageUrl(raw, imageSet);
+    }
+  }
+
   function handleDataBg(el, imageSet) {
     if (el.hasAttributes && el.hasAttributes()) {
       for (const attr of DATA_BG_ATTRS) {
         if (el.hasAttribute(attr)) {
           const bg = el.getAttribute(attr);
           if (bg) {
-            if (bg.includes('url(') || bg.includes('image-set(')) {
+            const lowerBgAttr = bg.toLowerCase();
+            if (lowerBgAttr.includes('url(') || lowerBgAttr.includes('image-set(') || lowerBgAttr.includes('src(')) {
               for (const raw of extractBgImageUrls(bg)) {
                 trackImageUrl(raw, imageSet);
               }
             } else {
-              const url = resolveUrl(bg.trim());
-              if (isImageUrl(url) && !url.startsWith('data:')) imageSet.add(url);
+              const raw = bg.trim();
+              const url = resolveUrl(raw);
+              if (url && isImageUrl(url) && !url.startsWith('data:')) trackImageUrl(raw, imageSet);
             }
           }
         }
@@ -1196,6 +1216,7 @@
     handleEmbed(el, imageSet);
     handlePicture(el, imageSet);
     handleSvgImage(el, imageSet);
+    handleAnchor(el, imageSet);
   }
 
   // Observers — continuous media tracking
@@ -1208,8 +1229,25 @@
       const trackSweptImage = (url) => {
         trackImageUrl(url, imageUrls);
       };
+      const addedNodes = new Set();
       for (const mutation of mutations) {
         for (const node of mutation.addedNodes) {
+          addedNodes.add(node);
+        }
+      }
+
+      const topLevelNodes = new Set();
+      for (const node of addedNodes) {
+        let isDescendant = false;
+        if (node.isConnected) {
+            for (let p = node.parentElement; p; p = p.parentElement) {
+              if (addedNodes.has(p)) { isDescendant = true; break; }
+            }
+        }
+        if (!isDescendant) topLevelNodes.add(node);
+      }
+
+      for (const node of topLevelNodes) {
           if (node.nodeType === Node.ELEMENT_NODE) {
             extractUrlsFromElement(node, imageUrls, videoUrls);
           }
@@ -1245,7 +1283,6 @@
               }
             }
           }
-        }
       }
       if (imageUrls.size > 0) addNewUrls(imageUrls, 'image');
       if (videoUrls.size > 0) addNewUrls(videoUrls, 'video');
@@ -1326,7 +1363,7 @@
           try {
             for (const raw of getCssMediaUrls(el)) {
               const url = resolveUrl(raw);
-              if (url && isImageUrl(url) && !url.startsWith('data:')) imageUrls.add(url);
+              if (url && isImageUrl(url) && !url.startsWith('data:')) trackImageUrl(raw, imageUrls);
             }
           } catch {
             // Element may not be connected to DOM yet
@@ -1368,6 +1405,37 @@
     const urls = [];
 
     if (isImgLike(el)) {
+      let realSet = false;
+      if (el.parentElement?.tagName === 'PICTURE') {
+        const pic = el.parentElement;
+        for (const source of pic.querySelectorAll('source')) {
+          for (const attr of SOURCE_SRCSET_ATTRS) {
+            const best = pickBestFromSrcset(source.getAttribute(attr));
+            if (best && isRealMediaUrl(best)) { urls.push(resolveUrl(best)); realSet = true; break; }
+          }
+          if (!realSet) {
+            for (const attr of SOURCE_URL_ATTRS) {
+              const val = source.getAttribute(attr);
+              if (val && isRealMediaUrl(val)) { urls.push(resolveUrl(val)); realSet = true; break; }
+            }
+          }
+          if (realSet) break;
+        }
+      }
+
+      if (!realSet && (el.hasAttribute('srcset') || el.hasAttribute('data-srcset') || el.hasAttribute('data-bgset') || el.hasAttribute('imagesrcset'))) {
+        for (const attr of ['srcset', 'data-srcset', 'data-bgset', 'imagesrcset']) {
+          const val = pickBestFromSrcset(el.getAttribute(attr));
+          if (val && isRealMediaUrl(val)) {
+            urls.push(resolveUrl(val));
+            realSet = true;
+            break;
+          }
+        }
+      }
+
+      if (realSet) return urls;
+
       if (el.currentSrc) {
         const url = resolveUrl(el.currentSrc);
         if (url && !url.startsWith('data:')) {
@@ -1375,8 +1443,8 @@
           return urls;
         }
       }
-      const attrs = ['data-src', 'data-lazy-src', 'data-original', 'src'];
-      for (const attr of attrs) {
+
+      for (const attr of MEDIA_SRC_ATTRS) {
         let val;
         if (attr === 'src') val = el.src;
         else val = el.hasAttribute(attr) ? el.getAttribute(attr) : null;
@@ -1392,13 +1460,38 @@
     }
 
     if (el.tagName === 'VIDEO') {
-      const url = resolveUrl(el.src || el.querySelector('source')?.src);
-      if (url && !url.startsWith('data:')) urls.push(url);
+      for (const attr of MEDIA_SRC_ATTRS) {
+        const val = el.getAttribute(attr);
+        if (val) {
+          const url = resolveUrl(val);
+          if (url && !url.startsWith('data:')) {
+            urls.push(url);
+            return urls;
+          }
+        }
+      }
+      for (const source of el.querySelectorAll('source')) {
+        for (const attr of MEDIA_SRC_ATTRS) {
+          const val = source.getAttribute(attr);
+          if (val) {
+            const url = resolveUrl(val);
+            if (url && !url.startsWith('data:')) {
+              urls.push(url);
+              return urls;
+            }
+          }
+        }
+      }
       return urls;
     }
 
     for (const raw of getCssMediaUrls(el)) {
       const url = resolveUrl(raw);
+      if (url && isImageUrl(url) && !url.startsWith('data:')) urls.push(url);
+    }
+
+    if (el.tagName === 'A' || el.tagName === 'AREA') {
+      const url = resolveUrl(el.getAttribute('href'));
       if (url && isImageUrl(url) && !url.startsWith('data:')) urls.push(url);
     }
 
@@ -1411,61 +1504,9 @@
     let didDownload = false;
 
     for (const el of elements) {
-      if (isImgLike(el)) {
-        let hasValidImage = false;
-
-        if (el.currentSrc) {
-          const url = resolveUrl(el.currentSrc);
-          if (url && !url.startsWith('data:')) {
-            hasValidImage = true;
-            if (!downloadedUrls.has(url)) {
-              downloadedUrls.add(url);
-              sendToBackground({ action: 'download_image', url });
-              didDownload = true;
-            }
-          }
-        }
-
-        if (hasValidImage) {
-          continue;
-        }
-
-        const attrs = ['data-src', 'data-lazy-src', 'data-original', 'src'];
-        for (const attr of attrs) {
-          let val;
-          if (attr === 'src') val = el.src;
-          else val = el.hasAttribute(attr) ? el.getAttribute(attr) : null;
-          if (val) {
-            const url = resolveUrl(val);
-            if (url && !url.startsWith('data:')) {
-              hasValidImage = true;
-              if (!downloadedUrls.has(url)) {
-                downloadedUrls.add(url);
-                sendToBackground({ action: 'download_image', url });
-                didDownload = true;
-              }
-              break; // Stop after first valid attribute (whether downloaded or already cached)
-            }
-          }
-        }
-        if (hasValidImage) {
-          continue;
-        }
-      }
-
-      if (el.tagName === 'VIDEO') {
-        const url = resolveUrl(el.src || el.querySelector('source')?.src);
-        if (url && !url.startsWith('data:') && !downloadedUrls.has(url)) {
-          downloadedUrls.add(url);
-          sendToBackground({ action: 'download_image', url });
-          didDownload = true;
-        }
-        continue;
-      }
-
-      for (const raw of getCssMediaUrls(el)) {
-        const url = resolveUrl(raw);
-        if (url && isImageUrl(url) && !url.startsWith('data:') && !downloadedUrls.has(url)) {
+      const targetUrls = getTargetUrlsForElement(el);
+      for (const url of targetUrls) {
+        if (!downloadedUrls.has(url)) {
           downloadedUrls.add(url);
           sendToBackground({ action: 'download_image', url });
           didDownload = true;
@@ -1492,29 +1533,10 @@
     // Warden: Prevent hostile pages from synthesizing events to force downloads
     if (!e.isTrusted) return;
     if (isImgLike(e.target) && !isDragDisabled) {
-      let downloaded = false;
-      if (e.target.currentSrc) {
-        const url = resolveUrl(e.target.currentSrc);
-        if (url && !url.startsWith('data:')) {
-          sendToBackground({ action: 'download_image', url });
-          downloaded = true;
-        }
-      }
-
-      if (!downloaded) {
-        const attrs = ['data-src', 'data-lazy-src', 'data-original', 'src'];
-        for (const attr of attrs) {
-          let val;
-          if (attr === 'src') val = e.target.src;
-          else val = e.target.hasAttribute(attr) ? e.target.getAttribute(attr) : null;
-          if (val) {
-            const url = resolveUrl(val);
-            if (url && !url.startsWith('data:')) {
-              sendToBackground({ action: 'download_image', url });
-              break; // Only trigger one download
-            }
-          }
-        }
+      const urls = getTargetUrlsForElement(e.target);
+      for (const url of urls) {
+        sendToBackground({ action: 'download_image', url });
+        break; // Only trigger one download
       }
     }
   });
@@ -1530,6 +1552,6 @@
   syncDragPreference();
   browser.storage.onChanged.addListener(() => syncDragPreference());
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { handleImg, handleSrcset, trackImageUrl, buildDomSizeMap, getCssMediaUrls, extractBgImageUrls, resolveUrl, isVideoUrl, isImageUrl, isSvgUrl, parseSrcset, pickBestFromSrcset, collectInlineSvgs, collectNoscriptImages, collectTemplateMedia, handleEmbed, passesSizeFilter, handleMeta, collectMediaUrls, handleSource, handlePicture, handleSvgImage, handleDataBg, extractRegexUrls, handleVideo, filterImagesBySize, SIZE_PROBE_POOL_SIZE, REGEX_SWEEP_FILTER, BG_IMAGE_SELECTORS, addNewUrls, MAX_TRACKED_MEDIA, TAG_SET, processBgImageQueue, getTargetUrlsForElement };
+    module.exports = { handleImg, handleSrcset, trackImageUrl, buildDomSizeMap, getCssMediaUrls, extractBgImageUrls, resolveUrl, isVideoUrl, isImageUrl, isSvgUrl, parseSrcset, pickBestFromSrcset, collectInlineSvgs, collectNoscriptImages, collectTemplateMedia, handleEmbed, passesSizeFilter, handleMeta, collectMediaUrls, handleSource, handlePicture, handleSvgImage, handleAnchor, handleDataBg, extractRegexUrls, handleVideo, filterImagesBySize, SIZE_PROBE_POOL_SIZE, REGEX_SWEEP_FILTER, BG_IMAGE_SELECTORS, addNewUrls, MAX_TRACKED_MEDIA, TAG_SET, processBgImageQueue, getTargetUrlsForElement };
   }
 })();

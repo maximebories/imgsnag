@@ -85,3 +85,11 @@
 ## 2026-10-27 - WebVTT Video Seek Thumbnails RFC
 **Learning:** Video players use WebVTT (`<track kind="metadata">`) to map timestamps to high-quality thumbnail sprite sheets via spatial media fragments (`sprite.jpg#xywh=0,0,160,90`). These sprite URLs never enter the DOM and are missed by ambient discovery unless the user scrubs the timeline. Because VTT requires a network fetch, extraction must happen on popup connect and strictly use `credentials: 'omit'`.
 **Action:** Verdict GO, staged. Filed as an RFC issue by the orchestrator.
+
+## 2026-11-01 - <model-viewer> poster extraction RFC
+**Learning:** The `<model-viewer>` web component (used heavily for 3D products on e-commerce sites like Shopify) uses a `poster` attribute for its pre-load image. The extension structurally ignores this component because `MODEL-VIEWER` is missing from `TAG_SET` and initial DOM queries. Crucially, if the `poster` URL is extensionless (common with modern CDNs), the regex sweep also fails to find it. This is a high-value, zero-ambiguity channel that clears the URL-handoff boundary and can be captured for practically zero performance cost.
+**Action:** Verdict GO, staged. Filed as an RFC issue by the orchestrator.
+
+## 2026-11-03 - Closed Shadow Root traversal RFC
+**Learning:** Components attached with `{ mode: 'closed' }` return `null` for `.shadowRoot`, making their internal media invisible to standard DOM queries (`src/content.js:419`) and the open shadow DOM traversal from RFC #135. The only way to pierce closed shadow roots is to intercept their creation by monkey-patching `Element.prototype.attachShadow` via a `MAIN` world injected script, storing weak references to the created roots.
+**Action:** Verdict GO, staged. Filed as an RFC issue by the orchestrator. The implementation must use `world: "MAIN"`, require strict `Warden` review for cross-world communication, and operate strictly on-demand (e.g., popup connect) to avoid ambient overhead.

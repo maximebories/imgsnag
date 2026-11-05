@@ -149,6 +149,7 @@
   const loadingEl = document.getElementById('loading');
   const emptyEl = document.getElementById('empty');
   const errorEl = document.getElementById('error');
+  const imageHeaderEl = document.getElementById('image-header');
   const gridEl = document.getElementById('grid');
   const videoHeaderEl = document.getElementById('video-header');
   const videoGridEl = document.getElementById('video-grid');
@@ -166,13 +167,15 @@
     browser.i18n.getMessage('popupLoading');
   document.getElementById('empty-text').textContent =
     browser.i18n.getMessage('popupNoMedia');
+  const altMod = navigator.platform.includes('Mac') ? browser.i18n.getMessage('popupShortcutOpt') : browser.i18n.getMessage('popupShortcutAlt');
   document.getElementById('empty-hint').textContent =
-    browser.i18n.getMessage('popupEmptyHint');
+    browser.i18n.getMessage('popupEmptyHint', [altMod]);
   document.getElementById('error-text').textContent =
     browser.i18n.getMessage('popupReload');
   document.getElementById('video-header-text').textContent =
     browser.i18n.getMessage('popupVideos');
-  gridEl.setAttribute('aria-label', browser.i18n.getMessage('popupImages'));
+  document.getElementById('image-header-text').textContent =
+    browser.i18n.getMessage('popupImages');
   btnSelected.textContent = browser.i18n.getMessage('popupDownloadSelected', ['0']);
   btnAll.textContent = browser.i18n.getMessage('popupDownloadAll', ['0']);
   document.documentElement.lang = browser.i18n.getUILanguage();
@@ -260,7 +263,8 @@
   function filenameFromUrl(url, full = false) {
     try {
       const path = new URL(url).pathname;
-      const name = path.split('/').pop();
+      let name = path.split('/').pop();
+      try { name = decodeURIComponent(name); } catch {}
       return (!full && name.length > 20) ? name.slice(0, 17) + '...' : name;
     } catch {
       return '';
@@ -414,6 +418,7 @@
 
     if (hasImage) {
       gridEl.appendChild(imageFragment);
+      show(imageHeaderEl);
       show(gridEl);
       scheduleDedupe();
     }

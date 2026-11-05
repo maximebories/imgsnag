@@ -102,6 +102,9 @@
         outline: 3px solid #2563eb;
         outline-offset: -3px;
       }
+      .cell.selected .cell-action:focus-visible {
+        outline-color: #fff;
+      }
 
       .cell .check {
         position: absolute;
@@ -128,10 +131,12 @@
       }
       .cell .check.selected {
         background: #2563eb;
-        border-color: #2563eb;
       }
       .cell .check.selected:hover, .cell .check.selected:focus-visible {
         background: #1d4ed8;
+      }
+      .cell .check.selected:focus-visible {
+        outline-color: #fff;
       }
       .cell:focus-within .check {
         opacity: 1; /* ensure it stays visible when focused inside */
@@ -155,7 +160,8 @@
         font-size: 10px;
         font-weight: 600;
         border-radius: 4px;
-        padding: 2px 4px;
+        border: 1px solid rgba(255,255,255,0.9);
+        padding: 1px 3px;
         box-shadow: 0 1px 3px rgba(0,0,0,0.4);
         pointer-events: none;
       }
@@ -337,7 +343,7 @@
         #empty .hint { color: #a3a3a3; }
         .cell .placeholder { color: #bbb; background: #333; }
         kbd#shortcut-hint {
-          color: #a3a3a3;
+          color: #d1d5db;
           background: #374151;
           border-color: #4b5563;
         }
@@ -375,7 +381,10 @@
       <span id="error-text"></span>
     </div>
 
-    <ul id="grid" role="list"></ul>
+    <div id="image-header" class="group-header">
+      <span id="image-header-text"></span>
+    </div>
+    <ul id="grid" role="list" aria-labelledby="image-header-text"></ul>
 
     <div id="video-header" class="group-header">
       <span id="video-header-text"></span>

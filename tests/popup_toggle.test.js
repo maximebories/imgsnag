@@ -6,6 +6,7 @@ document.body.innerHTML = `
   <div id="loading" class="visible"><span id="loading-text"></span></div>
   <div id="empty"><span id="empty-text"></span><span id="empty-hint"></span></div>
   <div id="error"><span id="error-text"></span></div>
+  <div id="image-header"><span id="image-header-text"></span></div>
   <ul id="grid"></ul>
   <div id="video-header"><span id="video-header-text"></span></div>
   <ul id="video-grid"></ul>

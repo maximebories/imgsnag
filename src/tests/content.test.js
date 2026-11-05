@@ -41,6 +41,27 @@ describe('resolveUrl', () => {
     expect(resolveUrl('../image.svg')).toBe('http://localhost/image.svg'); // Resolves relative to root since base is /
   });
 
+  it('should resolve relative URLs against a custom document.baseURI', () => {
+    const base = document.createElement('base');
+    base.href = 'https://custom-base.com/base/';
+    document.head.appendChild(base);
+
+    expect(resolveUrl('image.png')).toBe('https://custom-base.com/base/image.png');
+    expect(resolveUrl('/root.png')).toBe('https://custom-base.com/root.png');
+
+    document.head.removeChild(base);
+  });
+
+  it('should return null when the resolved URL (via base) has a non-allowlisted protocol', () => {
+    const base = document.createElement('base');
+    base.href = 'file:///etc/';
+    document.head.appendChild(base);
+
+    expect(resolveUrl('passwd')).toBeNull();
+
+    document.head.removeChild(base);
+  });
+
   it('should return null for empty or falsy inputs', () => {
     expect(resolveUrl(null)).toBeNull();
     expect(resolveUrl('')).toBeNull();

@@ -119,3 +119,27 @@
 ## 2026-10-26 - Selected Cell Visual Indicator
 **Learning:** In a dense image grid, indicating selection merely by turning a small corner checkbox blue is insufficient. The selected state gets lost against complex image backgrounds, causing poor visual scanning and accessibility (contrast).
 **Action:** Always provide a robust, whole-cell visual indicator for selected states. Adding `.selected` to the cell wrapper to scale down the image and reveal a solid border (the cell background) clearly demarcates selected items exactly like native OS file explorers or Google Photos.
+
+## 2026-10-28 - Decode URL filenames for UI Display
+**Learning:** Extracting filenames from media URLs using just the pathname can result in unreadable UI labels and tooltips because the text remains URL encoded (e.g. `%20` instead of a space). Calling `decodeURIComponent` on the extracted filename improves readability for users when filenames are shown in placeholders, labels, or accessibility tooltips.
+**Action:** Always wrap `decodeURIComponent` in a try-catch block when parsing external URL strings, as malformed URI sequences will cause it to throw a URIError.
+
+## 2026-10-29 - Focus Ring Contrast on Selected Cells
+**Learning:** When a UI component like a grid cell transitions into a `.selected` state that deeply alters its background color (e.g., from light gray to solid blue), any persistent interactive elements inside that container (like absolute-positioned checkmarks or action buttons) can lose focus ring visibility if their `outline` inherits or maintains a color identical to the new selected background (blue-on-blue).
+**Action:** When defining selected visual states that change background colors, explicitly update the `.selected:focus-visible` pseudo-class `outline-color` (e.g., to `#fff`) for all interactive descendants to guarantee focus ring contrast remains accessible.
+
+## 2026-10-31 - Keyboard Hint Contrast in Dark Mode
+**Learning:** The keyboard shortcut hint (`kbd#shortcut-hint`) in dark mode used a foreground color of `#a3a3a3` against a background of `#374151`, resulting in a contrast ratio of ~4.08:1. This fails the WCAG AA requirement of 4.5:1 for standard text size (11px).
+**Action:** When adding dark mode overrides for new UI elements, always verify that the chosen colors meet WCAG AA contrast requirements against their specific backgrounds. Changing the text color to `#d1d5db` improves the contrast ratio to ~7.0:1 while preserving a secondary, muted visual hierarchy.
+
+## 2026-10-31 - Added visible image header to image grid with aria-labelledby
+**Learning:** When a popup contains multiple semantic lists, it is crucial to link each list to its visible header using `aria-labelledby` to provide context to screen readers.
+**Action:** Always provide an explicit `aria-labelledby` linking lists to their headers for accessibility.
+
+## 2026-11-03 - Checkbox Border Contrast on Selected Backgrounds
+**Learning:** When a container element changes its background color upon selection (e.g., to a solid blue), interactive child elements (like checkboxes) that also change to the same background color lose their shape and visually blend into the container if their borders are overridden to match the background. Retaining a distinct border color (like white) on the child element ensures it remains visually separate and identifiable against the container's identical background.
+**Action:** When styling `.selected` states that apply identical background colors to both a parent container and a child control, ensure the child control retains a contrasting `border-color` (e.g., `rgba(255,255,255,0.9)`) rather than overriding it to match the background.
+
+## 2026-11-04 - Badge Border Contrast on Selected Backgrounds
+**Learning:** When a container element changes its background color upon selection (e.g., to solid blue), static child badges that use that identical background color lose their shape and visually blend into the container when the main content scales down. Retaining a distinct border color (like white) ensures the badge remains visually identifiable against the container's identical background.
+**Action:** When styling badges that share the background color of their container's selected state, explicitly add a contrasting `border` (e.g., `border: 1px solid rgba(255,255,255,0.9)`) and adjust padding to maintain the original footprint and contrast.

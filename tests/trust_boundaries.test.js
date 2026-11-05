@@ -100,4 +100,36 @@ describe('Content script trust boundaries (e.isTrusted)', () => {
       url: 'https://example.com/image.jpg'
     });
   });
+
+  it('honors the disableDrag sync-storage setting', async () => {
+    // Override the mock for this specific test
+    global.browser.storage.sync.get.mockResolvedValue({ disableDrag: true });
+
+    // Re-evaluate the content script to pick up the mocked setting on load
+    jest.resetModules();
+    const newListeners = {};
+    jest.spyOn(document, 'addEventListener').mockImplementation((event, cb) => {
+      newListeners[event] = cb;
+    });
+    require('../src/content.js');
+
+    // Let the async storage fetch settle
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    expect(newListeners.dragend).toBeDefined();
+
+    // Dispatch a trusted dragend
+    newListeners.dragend({
+      isTrusted: true,
+      target: {
+        tagName: 'IMG',
+        currentSrc: 'https://example.com/image.jpg',
+        hasAttribute: () => false,
+        getAttribute: () => null
+      }
+    });
+
+    // sendMessage should NOT be called because drag is disabled
+    expect(global.browser.runtime.sendMessage).not.toHaveBeenCalled();
+  });
 });

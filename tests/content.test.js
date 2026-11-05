@@ -79,6 +79,21 @@ describe('extractBgImageUrls', () => {
     const bgValue = "some random text without url function";
     expect(extractBgImageUrls(bgValue)).toEqual([]);
   });
+
+  it('should extract URLs from src() strings', () => {
+    const bgValue = 'src("image.jpg")';
+    expect(extractBgImageUrls(bgValue)).toEqual(['image.jpg']);
+  });
+
+  it('should extract URLs from src() inside image-set() strings', () => {
+    const bgValue = 'image-set(src("img1.png") 1x, "img2.png" 2x)';
+    expect(extractBgImageUrls(bgValue)).toEqual(['img1.png', 'img2.png']);
+  });
+
+  it('should preserve the bare-string variant when it precedes src()', () => {
+    const bgValue = 'image-set("img1.png" 1x, src("img2.png") 2x)';
+    expect(extractBgImageUrls(bgValue)).toEqual(['img2.png', 'img1.png']);
+  });
 });
 
 describe('parseSrcset', () => {
@@ -121,16 +136,18 @@ describe('handleMeta', () => {
     return e;
   }
 
-  it('captures meta[property="og:image"]', () => {
+  it('captures meta[property="og:image"] and meta[property="og:image:url"]', () => {
     const set = new Set();
     handleMeta(el('meta', { property: 'og:image', content: 'https://example.com/og.jpg' }), set, new Set());
-    expect([...set]).toEqual(['https://example.com/og.jpg']);
+    handleMeta(el('meta', { property: 'og:image:url', content: 'https://example.com/og-url.jpg' }), set, new Set());
+    expect([...set]).toEqual(['https://example.com/og.jpg', 'https://example.com/og-url.jpg']);
   });
 
-  it('captures meta[name="twitter:image"]', () => {
+  it('captures meta[name="twitter:image"] and meta[name="twitter:image:src"]', () => {
     const set = new Set();
     handleMeta(el('meta', { name: 'twitter:image', content: 'https://example.com/twitter.jpg' }), set, new Set());
-    expect([...set]).toEqual(['https://example.com/twitter.jpg']);
+    handleMeta(el('meta', { name: 'twitter:image:src', content: 'https://example.com/twitter-src.jpg' }), set, new Set());
+    expect([...set]).toEqual(['https://example.com/twitter.jpg', 'https://example.com/twitter-src.jpg']);
   });
 
   it('captures link[rel="preload"][as="image"]', () => {
