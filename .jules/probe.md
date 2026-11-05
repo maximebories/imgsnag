@@ -151,3 +151,7 @@
 **Learning:** Verified that the error logging for SVG download failures (`console.warn`) inside the `download_svg` branch lacked a dedicated regression test.
 **Action:** Added a regression test asserting that `console.warn` is called with the expected arguments when an SVG download fails.
 >>>>>>> 8f560b2 (Add SVG download failure logging regression test)
+
+## 2026-11-04 - Inline SVG <use> tag regex exclusion regression test
+**Learning:** Verified that the Warden persona's fix for rejecting inline SVGs containing `<use>` tags (`/<(?:[^>\s:]+:)?use\b/i` check over serialized markup in `collectInlineSvgs`) lacked a dedicated regression test.
+**Action:** Added `tests/inline_svg_use_regex.test.js` pinning the behavior that `collectInlineSvgs()` successfully excludes SVGs containing variations of the `<use>` tag (including standard, simple prefixed, and complex XML-valid prefixes), ensuring the `MAX_INLINE_SVG_CHARS` size bound and serialization logic are correctly applied before extraction.
