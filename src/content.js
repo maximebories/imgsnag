@@ -1404,6 +1404,16 @@
   function getTargetUrlsForElement(el) {
     const urls = [];
 
+    const track = (raw) => {
+      const url = resolveUrl(raw);
+      if (url && !url.startsWith('data:')) urls.push(url);
+    };
+
+    const trackImage = (raw) => {
+      const url = resolveUrl(raw);
+      if (url && isImageUrl(url) && !url.startsWith('data:')) urls.push(url);
+    };
+
     if (isImgLike(el)) {
       let realSet = false;
       if (el.parentElement?.tagName === 'PICTURE') {
@@ -1486,13 +1496,41 @@
     }
 
     for (const raw of getCssMediaUrls(el)) {
-      const url = resolveUrl(raw);
-      if (url && isImageUrl(url) && !url.startsWith('data:')) urls.push(url);
+      trackImage(raw);
     }
 
     if (el.tagName === 'A' || el.tagName === 'AREA') {
-      const url = resolveUrl(el.getAttribute('href'));
-      if (url && isImageUrl(url) && !url.startsWith('data:')) urls.push(url);
+      trackImage(el.getAttribute('href'));
+    }
+
+    const tag = el.tagName;
+    if (tag === 'OBJECT' || tag === 'EMBED' || tag === 'IFRAME') {
+      const raw = tag === 'OBJECT' ? el.getAttribute('data') : el.getAttribute('src');
+      trackImage(raw);
+    }
+
+    if (tag === 'image' || tag === 'IMAGE') {
+      const raw = el.getAttribute('href') || el.getAttribute('xlink:href');
+      track(raw);
+    }
+
+    if (el.hasAttributes && el.hasAttributes()) {
+      for (const attr of DATA_BG_ATTRS) {
+        if (el.hasAttribute(attr)) {
+          const bg = el.getAttribute(attr);
+          if (bg) {
+            const lowerBgAttr = bg.toLowerCase();
+            if (lowerBgAttr.includes('url(') || lowerBgAttr.includes('image-set(') || lowerBgAttr.includes('src(')) {
+              for (const raw of extractBgImageUrls(bg)) {
+                track(raw);
+              }
+            } else {
+              const raw = bg.trim();
+              trackImage(raw);
+            }
+          }
+        }
+      }
     }
 
     return urls;
