@@ -89,3 +89,7 @@
 ## 2026-11-01 - <model-viewer> poster extraction RFC
 **Learning:** The `<model-viewer>` web component (used heavily for 3D products on e-commerce sites like Shopify) uses a `poster` attribute for its pre-load image. The extension structurally ignores this component because `MODEL-VIEWER` is missing from `TAG_SET` and initial DOM queries. Crucially, if the `poster` URL is extensionless (common with modern CDNs), the regex sweep also fails to find it. This is a high-value, zero-ambiguity channel that clears the URL-handoff boundary and can be captured for practically zero performance cost.
 **Action:** Verdict GO, staged. Filed as an RFC issue by the orchestrator.
+
+## 2026-11-05 - Closed Shadow Root traversal RFC
+**Learning:** Components attached with `{ mode: 'closed' }` return `null` for `.shadowRoot`, making their internal media invisible to standard DOM queries and to the open shadow DOM traversal from RFC #135. The only way to pierce them is to intercept creation by wrapping `Element.prototype.attachShadow` from a `world: "MAIN"` injected script that keeps weak references to the created roots.
+**Action:** Verdict GO, staged. Filed as RFC issue #444. Implementation needs strict Warden review of cross-world communication and must run on demand (popup connect), never ambiently.
