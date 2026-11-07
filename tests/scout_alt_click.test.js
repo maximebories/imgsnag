@@ -47,4 +47,24 @@ describe('Alt-Click / getTargetUrlsForElement blind spot', () => {
     const urls = getTargetUrlsForElement(video);
     expect(urls).toContain('https://example.com/video.mp4');
   });
+
+  it('extracts urls from OBJECT, EMBED, IFRAME and inline SVG image elements', () => {
+    const object = el('object', { data: 'https://example.com/object.jpg' });
+    expect(getTargetUrlsForElement(object)).toContain('https://example.com/object.jpg');
+
+    const embed = el('embed', { src: 'https://example.com/embed.jpg' });
+    expect(getTargetUrlsForElement(embed)).toContain('https://example.com/embed.jpg');
+
+    const iframe = el('iframe', { src: 'https://example.com/iframe.jpg' });
+    expect(getTargetUrlsForElement(iframe)).toContain('https://example.com/iframe.jpg');
+
+    const svgImage = document.createElementNS('http://www.w3.org/2000/svg', 'image');
+    svgImage.setAttribute('href', 'https://example.com/svg.jpg');
+    expect(getTargetUrlsForElement(svgImage)).toContain('https://example.com/svg.jpg');
+  });
+
+  it('extracts urls from data-bg attributes', () => {
+    const div = el('div', { 'data-bg': 'https://example.com/data-bg.jpg' });
+    expect(getTargetUrlsForElement(div)).toContain('https://example.com/data-bg.jpg');
+  });
 });
