@@ -155,3 +155,7 @@
 ## 2026-11-05 - Inline SVG <use> tag regex exclusion regression test
 **Learning:** Verified that the Warden persona's fix for rejecting inline SVGs containing `<use>` tags (`/<(?:[^>\s:]+:)?use\b/i` check over serialized markup in `collectInlineSvgs`) lacked a dedicated regression test.
 **Action:** Added `tests/inline_svg_use_regex.test.js` pinning the behavior that `collectInlineSvgs()` successfully excludes SVGs containing variations of the `<use>` tag (including standard, simple prefixed, and complex XML-valid prefixes), ensuring the `MAX_INLINE_SVG_CHARS` size bound and serialization logic are correctly applied before extraction.
+
+## 2026-11-07 - TreeWalker fast-path string checks case-insensitivity regression test
+**Learning:** Verified that the case-insensitivity of the fast-path regex check (`HTTP_HINT_RE = /http/i`) added by the Feather persona inside the TreeWalker `extractRegexUrls` sweep lacked a regression test. If the `/i` flag were lost (e.g. reverting to `val.includes('http')`), URLs starting with mixed case (`HtTp://`) in text nodes or attributes would silently stop being discovered without failing any tests.
+**Action:** Added a regression test in `tests/mutation_regex_sweep.test.js` to ensure `extractRegexUrls` correctly extracts `hTtPs://` and `HtTp://` mixed-case URLs, pinning the regex `/http/i` case-insensitivity guard.

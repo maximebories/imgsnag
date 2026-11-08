@@ -31,6 +31,16 @@ describe('extractRegexUrls — shared text/attribute sweep', () => {
     return found;
   };
 
+  it('matches HTTP and HTTPS case-insensitively in text nodes and attributes', () => {
+    // Tests that HTTP_HINT_RE handles mixed case correctly
+    const textNode = document.createTextNode('{"image": "hTtPs://example.com/mixed.jpg"}');
+    expect(sweep(textNode)).toEqual(['hTtPs://example.com/mixed.jpg']);
+
+    const attrEl = document.createElement('div');
+    attrEl.setAttribute('data-img', 'HtTp://example.com/mixed-attr.jpg');
+    expect(sweep(attrEl)).toEqual(['HtTp://example.com/mixed-attr.jpg']);
+  });
+
   it('extracts image URLs from a text node', () => {
     const node = document.createTextNode('{"image": "https://example.com/late.jpg"}');
     expect(sweep(node)).toEqual(['https://example.com/late.jpg']);
