@@ -1240,7 +1240,7 @@
       for (const node of addedNodes) {
         let isDescendant = false;
         if (node.isConnected) {
-            for (let p = node.parentElement; p; p = p.parentElement) {
+            for (let p = node.parentNode; p; p = p.parentNode) {
               if (addedNodes.has(p)) { isDescendant = true; break; }
             }
         }
