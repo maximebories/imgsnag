@@ -142,11 +142,10 @@
 **Learning:** Verified that the Scout persona's fix to use `document.baseURI` in `resolveUrl` (ensuring that relative URLs respect a document's `<base href>` rather than strictly using `location.href`) lacked a dedicated test asserting that the base resolution succeeds for allowed protocols and correctly fails-closed for hostile base protocols like `file://`.
 **Action:** Added tests in `src/tests/content.test.js` to ensure `resolveUrl` correctly processes relative URLs against a mock `<base href>` and correctly rejects resolution when the base URL uses a non-allowlisted protocol.
 
-<<<<<<< HEAD
 ## 2026-11-02 - URL preservation in download failure logs regression test
 **Learning:** Verified that the rejection of Warden PR #243 (which attempted to strip page-controlled URLs from `console.warn` during download failures) lacked a regression test. The URL field is essential for diagnosing failures (such as identifying which URL in a bulk batch failed), and stripping it creates a usability regression without improving security because the MV3 background devtools console is isolated.
 **Action:** Pinned the logging behavior in `test/background.test.js` for both `download_image` and `download_images_bulk` failure paths by spying on `console.warn` and asserting that the exact URL (`http://fail.com/image.jpg`) is present alongside the error message.
-=======
+
 ## 2026-11-02 - SVG download failure logging regression test
 **Learning:** Verified that the error logging for SVG download failures (`console.warn`) inside the `download_svg` branch lacked a dedicated regression test.
 **Action:** Added a regression test asserting that `console.warn` is called with the expected arguments when an SVG download fails.
@@ -159,3 +158,7 @@
 ## 2026-11-07 - Alt-Click extraction fallback regression tests
 **Learning:** Verified that the Scout persona's fix for adding `OBJECT`, `EMBED`, `IFRAME`, SVG `<image>`, and `data-bg` coverage to `getTargetUrlsForElement` lacked dedicated regression tests.
 **Action:** Added `tests/scout_alt_click.test.js` tests to explicitly pin that `getTargetUrlsForElement` extracts URLs from these custom embed elements and `data-bg`. (Note: The Scout entry claimed to also add synthesis coverage via `trackImageUrl` to this block, but the actual implementation in `src/content.js` pushes the resolved URL directly rather than synthesizing, making a synthesis regression test impossible without source changes).
+
+## 2026-11-08 - TreeWalker fast-path string checks case-insensitivity regression test
+**Learning:** Verified that the case-insensitivity of the fast-path regex check (`HTTP_HINT_RE = /http/i`) added by the Feather persona inside the TreeWalker `extractRegexUrls` sweep lacked a regression test. If the `/i` flag were lost (e.g. reverting to `val.includes('http')`), URLs starting with mixed case (`HtTp://`) in text nodes or attributes would silently stop being discovered without failing any tests.
+**Action:** Added a regression test in `tests/mutation_regex_sweep.test.js` to ensure `extractRegexUrls` correctly extracts `hTtPs://` and `HtTp://` mixed-case URLs, pinning the regex `/http/i` case-insensitivity guard.
