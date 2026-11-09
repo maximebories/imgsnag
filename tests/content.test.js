@@ -1275,3 +1275,36 @@ describe('processBgImageQueue', () => {
     expect(() => processBgImageQueue({ timeRemaining: () => 50 })).not.toThrow();
   });
 });
+
+describe('collectInlineSvgs', () => {
+  const { collectInlineSvgs } = require('../src/content.js');
+
+  beforeEach(() => {
+    document.body.innerHTML = '';
+  });
+
+  it('rejects SVGs containing namespace-prefixed <use> elements', () => {
+    // This pins the Warden fix from 2026-09-09.
+    const maxChars = 2 * 1024 * 1024;
+
+    const svg1 = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    jest.spyOn(svg1, 'getBoundingClientRect').mockReturnValue({ width: 250, height: 250 });
+    // JSDOM does not fully support createElementNS with arbitrary prefixes the way a real browser does,
+    // so we mock the serialization to ensure the regex runs against the expected output.
+    const originalSerialize = window.XMLSerializer.prototype.serializeToString;
+    window.XMLSerializer.prototype.serializeToString = jest.fn().mockReturnValue('<svg><some:use href="#icon"/></svg>');
+
+    document.body.appendChild(svg1);
+
+    let items = collectInlineSvgs();
+    expect(items.length).toBe(0);
+
+    // Test with complex charset like <some_use.x:use>
+    window.XMLSerializer.prototype.serializeToString.mockReturnValue('<svg><some_use.x:use href="#icon"/></svg>');
+    items = collectInlineSvgs();
+    expect(items.length).toBe(0);
+
+    // Restore
+    window.XMLSerializer.prototype.serializeToString = originalSerialize;
+  });
+});

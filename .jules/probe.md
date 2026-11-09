@@ -142,12 +142,16 @@
 **Learning:** Verified that the Scout persona's fix to use `document.baseURI` in `resolveUrl` (ensuring that relative URLs respect a document's `<base href>` rather than strictly using `location.href`) lacked a dedicated test asserting that the base resolution succeeds for allowed protocols and correctly fails-closed for hostile base protocols like `file://`.
 **Action:** Added tests in `src/tests/content.test.js` to ensure `resolveUrl` correctly processes relative URLs against a mock `<base href>` and correctly rejects resolution when the base URL uses a non-allowlisted protocol.
 
-<<<<<<< HEAD
 ## 2026-11-02 - URL preservation in download failure logs regression test
 **Learning:** Verified that the rejection of Warden PR #243 (which attempted to strip page-controlled URLs from `console.warn` during download failures) lacked a regression test. The URL field is essential for diagnosing failures (such as identifying which URL in a bulk batch failed), and stripping it creates a usability regression without improving security because the MV3 background devtools console is isolated.
 **Action:** Pinned the logging behavior in `test/background.test.js` for both `download_image` and `download_images_bulk` failure paths by spying on `console.warn` and asserting that the exact URL (`http://fail.com/image.jpg`) is present alongside the error message.
-=======
+
 ## 2026-11-02 - SVG download failure logging regression test
 **Learning:** Verified that the error logging for SVG download failures (`console.warn`) inside the `download_svg` branch lacked a dedicated regression test.
 **Action:** Added a regression test asserting that `console.warn` is called with the expected arguments when an SVG download fails.
->>>>>>> 8f560b2 (Add SVG download failure logging regression test)
+
+
+
+## 2026-11-06 - collectInlineSvgs prefixed <use> regex regression test
+**Learning:** Verified that the Warden persona's fix in `collectInlineSvgs` to reject SVGs containing namespace-prefixed `<use>` refs (by testing the serialized markup against `/<(?:[^>\s:]+:)?use\b/i`) lacked a regression test explicitly proving that elements like `<some:use>` or `<some_use.x:use>` are correctly rejected. The previous duplicate-check notes in the journal indicated such a test was proposed but withdrawn because the fix and test should have landed together. I am now providing the required regression guard.
+**Action:** Added a regression test `tests/content.test.js` to explicitly pin the serialization check in `collectInlineSvgs`, proving that prefixed `<use>` nodes trigger rejection, protecting the extension against capturing blank SVG files.
