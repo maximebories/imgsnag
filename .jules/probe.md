@@ -162,3 +162,7 @@
 ## 2026-11-08 - TreeWalker fast-path string checks case-insensitivity regression test
 **Learning:** Verified that the case-insensitivity of the fast-path regex check (`HTTP_HINT_RE = /http/i`) added by the Feather persona inside the TreeWalker `extractRegexUrls` sweep lacked a regression test. If the `/i` flag were lost (e.g. reverting to `val.includes('http')`), URLs starting with mixed case (`HtTp://`) in text nodes or attributes would silently stop being discovered without failing any tests.
 **Action:** Added a regression test in `tests/mutation_regex_sweep.test.js` to ensure `extractRegexUrls` correctly extracts `hTtPs://` and `HtTp://` mixed-case URLs, pinning the regex `/http/i` case-insensitivity guard.
+
+## 2026-11-10 - Restrict Popup-Only Actions Sender Verification test
+**Learning:** Verified that the Warden persona's fix for checking \`sender.tab\` on \`download_images_bulk\`, \`download_svg\`, and \`cancel_downloads\` actions in \`src/background.js\` (restricting these actions to the extension context and blocking content scripts) lacked a dedicated regression test. Without it, a refactor could accidentally remove the sender verification, leaving the background script vulnerable to arbitrary popup actions invoked by compromised content scripts.
+**Action:** Added a regression test in \`tests/bg_auth.test.js\` to explicitly pin that popup-only actions are rejected when \`sender.tab\` is present, and allowed when it is not (meaning the request originated from the extension context, such as the popup).
