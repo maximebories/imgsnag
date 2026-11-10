@@ -166,3 +166,7 @@
 ## 2026-11-09 - Restrict Popup-Only Actions Sender Verification test
 **Learning:** Verified that the Warden persona's fix for checking \`sender.tab\` on \`download_images_bulk\`, \`download_svg\`, and \`cancel_downloads\` actions in \`src/background.js\` (restricting these actions to the extension context and blocking content scripts) lacked a dedicated regression test. Without it, a refactor could accidentally remove the sender verification, leaving the background script vulnerable to arbitrary popup actions invoked by compromised content scripts.
 **Action:** Added a regression test in \`tests/bg_auth.test.js\` to explicitly pin that popup-only actions are rejected when \`sender.tab\` is present, and allowed when it is not (meaning the request originated from the extension context, such as the popup).
+
+## 2026-11-09 - collectInlineSvgs prefixed <use> regex regression test
+**Learning:** Warden's fix in `collectInlineSvgs` rejecting SVGs with namespace-prefixed `<use>` refs (regex `/<(?:[^>\s:]+:)?use\b/i`) lacked a regression test; jsdom can't build arbitrary-prefix elements reliably, so serialization is mocked.
+**Action:** Added a `collectInlineSvgs` test in `tests/content.test.js` pinning rejection of `<some:use>` and `<some_use.x:use>`.
