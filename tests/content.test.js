@@ -1199,10 +1199,12 @@ describe('BG_IMAGE_SELECTORS gate', () => {
     // <b> is not in the tag list; it is reached purely via [style*="mask"]
     expect(matches('<b style="mask-image: url(\'https://example.com/m.png\')"></b>')).toBe(true);
     expect(matches('<b style="-webkit-mask-image: url(\'https://example.com/m.png\')"></b>')).toBe(true);
+    expect(matches('<b style="MASK-IMAGE: url(\'https://example.com/m.png\')"></b>')).toBe(true);
   });
 
   it('selects any tag carrying an inline background', () => {
     expect(matches('<b style="background-image: url(\'https://example.com/b.png\')"></b>')).toBe(true);
+    expect(matches('<b style="BACKGROUND-IMAGE: url(\'https://example.com/b.png\')"></b>')).toBe(true);
   });
 
   it('does not select unlisted tags with no styling hint', () => {
