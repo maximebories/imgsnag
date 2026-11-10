@@ -48,7 +48,7 @@
   };
 
   const BG_IMAGE_SELECTORS =
-    'div, span, section, article, header, footer, a, li, figure, i, button, main, dialog, [style*="background"], [style*="mask"]';
+    'div, span, section, article, header, footer, a, li, figure, i, button, main, dialog, [style*="background" i], [style*="mask" i]';
 
   const MIN_IMAGE_SIZE = 200;
   // Ceiling on simultaneous `new Image()` size probes. Each in-flight probe holds
