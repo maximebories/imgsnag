@@ -93,3 +93,7 @@
 ## 2026-11-05 - Closed Shadow Root traversal RFC
 **Learning:** Components attached with `{ mode: 'closed' }` return `null` for `.shadowRoot`, making their internal media invisible to standard DOM queries and to the open shadow DOM traversal from RFC #135. The only way to pierce them is to intercept creation by wrapping `Element.prototype.attachShadow` from a `world: "MAIN"` injected script that keeps weak references to the created roots.
 **Action:** Verdict GO, staged. Filed as RFC issue #444. Implementation needs strict Warden review of cross-world communication and must run on demand (popup connect), never ambiently.
+
+## 2026-11-10 - Same-origin iframe descent RFC
+**Learning:** Same-origin iframes are synchronously accessible via `iframe.contentDocument`, allowing us to extract media embedded within them without requiring cross-origin message passing or injecting scripts into every frame (`all_frames: true`). The current DOM scan misses these entirely. Capturing them is safe and low-cost because the Same-Origin Policy naturally sandboxes cross-origin frames (access throws an error which we can `try/catch`).
+**Action:** Verdict GO, staged. Filed as an RFC issue by the orchestrator.
