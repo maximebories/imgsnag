@@ -1135,6 +1135,7 @@
   }
 
   function handleBackgroundImage(el, imageSet) {
+    if (!el.matches(BG_IMAGE_SELECTORS)) return;
     // Fast path: skip elements with no styling hints to avoid expensive getComputedStyle calls
     if (el.hasAttribute('class') || el.id || el.getAttribute('style')) {
       pendingBackgroundCheckQueue.add(el);
