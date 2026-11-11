@@ -223,7 +223,8 @@
     btnAll.textContent = browser.i18n.getMessage('popupDownloadAll', [total.toString()]);
 
     // Update the visual shortcut hint and move it next to the active button
-    const shortcutText = browser.i18n.getMessage('popupShortcutKbd', [mod]);
+    const enterKey = browser.i18n.getMessage('popupShortcutEnter');
+    const shortcutText = browser.i18n.getMessage('popupShortcutKbd', [mod, enterKey]);
     shortcutHintEl.textContent = shortcutText;
     shortcutHintEl.style.display = 'inline-block';
 

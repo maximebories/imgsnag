@@ -110,10 +110,13 @@
     "description": "Filename shown in the cell label for a captured inline SVG. Must match the real download filename in background.js — do not translate."
   },
   "popupShortcutKbd": {
-    "message": "$MODIFIER$+Enter",
+    "message": "$MODIFIER$+$ENTER$",
     "placeholders": {
       "modifier": {
         "content": "$1"
+      },
+      "enter": {
+        "content": "$2"
       }
     },
     "description": "Visible keyboard shortcut hint shown next to the active download button."
@@ -169,5 +172,9 @@
   "popupShortcutOpt": {
     "message": "Option",
     "description": "Keyboard modifier for macOS."
+  },
+  "popupShortcutEnter": {
+    "message": "Enter",
+    "description": "Keyboard key name for Enter/Return."
   }
 }

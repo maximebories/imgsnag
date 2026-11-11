@@ -27,7 +27,8 @@ global.browser = {
     getMessage: (k, arr) => {
       if (k === 'popupShortcutCmd') return 'Cmd';
       if (k === 'popupShortcutCtrl') return 'Ctrl';
-      if (k === 'popupShortcutKbd' && arr) return arr[0] + '+Entrée'; // simulate localized formatting
+      if (k === 'popupShortcutKbd' && arr) return arr[0] + '+' + arr[1];
+      if (k === 'popupShortcutEnter') return 'Entrée'; // simulate localized formatting
       return arr ? arr.join(',') : k;
     }
   },
