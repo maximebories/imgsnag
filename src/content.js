@@ -148,10 +148,11 @@
     }
   }
 
-  function resolveUrl(url) {
+  function resolveUrl(url, contextNode) {
     if (!url) return null;
     try {
-      const parsed = new URL(url, document.baseURI);
+      const baseURI = (contextNode && contextNode.ownerDocument && contextNode.ownerDocument.baseURI) || document.baseURI;
+      const parsed = new URL(url, baseURI);
       // Warden: Restrict to safe protocols to prevent exfiltration / local file access
       const p = parsed.protocol;
       if (p !== 'http:' && p !== 'https:' && p !== 'blob:' && p !== 'data:') {
@@ -387,8 +388,8 @@
     return usable;
   }
 
-  function isRealMediaUrl(raw) {
-    const url = resolveUrl(raw);
+  function isRealMediaUrl(raw, contextNode) {
+    const url = resolveUrl(raw, contextNode);
     return !!url && !url.startsWith('data:');
   }
 
@@ -1405,12 +1406,12 @@
     const urls = [];
 
     const track = (raw) => {
-      const url = resolveUrl(raw);
+      const url = resolveUrl(raw, el);
       if (url && !url.startsWith('data:')) urls.push(url);
     };
 
     const trackImage = (raw) => {
-      const url = resolveUrl(raw);
+      const url = resolveUrl(raw, el);
       if (url && isImageUrl(url) && !url.startsWith('data:')) urls.push(url);
     };
 
@@ -1421,12 +1422,12 @@
         for (const source of pic.querySelectorAll('source')) {
           for (const attr of SOURCE_SRCSET_ATTRS) {
             const best = pickBestFromSrcset(source.getAttribute(attr));
-            if (best && isRealMediaUrl(best)) { urls.push(resolveUrl(best)); realSet = true; break; }
+            if (best && isRealMediaUrl(best, el)) { urls.push(resolveUrl(best, el)); realSet = true; break; }
           }
           if (!realSet) {
             for (const attr of SOURCE_URL_ATTRS) {
               const val = source.getAttribute(attr);
-              if (val && isRealMediaUrl(val)) { urls.push(resolveUrl(val)); realSet = true; break; }
+              if (val && isRealMediaUrl(val, el)) { urls.push(resolveUrl(val, el)); realSet = true; break; }
             }
           }
           if (realSet) break;
@@ -1436,8 +1437,8 @@
       if (!realSet && (el.hasAttribute('srcset') || el.hasAttribute('data-srcset') || el.hasAttribute('data-bgset') || el.hasAttribute('imagesrcset'))) {
         for (const attr of ['srcset', 'data-srcset', 'data-bgset', 'imagesrcset']) {
           const val = pickBestFromSrcset(el.getAttribute(attr));
-          if (val && isRealMediaUrl(val)) {
-            urls.push(resolveUrl(val));
+          if (val && isRealMediaUrl(val, el)) {
+            urls.push(resolveUrl(val, el));
             realSet = true;
             break;
           }
@@ -1447,7 +1448,7 @@
       if (realSet) return urls;
 
       if (el.currentSrc) {
-        const url = resolveUrl(el.currentSrc);
+        const url = resolveUrl(el.currentSrc, el);
         if (url && !url.startsWith('data:')) {
           urls.push(url);
           return urls;
@@ -1459,7 +1460,7 @@
         if (attr === 'src') val = el.src;
         else val = el.hasAttribute(attr) ? el.getAttribute(attr) : null;
         if (val) {
-          const url = resolveUrl(val);
+          const url = resolveUrl(val, el);
           if (url && !url.startsWith('data:')) {
             urls.push(url);
             return urls;
@@ -1473,7 +1474,7 @@
       for (const attr of MEDIA_SRC_ATTRS) {
         const val = el.getAttribute(attr);
         if (val) {
-          const url = resolveUrl(val);
+          const url = resolveUrl(val, el);
           if (url && !url.startsWith('data:')) {
             urls.push(url);
             return urls;
@@ -1484,7 +1485,7 @@
         for (const attr of MEDIA_SRC_ATTRS) {
           const val = source.getAttribute(attr);
           if (val) {
-            const url = resolveUrl(val);
+            const url = resolveUrl(val, el);
             if (url && !url.startsWith('data:')) {
               urls.push(url);
               return urls;
@@ -1536,8 +1537,38 @@
     return urls;
   }
 
+  function getElementsFromPointRecursive(doc, x, y, elements = new Set(), depth = 0) {
+    if (depth > 5) return Array.from(elements);
+    const els = doc.elementsFromPoint(x, y);
+    if (!els) return Array.from(elements);
+
+    for (const el of els) {
+      elements.add(el);
+      if (el.tagName === 'IFRAME') {
+        try {
+          // Warden: Wrap frame access to ensure cross-origin frames are skipped silently
+          const iframeDoc = el.contentDocument || (el.contentWindow && el.contentWindow.document);
+          if (iframeDoc) {
+            const rect = el.getBoundingClientRect();
+            const style = doc.defaultView ? doc.defaultView.getComputedStyle(el) : null;
+            const borderLeft = style ? parseFloat(style.borderLeftWidth) || 0 : 0;
+            const borderTop = style ? parseFloat(style.borderTopWidth) || 0 : 0;
+            const paddingLeft = style ? parseFloat(style.paddingLeft) || 0 : 0;
+            const paddingTop = style ? parseFloat(style.paddingTop) || 0 : 0;
+            const innerX = x - rect.left - borderLeft - paddingLeft;
+            const innerY = y - rect.top - borderTop - paddingTop;
+            getElementsFromPointRecursive(iframeDoc, innerX, innerY, elements, depth + 1);
+          }
+        } catch (err) {
+          // Cross-origin iframe or inaccessible, ignore
+        }
+      }
+    }
+    return Array.from(elements);
+  }
+
   function downloadImagesAtPoint(e) {
-    const elements = document.elementsFromPoint(e.clientX, e.clientY);
+    const elements = getElementsFromPointRecursive(document, e.clientX, e.clientY);
     const downloadedUrls = new Set();
     let didDownload = false;
 
