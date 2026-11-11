@@ -50,6 +50,8 @@
   const BG_IMAGE_SELECTORS =
     'div, span, section, article, header, footer, a, li, figure, i, button, main, dialog, [style*="background" i], [style*="mask" i]';
 
+  const STYLE_TEST_RE = /background|mask/i;
+
   const MIN_IMAGE_SIZE = 200;
   // Ceiling on simultaneous `new Image()` size probes. Each in-flight probe holds
   // a decoded bitmap, so an unbounded fan-out over a large gallery is a memory
@@ -1270,16 +1272,26 @@
               extractRegexUrls(el, trackSweptImage);
               if (el.nodeType !== Node.ELEMENT_NODE) continue;
               const tag = el.tagName;
-              if (
-                TAG_SET.has(tag) ||
-                (el.hasAttributes && el.hasAttributes() && (
+              let hasMediaAttr = false;
+              if (TAG_SET.has(tag)) {
+                hasMediaAttr = true;
+              } else if (el.hasAttributes && el.hasAttributes()) {
+                if (
                   el.hasAttribute('srcset') || el.hasAttribute('data-srcset') || el.hasAttribute('data-bgset') || el.hasAttribute('imagesrcset') ||
                   el.hasAttribute('data-src') || el.hasAttribute('data-lazy-src') || el.hasAttribute('data-original') ||
                   el.hasAttribute('data-bg') || el.hasAttribute('data-bg-src') || el.hasAttribute('data-background') ||
-                  el.hasAttribute('data-background-image') ||
-                  (el.hasAttribute('style') && (el.getAttribute('style').toLowerCase().includes('background') || el.getAttribute('style').toLowerCase().includes('mask')))
-                ))
-              ) {
+                  el.hasAttribute('data-background-image')
+                ) {
+                  hasMediaAttr = true;
+                } else {
+                  const style = el.getAttribute('style');
+                  if (style && STYLE_TEST_RE.test(style)) {
+                    hasMediaAttr = true;
+                  }
+                }
+              }
+
+              if (hasMediaAttr) {
                 extractUrlsFromElement(el, imageUrls, videoUrls);
               }
             }
