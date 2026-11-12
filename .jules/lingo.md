@@ -65,3 +65,7 @@
 ## 2026-10-31 - Hardcoded Alt modifier string bypasses internationalization
 **Learning:** Hardcoded keyboard modifier strings like 'Alt' inside full phrase keys (like `popupEmptyHint`) assume English terminology and PC keyboards, missing OS-specific terms (like 'Option' on Mac).
 **Action:** Extract 'Alt'/'Option' keyboard modifiers into separate locale keys (`popupShortcutAlt` and `popupShortcutOpt`) and pass them dynamically via placeholders into phrase strings based on the user's OS platform (e.g. using `navigator.platform.includes('Mac')`).
+
+## 2026-11-20 - Hardcoded Enter key bypasses internationalization
+**Learning:** The hardcoded "Enter", "Intro" or "Entrée" directly embedded inside the keyboard shortcut format (`popupShortcutKbd`) means that the localized key name is tightly coupled to the format string itself. Instead, the actual key name (like "Enter") should be a separate, dedicated translation key (`popupShortcutEnter`), and passed as a placeholder into the format string (e.g. `$MODIFIER$+$ENTER$`).
+**Action:** Created `popupShortcutEnter` for localized "Enter"/"Intro"/"Entrée". Replaced hardcoded key name inside `popupShortcutKbd` with a `$ENTER$` placeholder in `_locales/{en,es,fr}/messages.json`. Updated `src/popup.js` to fetch `popupShortcutEnter` and pass it to `popupShortcutKbd` placeholder array. Updated `tests/popup_shortcut.test.js` to mock `popupShortcutEnter`.
